@@ -46,3 +46,18 @@ implementation/
 - `theme-tokens-dark-before-2026-05-30.png` / `theme-tokens-dark-after-2026-05-30.png`
 
 Keep the latest validating shot for a feature; prune superseded ones so the folder stays evidence, not clutter.
+
+### Capturing UI evidence (`SHELL_CAPTURE`)
+
+The app captures its own window — the reliable way to land a real PNG in this folder from an agent sandbox where `screencapture` is TCC-blocked and the computer-use MCP saves images off-repo. The hook lives in `app-shell/src/main/index.ts` (`maybeCaptureForEvidence`).
+
+```bash
+cd app-shell
+SHELL_CAPTURE=../implementation/screenshots/<slice>-after-<YYYY-MM-DD>.png npm run start
+```
+
+The app launches, waits for async IPC data to render, writes the PNG via `webContents.capturePage()`, logs `[SHELL_CAPTURE] wrote <path>`, and **quits on its own** (no `timeout` needed). Output is full Retina resolution.
+
+- `SHELL_CAPTURE` — absolute or relative output path (relative resolves from `app-shell/`). Parent dirs are created. Required to activate the hook; unset = normal launch.
+- `SHELL_CAPTURE_DELAY` — ms to wait after `ready-to-show` before capturing (default `3500`). Bump it if a slice loads data slowly or you need to see a later state.
+- The capture reflects whatever the app renders on a cold launch (seeded/persisted SQLite state). For a *specific* interaction state (mid-edit, a panel open), you still need computer-use to drive the UI — but that path can't write the file, so use it to verify and `SHELL_CAPTURE` for the saved cold-launch shot.
