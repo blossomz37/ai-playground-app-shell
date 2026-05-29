@@ -67,6 +67,7 @@ Modules may not: patch shell internals directly. [web:50][web:73][web:76]
 - Notification/toast service.
 - Theme/token service.
 - Permission/capability service. [cite:1]
+- Secrets/credentials service — OS-keychain-backed (Electron `safeStorage`), user-named values (e.g. `OPENAI_API_KEY`); never plaintext in SQLite. See §12 Q12.
 
 ## 5. Module contract
 Every module must define:
@@ -102,7 +103,7 @@ Workspace data:
 - jobs/history
 - indexes/cache
 
-Note: workspace document state follows the hybrid model — files on disk are the source of truth, SQLite is a rebuildable index (per §12, Q6).
+Note: workspace document state follows the DB-as-truth model — SQLite is the source of truth, files are import provenance + export targets (per §12, Q6).
 
 Module data:
 - namespaced settings
@@ -132,6 +133,7 @@ These belong in modules, not in the shell. [cite:1][cite:5]
 - Prompt Studio
 - Workflow Runner
 - Table View
+- Web (bundled, default-on in this build; Chrome-like persistent browsing — see §12 Q13)
 
 ## 12. Resolved decisions (2026-05-29)
 
@@ -184,3 +186,14 @@ These belong in modules, not in the shell. [cite:1][cite:5]
 ### Canonical document model
 - Database-backed documents (SQLite as source of truth) with file provenance (`sourcePath`/`sourceChecksum`) and export targets, per Q6.
 - The precise document schema is still to be designed against the first app (draftwell) — draftwell's `documents` table (id, projectId, manuscriptId, parentId, kind, title, sortOrder, content, contentFormat, sourcePath, sourceChecksum, importId, wordCount, timestamps) + `document_versions` is the starting point.
+
+### Q12 — Secrets management (added 2026-05-29)
+- The shell owns a **secrets/credentials service** (core, not a module): user-named secret values like `OPENAI_API_KEY`.
+- Rationale: cross-cutting (AI Chat / Prompt Studio / Workflow Runner all need keys — a shared need is a shell primitive, not a module other modules secretly depend on); security-sensitive (stored via Electron `safeStorage`/OS keychain, never plaintext in SQLite, main-process only).
+- Surfaces: a manage-secrets UI in shell Settings (add/edit/delete named entries); `ctx.secrets.get(name)`/`list()` on the module contract, gated by the new `secrets.read` capability (declared, enforced later — Q3). `list()` returns names only, never values.
+- Recorded in `3-module-contract.md` (§5 `ctx.secrets`, §3 capability list).
+
+### Q13 — Web browser (added 2026-05-29)
+- A **Web module** (first-party, bundled, **default-on in this build**) provides Chrome-like browsing with persistent sessions — mirroring Obsidian's *Web viewer*, which is itself a core *plugin*, not kernel. The browsing experience (address bar, tabs, history, bookmarks) is a feature → it lives in a module (§10), not the shell core.
+- The one genuinely shell-level piece — a **managed persistent web-surface** (Electron `session`/partition keeping cookies/logins across restarts; partition security is a main-process concern) — is added to the shell when the Web module is built and a second consumer warrants it, not speculatively now (avoids over-engineering a primitive ahead of need).
+- Recorded as a deferred hook in `3-module-contract.md` §8 and the module map in `2-modules-overview.md`.

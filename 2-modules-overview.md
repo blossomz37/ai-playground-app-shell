@@ -21,8 +21,10 @@ draftwell's rooms are the candidate module boundaries. Mapping to first-party mo
 | Library | shell **Workspace** mgmt | Project list/open/duplicate/archive — folds into shell, not a module |
 | Settings | shell **Settings** | Folds into shell |
 
+**Beyond draftwell's rooms:** a **Web** module (bundled, default-on in this build) provides Chrome-like persistent browsing — mirroring Obsidian's *Web viewer* core plugin. Its one shell-level hook (a managed persistent web session/partition) is specced when the module is built. See `0-shell-platform-spec.md` §12 Q13.
+
 ## 3. What stays shell-owned (not modules)
-Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, the local API/service split. See `reference/draftwell-anchor-analysis.md` §6.
+Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, secrets/credentials service (OS-keychain-backed — §12 Q12), the local API/service split. See `reference/draftwell-anchor-analysis.md` §6.
 
 ## 4. Next
 - The per-module contribution interface (rail entry, nav/main/inspector views, state slice, commands) is blocked on the **shell module contract** being designed first.
