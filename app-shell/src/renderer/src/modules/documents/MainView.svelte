@@ -1,10 +1,38 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte'
+  import { get } from 'svelte/store'
+  import { Editor } from '@tiptap/core'
+  import StarterKit from '@tiptap/starter-kit'
+  import { Markdown } from 'tiptap-markdown'
   import { activeDoc, editorContent, isDirty, saveDoc } from '../../store'
 
-  function handleInput(e: Event) {
-    editorContent.set((e.target as HTMLTextAreaElement).value)
-    isDirty.set(true)
-  }
+  let element = $state<HTMLDivElement>()
+  let editor = $state<Editor | null>(null)
+
+  onMount(() => {
+    editor = new Editor({
+      element,
+      extensions: [StarterKit, Markdown],
+      content: get(editorContent),
+      onUpdate: ({ editor }) => {
+        editorContent.set(editor.storage.markdown.getMarkdown())
+        isDirty.set(true)
+      },
+    })
+  })
+
+  onDestroy(() => editor?.destroy())
+
+  // Push store → editor only when the content arrives from outside the editor
+  // (document switch, external reload). Editor-originated edits already match the
+  // store value, so the equality guard makes typing a no-op here — no feedback loop.
+  $effect(() => {
+    const md = $editorContent
+    if (!editor) return
+    if (md !== editor.storage.markdown.getMarkdown()) {
+      editor.commands.setContent(md, { emitUpdate: false })
+    }
+  })
 
   function handleKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -20,18 +48,19 @@
       <h1 class="doc-title">{$activeDoc.title}</h1>
       <span class="doc-kind">{$activeDoc.kind}</span>
     </header>
-    <!-- Editor placeholder: TipTap/ProseMirror wired in the editor-engine slice -->
-    <div class="editor-area">
-      <textarea
-        class="editor-textarea"
-        value={$editorContent}
-        oninput={handleInput}
-        onkeydown={handleKeydown}
-        spellcheck={true}
-        placeholder="Start writing…"
-      ></textarea>
-    </div>
-  {:else}
+  {/if}
+
+  <!-- TipTap mounts into this element; always present so the editor instance is stable -->
+  <div
+    class="editor-area"
+    class:hidden={!$activeDoc}
+    bind:this={element}
+    onkeydown={handleKeydown}
+    role="textbox"
+    tabindex="-1"
+  ></div>
+
+  {#if !$activeDoc}
     <div class="empty">
       <p>Select a document from the sidebar to begin.</p>
     </div>
@@ -75,25 +104,87 @@
 
   .editor-area {
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
     display: flex;
+    flex-direction: column;
   }
 
-  .editor-textarea {
+  .editor-area.hidden {
+    display: none;
+  }
+
+  /* TipTap injects .ProseMirror; style the prose surface here */
+  .editor-area :global(.ProseMirror) {
     flex: 1;
-    resize: none;
-    background: transparent;
-    border: none;
     outline: none;
     color: var(--color-fg-primary);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-md);
+    font-family: var(--font-serif);
+    font-size: var(--font-size-lg);
     line-height: var(--line-height);
     padding: var(--space-5) var(--space-6);
-    overflow-y: auto;
+    max-width: 72ch;
   }
 
-  .editor-textarea::placeholder { color: var(--color-fg-muted); }
+  .editor-area :global(.ProseMirror p) {
+    margin: 0 0 var(--space-4);
+  }
+
+  .editor-area :global(.ProseMirror h1) {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    margin: var(--space-3) 0 var(--space-4);
+    line-height: 1.3;
+  }
+
+  .editor-area :global(.ProseMirror h2) {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin: var(--space-4) 0 var(--space-3);
+  }
+
+  .editor-area :global(.ProseMirror h3) {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    margin: var(--space-3) 0 var(--space-2);
+    color: var(--color-fg-secondary);
+  }
+
+  .editor-area :global(.ProseMirror blockquote) {
+    border-left: 3px solid var(--color-border);
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-4);
+    color: var(--color-fg-secondary);
+    font-style: italic;
+  }
+
+  .editor-area :global(.ProseMirror ul),
+  .editor-area :global(.ProseMirror ol) {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-6);
+  }
+
+  .editor-area :global(.ProseMirror code) {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-bg-overlay);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+  }
+
+  .editor-area :global(.ProseMirror pre) {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    background: var(--color-bg-overlay);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    margin: 0 0 var(--space-4);
+    overflow-x: auto;
+  }
+
+  .editor-area :global(.ProseMirror pre code) {
+    background: none;
+    padding: 0;
+  }
 
   .empty {
     flex: 1;

@@ -61,7 +61,8 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Document schema**~~ — ✅ **DONE** (2026-05-29). Shell-owned, in `1-shell-spec.md` §3; app-neutral, with the shell-universal vs. module-extension split (`manuscriptId`/`wordCount` stay module-level).
 - **Built-in primitives draftwell lacks** — command palette, keybindings, and right-click context menus must be shell-provided (draftwell has none). These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
 - **Status bar zone** — net-new vs. draftwell's health-dot only. (Contract defines the `statusBar` contribution point; zone visual/layout design still open.)
-- ~~**Scaffold (Option B)**~~ — ✅ **DONE** (2026-05-29). `app-shell/` directory — Electron + Svelte 5 + SQLite running. All five zones render, Documents module activates through the `ModuleContext`, IPC pipeline wired. Screenshot validated. Plan: `implementation/plans/03-scaffold.md`. **Next: replace `<textarea>` stub with TipTap/ProseMirror editor (F1 from plan 02) — do ecosystem check first.**
+- ~~**Scaffold (Option B)**~~ — ✅ **DONE** (2026-05-29). `app-shell/` directory — Electron + Svelte 5 + SQLite running. All five zones render, Documents module activates through the `ModuleContext`, IPC pipeline wired. Screenshot validated. Plan: `implementation/plans/03-scaffold.md`.
+- ~~**Editor engine (F1)**~~ — ✅ **DONE** (2026-05-29). `<textarea>` stub replaced with **TipTap 3** WYSIWYG (`@tiptap/core` + `starter-kit` + `tiptap-markdown`) in a thin Svelte 5 wrapper (`MainView.svelte`). Engine chosen over Carta because draftwell (the anchor) uses TipTap. Content round-trips as markdown via `editor.storage.markdown` — store/IPC/schema/contract all unchanged. Plan: `implementation/plans/04-editor-engine.md`; evidence: `implementation/screenshots/editor-engine-after-2026-05-29.png`.
 - **Remaining modules** — Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web.
 - **Secrets service** (§12 Q12) and **Web module + persistent web-surface hook** (§12 Q13) — added 2026-05-29; design when their slices come up.
 
@@ -71,7 +72,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_03.md         ← latest = highest number; read it first
+│   └── HANDOFF_04.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
