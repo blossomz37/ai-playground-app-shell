@@ -3,8 +3,15 @@ import { join, dirname } from 'path'
 import { mkdirSync, writeFileSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 import { initDb } from './core/db'
+import { events } from './core/events'
 import { moduleRegistry } from './modules/registry'
 import { documentsModule } from './modules/documents'
+import { journalModule } from './modules/journal'
+import { assetsModule } from './modules/assets'
+import { workflowModule } from './modules/workflow'
+import { tableViewModule } from './modules/tableview'
+import { aiChatModule } from './modules/aichat'
+import { webModule } from './modules/web'
 import { registerIpcHandlers } from './ipc'
 
 /**
@@ -71,11 +78,25 @@ app.whenReady().then(async () => {
   initDb()
   registerIpcHandlers()
 
-  moduleRegistry.register(documentsModule)
-  moduleRegistry.enable(documentsModule.manifest.id)
-  await moduleRegistry.activate(documentsModule.manifest.id)
+  const allModules = [
+    documentsModule, journalModule, assetsModule,
+    workflowModule, tableViewModule, aiChatModule, webModule
+  ]
+
+  for (const mod of allModules) {
+    moduleRegistry.register(mod)
+    moduleRegistry.enable(mod.manifest.id)
+    await moduleRegistry.activate(mod.manifest.id)
+  }
 
   createWindow()
+
+  // Forward shell:notify events to the renderer so toasts appear.
+  events.on('shell:notify', (toast) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('shell:notify', toast)
+    })
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

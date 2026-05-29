@@ -198,4 +198,7 @@ export interface ShellApi {
     list(): Promise<CommandCatalogEntry[]>
     execute(id: string, ...args: unknown[]): Promise<unknown>
   }
+  notifications: {
+    onNotify(cb: (toast: { level: 'info' | 'warn' | 'error'; message: string }) => void): void
+  }
 }

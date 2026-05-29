@@ -1,5 +1,6 @@
 <script lang="ts">
   import { docTree, activeDocId, selectDoc } from '../../store'
+  import { showContextMenu, type ContextMenuItem } from '../../store/contextmenu'
   import type { Doc } from '@shared/module-contract'
 
   interface DocNode extends Doc { children: DocNode[] }
@@ -10,6 +11,19 @@
     const next = new Set(expanded)
     next.has(id) ? next.delete(id) : next.add(id)
     expanded = next
+  }
+
+  function onTreeContextMenu(e: MouseEvent, node: DocNode) {
+    e.preventDefault()
+    const items: ContextMenuItem[] = [
+      { id: 'documents.newChapter', label: 'New Chapter', icon: '◉' },
+      { id: 'documents.newScene',   label: 'New Scene',   icon: '○' },
+      { id: 'documents.newFolder',  label: 'New Folder',  icon: '▶' },
+      { id: '_sep1', label: '', separator: true },
+      { id: 'documents.rename',  label: 'Rename',  icon: '✎' },
+      { id: 'documents.archive', label: 'Archive', icon: '📦' },
+    ]
+    showContextMenu(e.clientX, e.clientY, items)
   }
 </script>
 
@@ -22,6 +36,7 @@
     tabindex="0"
     onclick={() => node.kind === 'folder' ? toggle(node.id) : selectDoc(node.id)}
     onkeydown={(e) => e.key === 'Enter' && (node.kind === 'folder' ? toggle(node.id) : selectDoc(node.id))}
+    oncontextmenu={(e) => onTreeContextMenu(e, node)}
   >
     <span class="glyph" class:is-folder={node.kind === 'folder'}>
       {#if node.kind === 'folder'}

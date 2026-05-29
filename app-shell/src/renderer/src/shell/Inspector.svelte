@@ -1,11 +1,36 @@
 <script lang="ts">
   import { activeModuleId } from '../store'
-  import InspectorView from '../modules/documents/InspectorView.svelte'
+  // Documents
+  import DocsInspectorView from '../modules/documents/InspectorView.svelte'
+  // Journal
+  import JournalInspectorView from '../modules/journal/InspectorView.svelte'
+  // Assets
+  import AssetsInspectorView from '../modules/assets/InspectorView.svelte'
+  // Workflow
+  import WorkflowInspectorView from '../modules/workflow/InspectorView.svelte'
+  // Table View
+  import TableInspectorView from '../modules/tableview/InspectorView.svelte'
+  // AI Chat
+  import AIChatInspectorView from '../modules/aichat/InspectorView.svelte'
+  // Web
+  import WebInspectorView from '../modules/web/InspectorView.svelte'
 </script>
 
 <aside class="inspector">
   {#if $activeModuleId === 'shell.documents'}
-    <InspectorView />
+    <DocsInspectorView />
+  {:else if $activeModuleId === 'shell.journal'}
+    <JournalInspectorView />
+  {:else if $activeModuleId === 'shell.assets'}
+    <AssetsInspectorView />
+  {:else if $activeModuleId === 'shell.workflow'}
+    <WorkflowInspectorView />
+  {:else if $activeModuleId === 'shell.tableview'}
+    <TableInspectorView />
+  {:else if $activeModuleId === 'shell.aichat'}
+    <AIChatInspectorView />
+  {:else if $activeModuleId === 'shell.web'}
+    <WebInspectorView />
   {:else}
     <div class="empty">No inspector</div>
   {/if}

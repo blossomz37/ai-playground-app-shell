@@ -1,11 +1,27 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte'
   import ActivityRail from './ActivityRail.svelte'
   import Sidebar from './Sidebar.svelte'
   import MainPane from './MainPane.svelte'
   import Inspector from './Inspector.svelte'
   import StatusBar from './StatusBar.svelte'
   import CommandPalette from './CommandPalette.svelte'
-  import { handleGlobalKeydown } from '../store/commands'
+  import ToastContainer from './ToastContainer.svelte'
+  import ContextMenu from './ContextMenu.svelte'
+  import SettingsPanel from './SettingsPanel.svelte'
+  import { handleGlobalKeydown, registerCommand } from '../store/commands'
+  import type { Disposable } from '@shared/module-contract'
+
+  let settingsPanel = $state<{ toggle(): void }>()
+  let settingsDisposable: Disposable | null = null
+
+  onMount(() => {
+    settingsDisposable = registerCommand('shell.settings', () => settingsPanel?.toggle())
+  })
+
+  onDestroy(() => {
+    settingsDisposable?.dispose()
+  })
 </script>
 
 <svelte:window onkeydown={handleGlobalKeydown} />
@@ -20,6 +36,9 @@
 </div>
 
 <CommandPalette />
+<ToastContainer />
+<ContextMenu />
+<SettingsPanel bind:this={settingsPanel} />
 
 <style>
   .app-shell {
@@ -29,7 +48,7 @@
       "rail   sidebar main   inspector"
       "rail   sidebar statusbar statusbar";
     grid-template-columns: 48px 240px 1fr 280px;
-    grid-template-rows: 36px 1fr 28px;
+    grid-template-rows: 36px 1fr 30px;
     height: 100vh;
     overflow: hidden;
     background: var(--color-bg-base);

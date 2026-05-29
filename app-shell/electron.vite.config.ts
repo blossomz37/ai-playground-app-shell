@@ -26,6 +26,10 @@ export default defineConfig({
         '@renderer': resolve(__dirname, 'src/renderer/src'),
         '@shared': resolve(__dirname, 'src/shared')
       }
+    },
+    ssr: {
+      // phosphor-svelte must be bundled, not externalized
+      noExternal: ['phosphor-svelte']
     }
   }
 })

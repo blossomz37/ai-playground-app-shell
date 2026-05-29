@@ -1,11 +1,36 @@
 <script lang="ts">
   import { activeModuleId } from '../store'
-  import NavView from '../modules/documents/NavView.svelte'
+  // Documents
+  import DocsNavView from '../modules/documents/NavView.svelte'
+  // Journal
+  import JournalNavView from '../modules/journal/NavView.svelte'
+  // Assets
+  import AssetsNavView from '../modules/assets/NavView.svelte'
+  // Workflow
+  import WorkflowNavView from '../modules/workflow/NavView.svelte'
+  // Table View
+  import TableNavView from '../modules/tableview/NavView.svelte'
+  // AI Chat
+  import AIChatNavView from '../modules/aichat/NavView.svelte'
+  // Web
+  import WebNavView from '../modules/web/NavView.svelte'
 </script>
 
 <aside class="sidebar">
   {#if $activeModuleId === 'shell.documents'}
-    <NavView />
+    <DocsNavView />
+  {:else if $activeModuleId === 'shell.journal'}
+    <JournalNavView />
+  {:else if $activeModuleId === 'shell.assets'}
+    <AssetsNavView />
+  {:else if $activeModuleId === 'shell.workflow'}
+    <WorkflowNavView />
+  {:else if $activeModuleId === 'shell.tableview'}
+    <TableNavView />
+  {:else if $activeModuleId === 'shell.aichat'}
+    <AIChatNavView />
+  {:else if $activeModuleId === 'shell.web'}
+    <WebNavView />
   {:else}
     <div class="empty">No module selected</div>
   {/if}

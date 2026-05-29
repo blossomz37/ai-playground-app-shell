@@ -1,11 +1,36 @@
 <script lang="ts">
   import { activeModuleId } from '../store'
-  import MainView from '../modules/documents/MainView.svelte'
+  // Documents
+  import DocsMainView from '../modules/documents/MainView.svelte'
+  // Journal
+  import JournalMainView from '../modules/journal/MainView.svelte'
+  // Assets
+  import AssetsMainView from '../modules/assets/MainView.svelte'
+  // Workflow
+  import WorkflowMainView from '../modules/workflow/MainView.svelte'
+  // Table View
+  import TableMainView from '../modules/tableview/MainView.svelte'
+  // AI Chat
+  import AIChatMainView from '../modules/aichat/MainView.svelte'
+  // Web
+  import WebMainView from '../modules/web/MainView.svelte'
 </script>
 
 <main class="main-pane">
   {#if $activeModuleId === 'shell.documents'}
-    <MainView />
+    <DocsMainView />
+  {:else if $activeModuleId === 'shell.journal'}
+    <JournalMainView />
+  {:else if $activeModuleId === 'shell.assets'}
+    <AssetsMainView />
+  {:else if $activeModuleId === 'shell.workflow'}
+    <WorkflowMainView />
+  {:else if $activeModuleId === 'shell.tableview'}
+    <TableMainView />
+  {:else if $activeModuleId === 'shell.aichat'}
+    <AIChatMainView />
+  {:else if $activeModuleId === 'shell.web'}
+    <WebMainView />
   {:else}
     <div class="empty">
       <p>Select a module from the activity rail.</p>

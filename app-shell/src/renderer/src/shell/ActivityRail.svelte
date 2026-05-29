@@ -1,22 +1,56 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { activeModuleId } from '../store'
 
-  const modules = [
-    { id: 'shell.documents', label: 'Write', glyph: '✦' }
-  ]
+  // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
+  import {
+    PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
+    TableIcon, RobotIcon, GlobeSimpleIcon
+  } from 'phosphor-svelte'
+
+  import type { Component } from 'svelte'
+
+  interface RailItem { id: string; label: string; icon: Component }
+
+  let modules = $state<RailItem[]>([])
+
+  const iconMap: Record<string, Component> = {
+    'shell.documents': PenNibIcon,
+    'shell.journal':   NotebookIcon,
+    'shell.assets':    ImageSquareIcon,
+    'shell.workflow':  LightningIcon,
+    'shell.tableview': TableIcon,
+    'shell.aichat':    RobotIcon,
+    'shell.web':       GlobeSimpleIcon
+  }
+
+  onMount(async () => {
+    const list = await window.shell.modules.list()
+    modules = list
+      .filter(m => m.enabled)
+      .map(m => ({
+        id: m.id,
+        label: m.name,
+        icon: iconMap[m.id] ?? PenNibIcon
+      }))
+  })
 </script>
 
-<nav class="activity-rail">
+<nav class="activity-rail" aria-label="Module navigation">
   <div class="rail-spacer"></div>
   {#each modules as mod}
+    {@const isActive = $activeModuleId === mod.id}
     <button
       class="rail-btn"
-      class:active={$activeModuleId === mod.id}
+      class:active={isActive}
       title={mod.label}
+      aria-current={isActive ? 'page' : undefined}
       onclick={() => activeModuleId.set(mod.id)}
     >
-      <span class="glyph">{mod.glyph}</span>
-      <span class="label">{mod.label}</span>
+      <mod.icon
+        size={20}
+        weight={isActive ? 'fill' : 'light'}
+      />
     </button>
   {/each}
 </nav>
@@ -30,31 +64,43 @@
     padding-top: var(--space-2);
     background: var(--color-bg-surface);
     border-right: var(--border-subtle);
-    gap: var(--space-1);
+    gap: 2px;
   }
 
   .rail-spacer { flex: 0 0 var(--space-1); }
 
   .rail-btn {
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-md);
     color: var(--color-fg-muted);
-    gap: 2px;
-    transition: color 0.1s, background 0.1s;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
   }
 
-  .rail-btn:hover { color: var(--color-fg-secondary); background: var(--color-bg-overlay); }
+  .rail-btn:hover {
+    color: var(--color-fg-secondary);
+    background: var(--color-bg-overlay);
+  }
 
   .rail-btn.active {
     color: var(--color-accent);
     background: var(--color-accent-dim);
   }
 
-  .glyph { font-size: 16px; line-height: 1; }
-  .label { font-size: var(--font-size-xs); }
+  /* Active indicator bar on left edge */
+  .rail-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--color-accent);
+  }
 </style>

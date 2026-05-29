@@ -59,12 +59,14 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Module contract**~~ — ✅ **DONE** (2026-05-29). The contract is `3-module-contract.md`; plan + rationale in `implementation/plans/01-module-contract.md`. Three faces: a module *declares* (manifest), *provides* (contributions + `activate()`), and *receives* (`ModuleContext`). Validated against draftwell's Write room (contract §7).
 - ~~**Documents module**~~ — ✅ **DONE** (2026-05-29). Spec: `modules/documents.md`; plan: `implementation/plans/02-documents-module.md`. Per-module specs live in `modules/`. Validated the contract end-to-end (no contract change needed).
 - ~~**Document schema**~~ — ✅ **DONE** (2026-05-29). Shell-owned, in `1-shell-spec.md` §3; app-neutral, with the shell-universal vs. module-extension split (`manuscriptId`/`wordCount` stay module-level).
-- **Built-in primitives draftwell lacks** — ~~command palette, keybindings~~ ✅ **DONE** (2026-05-29; `implementation/plans/05-command-palette.md`): Cmd+K palette + keybinding runtime dispatch declared commands through `ctx.commands`. **Right-click context menus** still net-new and shell-provided. These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
-- **Status bar zone** — net-new vs. draftwell's health-dot only. (Contract defines the `statusBar` contribution point; zone visual/layout design still open.)
+- ~~**Built-in primitives draftwell lacks**~~ — ✅ **ALL DONE** (2026-05-29): ~~command palette, keybindings~~ (`implementation/plans/05-command-palette.md`): Cmd+K palette + keybinding runtime. ~~Right-click context menus~~ (2026-05-29): shell-owned `ContextMenu.svelte` + `contextmenu.ts` store, wired to NavView tree. These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
+- ~~**Status bar zone**~~ — ✅ **DONE** (2026-05-29; `implementation/plans/06-editor-statusbar-polish.md`): Three-zone layout (left: module items, center: reserved, right: shell info) with hover states, transitions, pulsing unsaved indicator.
+- ~~**Editor polish**~~ — ✅ **DONE** (2026-05-29; `implementation/plans/06-editor-statusbar-polish.md`): Floating bubble menu on text selection, debounced 3s auto-save, wired font/size/spellcheck settings.
 - ~~**Scaffold (Option B)**~~ — ✅ **DONE** (2026-05-29). `app-shell/` directory — Electron + Svelte 5 + SQLite running. All five zones render, Documents module activates through the `ModuleContext`, IPC pipeline wired. Screenshot validated. Plan: `implementation/plans/03-scaffold.md`.
 - ~~**Editor engine (F1)**~~ — ✅ **DONE** (2026-05-29). `<textarea>` stub replaced with **TipTap 3** WYSIWYG (`@tiptap/core` + `starter-kit` + `tiptap-markdown`) in a thin Svelte 5 wrapper (`MainView.svelte`). Engine chosen over Carta because draftwell (the anchor) uses TipTap. Content round-trips as markdown via `editor.storage.markdown` — store/IPC/schema/contract all unchanged. Plan: `implementation/plans/04-editor-engine.md`; evidence: `implementation/screenshots/editor-engine-after-2026-05-29.png`.
-- **Remaining modules** — Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web.
-- **Secrets service** (§12 Q12) and **Web module + persistent web-surface hook** (§12 Q13) — added 2026-05-29; design when their slices come up.
+- ~~**Remaining modules**~~ — ✅ **DONE** (2026-05-29). All six modules scaffolded: Journal (📓 daily entries), Assets (🖼 file gallery), Workflow Runner (⚡ export jobs), Table View (📊 data table), AI Chat (🤖 mock chat), Web (🌐 browser placeholder). Each has manifest + activate in main, three views (nav/main/inspector) in renderer. Shell chrome refactored to dynamic module routing. Screenshot: `implementation/screenshots/all-modules-after-2026-05-29.png`.
+- ~~**Toast/notification service**~~ — ✅ **DONE** (2026-05-29). Renderer sink for `shell:notify` events. `ToastContainer.svelte` + `store/toasts.ts`. Auto-dismiss timers, FIFO queue, glassmorphism styling.
+- ~~**Settings panel**~~ — ✅ **DONE** (2026-05-29). `SettingsPanel.svelte` modal via Cmd+,. Editor font/size/spellcheck with live preview + IPC persistence.
 
 ## Workspace Layout
 
@@ -72,7 +74,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_04.md         ← latest = highest number; read it first
+│   └── HANDOFF_05.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map

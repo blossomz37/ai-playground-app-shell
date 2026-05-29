@@ -22,7 +22,8 @@ export const documentsModule: Module = {
         { id: 'documents.newScene',   title: 'New Scene' },
         { id: 'documents.newFolder',  title: 'New Folder' },
         { id: 'documents.rename',     title: 'Rename' },
-        { id: 'documents.archive',    title: 'Archive' }
+        { id: 'documents.archive',    title: 'Archive' },
+        { id: 'shell.settings',       title: 'Open Settings',  keybinding: 'CmdOrCtrl+,' }
       ],
       documentTypes: [
         { kind: 'folder',  label: 'Folder',  icon: 'folder' },
