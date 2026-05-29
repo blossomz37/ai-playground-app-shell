@@ -57,10 +57,11 @@ First-party starter modules planned: Documents, Journal, AI Chat, Prompt Studio,
 
 The Q1–Q13 questions are resolved (§12). What remains is design, not decision:
 - ~~**Module contract**~~ — ✅ **DONE** (2026-05-29). The contract is `3-module-contract.md`; plan + rationale in `implementation/plans/01-module-contract.md`. Three faces: a module *declares* (manifest), *provides* (contributions + `activate()`), and *receives* (`ModuleContext`). Validated against draftwell's Write room (contract §7).
-- **Documents module** — first real module, specced against the contract (`3-module-contract.md` §7). Next slice: `implementation/plans/02-documents-module.md`.
+- ~~**Documents module**~~ — ✅ **DONE** (2026-05-29). Spec: `modules/documents.md`; plan: `implementation/plans/02-documents-module.md`. Per-module specs live in `modules/`. Validated the contract end-to-end (no contract change needed).
+- ~~**Document schema**~~ — ✅ **DONE** (2026-05-29). Shell-owned, in `1-shell-spec.md` §3; app-neutral, with the shell-universal vs. module-extension split (`manuscriptId`/`wordCount` stay module-level).
 - **Built-in primitives draftwell lacks** — command palette, keybindings, and right-click context menus must be shell-provided (draftwell has none). These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
 - **Status bar zone** — net-new vs. draftwell's health-dot only. (Contract defines the `statusBar` contribution point; zone visual/layout design still open.)
-- **Document schema** — start from draftwell's `documents` + `document_versions` tables.
+- **Remaining modules + scaffolding** — Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web; plus the Electron+Svelte+SQLite scaffolding slice (Option B), where the editor engine (F1) gets locked.
 - **Secrets service** (§12 Q12) and **Web module + persistent web-surface hook** (§12 Q13) — added 2026-05-29; design when their slices come up.
 
 ## Workspace Layout
@@ -74,6 +75,8 @@ app-shell-project/
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
 ├── 3-module-contract.md      ← MODULE_CONTRACT: how a plugin plugs into the shell (the keystone)
+├── modules/                  ← per-module design specs (one file per module)
+│   └── documents.md          ← Documents module (Write + Plan); first real module
 ├── reference/                ← material that informs the work ahead
 │   ├── draftwell-anchor-analysis.md          (reference app → shell zones/modules)
 │   ├── obsidian-vscode-extensibility-teardown.md  (prior-art for the module system)

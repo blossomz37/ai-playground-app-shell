@@ -27,5 +27,7 @@ draftwell's rooms are the candidate module boundaries. Mapping to first-party mo
 Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, secrets/credentials service (OS-keychain-backed — §12 Q12), the local API/service split. See `reference/draftwell-anchor-analysis.md` §6.
 
 ## 4. Next
-- The per-module contribution interface (rail entry, nav/main/inspector views, state slice, commands) is blocked on the **shell module contract** being designed first.
-- Documents (Write) is the natural first module to spec once the contract exists.
+- ✅ Module contract designed — `3-module-contract.md`.
+- ✅ Documents (Write + Plan) specced against it — `modules/documents.md` (plan `implementation/plans/02-documents-module.md`). Per-module specs now live in `modules/`.
+- Document schema (shell-owned) designed — `1-shell-spec.md` §3.
+- Remaining modules (Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web) and the scaffolding slice are still ahead.
