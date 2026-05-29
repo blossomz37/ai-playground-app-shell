@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store'
 import type { Doc, DocVersion } from '@shared/module-contract'
 import { loadCommands } from './commands'
+import { initToasts } from './toasts'
 
 export const workspaceId   = writable<string>('ws-default')
 export const documents     = writable<Doc[]>([])
@@ -9,6 +10,18 @@ export const activeDocId   = writable<string | null>(null)
 export const editorContent = writable<string>('')
 export const isDirty       = writable<boolean>(false)
 export const versions      = writable<DocVersion[]>([])
+
+export interface EditorSettings {
+  fontFamily: string
+  fontSize: string
+  spellcheck: boolean
+}
+
+export const editorSettings = writable<EditorSettings>({
+  fontFamily: 'var(--font-serif)',
+  fontSize: 'var(--font-size-lg)',
+  spellcheck: true
+})
 
 export const activeDoc = derived(
   [documents, activeDocId],
@@ -32,8 +45,49 @@ function buildTree(docs: Doc[]): DocNode[] {
   return roots
 }
 
+// --- Auto-save debounce ---------------------------------------------------
+
+const AUTO_SAVE_MS = 3000
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Schedule a debounced auto-save. Resets on every call. */
+export function scheduleAutoSave(): void {
+  cancelAutoSave()
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null
+    void saveDoc()
+  }, AUTO_SAVE_MS)
+}
+
+/** Cancel any pending auto-save (called on manual save or doc switch). */
+export function cancelAutoSave(): void {
+  if (autoSaveTimer !== null) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
+}
+
+// --- Init / actions -------------------------------------------------------
+
+async function loadEditorSettings(): Promise<void> {
+  try {
+    const ff = await window.shell.settings.get('editor.fontFamily') as string | undefined
+    const fs = await window.shell.settings.get('editor.fontSize') as string | undefined
+    const sc = await window.shell.settings.get('editor.spellcheck') as boolean | undefined
+    editorSettings.update(s => ({
+      fontFamily: ff ?? s.fontFamily,
+      fontSize:   fs ?? s.fontSize,
+      spellcheck: sc ?? s.spellcheck
+    }))
+  } catch {
+    // Settings may not exist yet — keep defaults
+  }
+}
+
 export async function initStore(): Promise<void> {
+  initToasts()
   await loadCommands()
+  await loadEditorSettings()
 
   const wsId = get(workspaceId)
   const docs = await window.shell.documents.list(wsId)
@@ -55,6 +109,7 @@ export async function initStore(): Promise<void> {
 }
 
 export async function selectDoc(id: string): Promise<void> {
+  cancelAutoSave()
   activeDocId.set(id)
   const doc = await window.shell.documents.open(id)
   if (doc) {
@@ -66,6 +121,7 @@ export async function selectDoc(id: string): Promise<void> {
 }
 
 export async function saveDoc(): Promise<void> {
+  cancelAutoSave()
   const id = get(activeDocId)
   const content = get(editorContent)
   if (!id) return
@@ -78,3 +134,4 @@ export async function saveDoc(): Promise<void> {
 export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
+

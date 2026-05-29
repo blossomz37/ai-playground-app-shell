@@ -38,5 +38,9 @@
   --font-size-md:  14px;
   --font-size-lg:  16px;
   --font-size-xl:  20px;
+  --font-size-2xl: 24px;
   --line-height:   1.6;
+
+  /* Utility aliases */
+  --color-fg-accent: var(--color-accent);
 }

@@ -4,9 +4,13 @@
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import { Markdown } from 'tiptap-markdown'
-  import { activeDoc, editorContent, isDirty, saveDoc } from '../../store'
+  import {
+    activeDoc, editorContent, isDirty, saveDoc,
+    editorSettings, scheduleAutoSave, cancelAutoSave
+  } from '../../store'
   import { registerCommand } from '../../store/commands'
   import type { Disposable } from '@shared/module-contract'
+  import EditorToolbar from './EditorToolbar.svelte'
 
   let element = $state<HTMLDivElement>()
   let editor = $state<Editor | null>(null)
@@ -20,6 +24,7 @@
       onUpdate: ({ editor }) => {
         editorContent.set(editor.storage.markdown.getMarkdown())
         isDirty.set(true)
+        scheduleAutoSave()
       },
     })
 
@@ -30,6 +35,7 @@
   })
 
   onDestroy(() => {
+    cancelAutoSave()
     saveCommand?.dispose()
     editor?.destroy()
   })
@@ -61,7 +67,11 @@
     bind:this={element}
     role="textbox"
     tabindex="-1"
+    style:--editor-font={$editorSettings.fontFamily}
+    style:--editor-font-size={$editorSettings.fontSize}
   ></div>
+
+  <EditorToolbar {editor} />
 
   {#if !$activeDoc}
     <div class="empty">
@@ -116,13 +126,14 @@
     display: none;
   }
 
-  /* TipTap injects .ProseMirror; style the prose surface here */
+  /* TipTap injects .ProseMirror; style the prose surface here.
+     Font and size cascade from editorSettings via CSS custom properties. */
   .editor-area :global(.ProseMirror) {
     flex: 1;
     outline: none;
     color: var(--color-fg-primary);
-    font-family: var(--font-serif);
-    font-size: var(--font-size-lg);
+    font-family: var(--editor-font, var(--font-serif));
+    font-size: var(--editor-font-size, var(--font-size-lg));
     line-height: var(--line-height);
     padding: var(--space-5) var(--space-6);
     max-width: 72ch;
@@ -197,3 +208,4 @@
     color: var(--color-fg-muted);
   }
 </style>
+
