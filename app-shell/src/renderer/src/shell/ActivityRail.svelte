@@ -45,7 +45,10 @@
       class:active={isActive}
       title={mod.label}
       aria-current={isActive ? 'page' : undefined}
-      onclick={() => activeModuleId.set(mod.id)}
+      onclick={async () => {
+        activeModuleId.set(mod.id)
+        await window.shell.modules.activate(mod.id)
+      }}
     >
       <mod.icon
         size={20}

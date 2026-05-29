@@ -23,7 +23,9 @@ const api: ShellApi = {
   },
 
   modules: {
-    list: () => ipcRenderer.invoke('modules:list')
+    list: () => ipcRenderer.invoke('modules:list'),
+    activate: (id: string) => ipcRenderer.invoke('modules:activate', { id }),
+    setEnabled: (id: string, enabled: boolean) => ipcRenderer.invoke('modules:setEnabled', { id, enabled })
   },
 
   commands: {

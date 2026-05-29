@@ -43,10 +43,33 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('modules:list', () => moduleRegistry.list())
 
+  // Demand-activate a module (renderer requests activation, e.g. rail click)
+  ipcMain.handle('modules:activate', async (_e, { id }: { id: string }) => {
+    await moduleRegistry.ensureActivated(id)
+  })
+
+  // Toggle a module's enabled state (persist intent, optionally deactivate)
+  ipcMain.handle('modules:setEnabled', async (_e, { id, enabled }: { id: string; enabled: boolean }) => {
+    if (enabled) {
+      moduleRegistry.enable(id)
+    } else {
+      moduleRegistry.disable(id)
+      await moduleRegistry.deactivate(id)
+    }
+  })
+
   ipcMain.handle('commands:list', () => moduleRegistry.commands())
 
-  ipcMain.handle('commands:execute', (_e, id: string, ...args: unknown[]) => {
-    const h = getCommandHandler(id)
+  // Demand-activate the owning module if the command handler isn't registered yet
+  ipcMain.handle('commands:execute', async (_e, id: string, ...args: unknown[]) => {
+    let h = getCommandHandler(id)
+    if (!h) {
+      const moduleId = moduleRegistry.findModuleForCommand(id)
+      if (moduleId) {
+        await moduleRegistry.ensureActivated(moduleId)
+        h = getCommandHandler(id)
+      }
+    }
     if (!h) throw new Error(`Command not found: ${id}`)
     return h(...args)
   })

@@ -78,16 +78,21 @@ app.whenReady().then(async () => {
   initDb()
   registerIpcHandlers()
 
+  // 1. Register all modules — reads manifests only, no code runs.
   const allModules = [
     documentsModule, journalModule, assetsModule,
     workflowModule, tableViewModule, aiChatModule, webModule
   ]
-
   for (const mod of allModules) {
     moduleRegistry.register(mod)
-    moduleRegistry.enable(mod.manifest.id)
-    await moduleRegistry.activate(mod.manifest.id)
   }
+
+  // 2. Restore enabled state from persistence (defaults to all-enabled on first launch).
+  moduleRegistry.restoreEnabledState()
+
+  // 3. Auto-activate any enabled module whose activation rules match the workspace type.
+  //    Everything else activates on first use (rail click, command execution, file open).
+  await moduleRegistry.activateByWorkspaceType('authoring')
 
   createWindow()
 

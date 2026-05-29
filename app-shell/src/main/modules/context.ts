@@ -1,4 +1,4 @@
-import type { ModuleContext, Workspace } from '@shared/module-contract'
+import type { ModuleContext, Workspace, Disposable } from '@shared/module-contract'
 import { documents } from '../core/documents'
 import { events } from '../core/events'
 import { jobs } from '../core/jobs'
@@ -6,16 +6,37 @@ import { createSettingsStore } from '../core/settings'
 
 const commandHandlers = new Map<string, (...args: unknown[]) => unknown>()
 
-export function createModuleContext(moduleId: string, workspace: Workspace): ModuleContext {
+/**
+ * Extended context that tracks all Disposable resources created during a
+ * module's activate() so they can be bulk-disposed on deactivation.
+ */
+export interface DisposableModuleContext extends ModuleContext {
+  _disposables: Disposable[]
+  _disposeAll(): void
+}
+
+export function createModuleContext(moduleId: string, workspace: Workspace): DisposableModuleContext {
   const settings = createSettingsStore(moduleId)
+  const disposables: Disposable[] = []
+
+  /** Wrap a Disposable — track it for bulk cleanup and return the original. */
+  function track(d: Disposable): Disposable {
+    disposables.push(d)
+    return d
+  }
 
   return {
     moduleId,
+    _disposables: disposables,
+    _disposeAll() {
+      for (const d of disposables) d.dispose()
+      disposables.length = 0
+    },
 
     commands: {
       register(id, handler) {
         commandHandlers.set(id, handler)
-        return { dispose() { commandHandlers.delete(id) } }
+        return track({ dispose() { commandHandlers.delete(id) } })
       },
       async execute(id, ...args) {
         const h = commandHandlers.get(id)
@@ -32,12 +53,16 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Mod
     },
 
     jobs: {
-      defineRunner: jobs.defineRunner.bind(jobs),
+      defineRunner(jobType, run) {
+        return track(jobs.defineRunner(jobType, run))
+      },
       submit: jobs.submit.bind(jobs)
     },
 
     events: {
-      on: events.on.bind(events),
+      on(event, cb) {
+        return track(events.on(event, cb))
+      },
       emit: events.emit.bind(events)
     },
 
@@ -49,7 +74,7 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Mod
       },
       async save(id, content) { documents.save(id, String(content)) },
       async versions(id) { return documents.versions(id) },
-      onChanged(cb) { return events.on('documents:changed', cb as (p: unknown) => void) }
+      onChanged(cb) { return track(events.on('documents:changed', cb as (p: unknown) => void)) }
     },
 
     notify(toast) { events.emit('shell:notify', toast) },

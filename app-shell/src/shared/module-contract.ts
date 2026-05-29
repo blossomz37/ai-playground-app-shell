@@ -193,6 +193,8 @@ export interface ShellApi {
   }
   modules: {
     list(): Promise<Array<{ id: string; name: string; icon: string; enabled: boolean; activated: boolean }>>
+    activate(id: string): Promise<void>
+    setEnabled(id: string, enabled: boolean): Promise<void>
   }
   commands: {
     list(): Promise<CommandCatalogEntry[]>

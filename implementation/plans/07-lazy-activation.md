@@ -5,7 +5,7 @@ version: 0.1.0
 created: 2026-05-29
 modified: 2026-05-29
 author: antigravity
-status: placeholder
+status: done
 ---
 
 # 07 — Lazy Activation Lifecycle
