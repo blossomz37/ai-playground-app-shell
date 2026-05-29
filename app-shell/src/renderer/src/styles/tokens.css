@@ -1,0 +1,41 @@
+/* Design token stubs — placeholder values; full theming system is a later slice */
+:root {
+  /* Color */
+  --color-bg-base:     #1e1e2e;
+  --color-bg-surface:  #24243e;
+  --color-bg-overlay:  #2d2d4d;
+  --color-bg-active:   #313158;
+  --color-fg-primary:  #cdd6f4;
+  --color-fg-secondary:#a6adc8;
+  --color-fg-muted:    #6c7086;
+  --color-accent:      #89b4fa;
+  --color-accent-dim:  #1e3a5f;
+  --color-border:      #45475a;
+  --color-danger:      #f38ba8;
+  --color-success:     #a6e3a1;
+  --color-warn:        #fab387;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Border */
+  --border-subtle: 1px solid var(--color-border);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Font */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-size-xs:  11px;
+  --font-size-sm:  12px;
+  --font-size-md:  14px;
+  --font-size-lg:  16px;
+  --font-size-xl:  20px;
+  --line-height:   1.6;
+}

@@ -1,0 +1,28 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #app {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-base);
+  color: var(--color-fg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* macOS traffic lights inset compensation */
+body { padding-top: env(safe-area-inset-top); }
+
+::-webkit-scrollbar              { width: 6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--color-fg-muted); }
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}

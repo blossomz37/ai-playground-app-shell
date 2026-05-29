@@ -1,0 +1,192 @@
+// Module contract types — the single interface agreement between shell and modules.
+// Types only; no runtime code. Safe to import from main, preload, and renderer.
+// Source of truth: 3-module-contract.md
+
+export interface ModuleManifest {
+  id: string
+  name: string
+  version: string
+  requiredShellVersion: string
+  activation: ActivationRule[]
+  permissions: Capability[]
+  contributes: {
+    zones?: ZoneContributionDecl
+    commands?: CommandDecl[]
+    documentTypes?: DocumentTypeDecl[]
+    jobs?: JobTypeDecl[]
+    settings?: SettingsSchema
+  }
+}
+
+export type ActivationRule =
+  | { on: 'userEnable' }
+  | { on: 'workspaceType'; type: string }
+  | { on: 'fileType'; ext: string }
+  | { on: 'command'; commandId: string }
+
+export type Capability =
+  | 'fs.read' | 'fs.write'
+  | 'documents.read' | 'documents.write'
+  | 'secrets.read'
+  | 'ai.invoke' | 'net.fetch' | 'jobs.submit'
+
+export interface ZoneContributionDecl {
+  railEntry?: { icon: string; label: string }
+  navigation?: { title: string }
+  main?: { title: string }
+  inspector?: { title: string }
+  statusBar?: Array<{ id: string }>
+}
+
+export interface CommandDecl {
+  id: string
+  title: string
+  keybinding?: string
+  when?: string
+}
+
+export interface DocumentTypeDecl {
+  kind: string
+  label: string
+  icon?: string
+}
+
+export interface JobTypeDecl {
+  type: string
+  title: string
+}
+
+export type SettingsSchema = Record<string, {
+  type: 'string' | 'number' | 'boolean'
+  default?: unknown
+  description?: string
+}>
+
+export interface Disposable {
+  dispose(): void
+}
+
+// Shell document model — source of truth: 1-shell-spec.md §3
+export interface Doc {
+  id: string
+  workspaceId: string
+  parentId: string | null
+  kind: string
+  title: string
+  sortOrder: number
+  content: string
+  contentFormat: string
+  sourcePath: string | null
+  sourceChecksum: string | null
+  createdAt: string
+  updatedAt: string
+  archivedAt: string | null
+}
+
+export interface DocVersion {
+  id: string
+  documentId: string
+  content: string
+  contentFormat: string
+  createdAt: string
+  label: string | null
+}
+
+export interface Workspace {
+  id: string
+  type: string
+  root: string
+  name?: string
+}
+
+export type JobRunner = (payload: unknown, handle: JobHandle) => Promise<void>
+
+export interface JobHandle {
+  id: string
+  cancel(): void
+  progress(pct: number, message?: string): void
+}
+
+export interface InspectorSection {
+  id: string
+  title: string
+  component: unknown // SvelteComponent — typed as unknown here; cast in renderer
+}
+
+export interface ModuleContext {
+  moduleId: string
+
+  commands: {
+    register(id: string, handler: (...args: unknown[]) => unknown): Disposable
+    execute(id: string, ...args: unknown[]): Promise<unknown>
+  }
+
+  settings: {
+    get<T>(key: string): T | undefined
+    set<T>(key: string, value: T): void
+    onChange<T>(key: string, cb: (v: T) => void): Disposable
+  }
+
+  secrets: {
+    get(name: string): Promise<string | undefined>
+    list(): Promise<string[]>
+  }
+
+  jobs: {
+    defineRunner(jobType: string, run: JobRunner): Disposable
+    submit(jobType: string, payload: unknown): JobHandle
+  }
+
+  events: {
+    on(event: string, cb: (payload: unknown) => void): Disposable
+    emit(event: string, payload: unknown): void
+  }
+
+  documents: {
+    open(id: string): Promise<Doc>
+    save(id: string, content: unknown): Promise<void>
+    versions(id: string): Promise<DocVersion[]>
+    onChanged(cb: (id: string) => void): Disposable
+  }
+
+  notify(toast: { level: 'info' | 'warn' | 'error'; message: string }): void
+  theme: { token(name: string): string }
+  workspace: Workspace
+}
+
+export interface Module {
+  manifest: ModuleManifest
+  views?: {
+    navigation?: unknown // SvelteComponent
+    main?: unknown
+    inspector?: unknown | InspectorSection[]
+    statusBar?: Record<string, unknown>
+  }
+  activate(ctx: ModuleContext): void | Promise<void>
+  deactivate?(): void | Promise<void>
+}
+
+// window.shell API shape — declared here, used in renderer/src/env.d.ts
+export interface ShellApi {
+  documents: {
+    list(workspaceId: string): Promise<Doc[]>
+    open(id: string): Promise<Doc>
+    save(id: string, content: string): Promise<void>
+    create(params: { workspaceId: string; kind: string; title: string; parentId?: string }): Promise<Doc>
+    versions(id: string): Promise<DocVersion[]>
+    onChanged(cb: (id: string) => void): void
+  }
+  workspace: {
+    get(): Promise<{ id: string; type: string; root: string }>
+  }
+  settings: {
+    get(key: string): Promise<unknown>
+    set(key: string, value: unknown): Promise<void>
+  }
+  modules: {
+    list(): Promise<Array<{ id: string; name: string; icon: string; enabled: boolean; activated: boolean }>>
+  }
+  commands: {
+    execute(id: string, ...args: unknown[]): Promise<unknown>
+  }
+}

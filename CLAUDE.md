@@ -61,7 +61,8 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Document schema**~~ — ✅ **DONE** (2026-05-29). Shell-owned, in `1-shell-spec.md` §3; app-neutral, with the shell-universal vs. module-extension split (`manuscriptId`/`wordCount` stay module-level).
 - **Built-in primitives draftwell lacks** — command palette, keybindings, and right-click context menus must be shell-provided (draftwell has none). These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
 - **Status bar zone** — net-new vs. draftwell's health-dot only. (Contract defines the `statusBar` contribution point; zone visual/layout design still open.)
-- **Remaining modules + scaffolding** — Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web; plus the Electron+Svelte+SQLite scaffolding slice (Option B), where the editor engine (F1) gets locked.
+- ~~**Scaffold (Option B)**~~ — ✅ **DONE** (2026-05-29). `app-shell/` directory — Electron + Svelte 5 + SQLite running. All five zones render, Documents module activates through the `ModuleContext`, IPC pipeline wired. Screenshot validated. Plan: `implementation/plans/03-scaffold.md`. **Next: replace `<textarea>` stub with TipTap/ProseMirror editor (F1 from plan 02) — do ecosystem check first.**
+- **Remaining modules** — Journal, Assets, Export/Workflow Runner, Table View, AI Chat/Prompt Studio, Web.
 - **Secrets service** (§12 Q12) and **Web module + persistent web-surface hook** (§12 Q13) — added 2026-05-29; design when their slices come up.
 
 ## Workspace Layout
@@ -70,7 +71,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_01.md         ← latest = highest number; read it first
+│   └── HANDOFF_03.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
@@ -84,6 +85,10 @@ app-shell-project/
 ├── implementation/           ← planning + validation (see implementation/AGENTS.md)
 │   ├── plans/                ← detailed plans, written before executing a slice
 │   └── screenshots/          ← UI validation evidence
+├── app-shell/                ← Electron + Svelte 5 + SQLite scaffold (Option B, 2026-05-29)
+│   ├── src/main/             ← Electron main: core services, module registry, IPC handlers
+│   ├── src/preload/          ← contextBridge (window.shell)
+│   └── src/renderer/         ← Svelte 5 UI: AppShell, zone components, Documents views
 └── archive/                  ← spent decision-phase artifacts; safe to skip (see archive/README.md)
 ```
 
