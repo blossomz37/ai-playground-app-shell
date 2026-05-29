@@ -11,9 +11,6 @@ html, body, #app {
   -webkit-font-smoothing: antialiased;
 }
 
-/* macOS traffic lights inset compensation */
-body { padding-top: env(safe-area-inset-top); }
-
 ::-webkit-scrollbar              { width: 6px; }
 ::-webkit-scrollbar-track        { background: transparent; }
 ::-webkit-scrollbar-thumb        { background: var(--color-border); border-radius: 3px; }

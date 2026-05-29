@@ -27,13 +27,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 48px; /* clear macOS traffic lights */
+    padding-top: var(--space-2);
     background: var(--color-bg-surface);
     border-right: var(--border-subtle);
     gap: var(--space-1);
   }
 
-  .rail-spacer { flex: 0 0 var(--space-2); }
+  .rail-spacer { flex: 0 0 var(--space-1); }
 
   .rail-btn {
     display: flex;
