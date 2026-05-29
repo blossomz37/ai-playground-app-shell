@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal App Shells & Architecture</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #333;
+            --border-color: #ccc;
+            --layer-app: #e3f2fd;
+            --layer-ui: #fff3e0;
+            --layer-shell: #e8f5e9;
+            --layer-os: #f3e5f5;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1, h2, h3 {
+            color: #111;
+        }
+
+        .section {
+            background: white;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 2rem;
+        }
+
+        /* Configurator Layout */
+        .configurator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .configurator-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        select, button {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: normal;
+        }
+
+        /* Visualization Stack */
+        .stack-viz {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            height: 100%;
+        }
+
+        .layer {
+            padding: 1rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .layer span {
+            display: block;
+            font-weight: normal;
+            font-size: 0.85rem;
+            color: #555;
+            margin-top: 0.25rem;
+        }
+
+        #layer-app { background-color: var(--layer-app); }
+        #layer-ui { background-color: var(--layer-ui); }
+        #layer-shell { background-color: var(--layer-shell); }
+        #layer-os { background-color: var(--layer-os); }
+
+        .analysis {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f1f8ff;
+            border-left: 4px solid #0366d6;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Universal App Shells</h1>
+        <p>A conceptual guide to how modern applications are structured, from broad categories down to the underlying boilerplate architecture.</p>
+    </header>
+
+    <div class="section">
+        <h2>1. The Application Payload (Categories)</h2>
+        <p>No matter what technology you use, the "top layer" of your app falls into a category based on user intent. A universal shell is designed to be completely agnostic to these categories, allowing you to build any of the following inside it:</p>
+        <ul>
+            <li><strong>Productivity & Workflow:</strong> Note-taking, spreadsheets, task managers.</li>
+            <li><strong>Games & Entertainment:</strong> Interactive media, casual puzzles.</li>
+            <li><strong>Utilities:</strong> Calculators, file managers, local tools.</li>
+            <li><strong>Social & Communication:</strong> Chat apps, forums.</li>
+            <li><strong>E-Commerce & Lifestyle:</strong> Shopping, habit trackers.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>2. Architecture Configurator</h2>
+        <p>Use the tool below to build your "App Shell". See how responsibilities shift between the Operating System, the Desktop Runtime (like Tauri/Electron), and the Frontend UI (like Svelte).</p>
+        
+        <div class="configurator-grid">
+            <!-- Controls -->
+            <div class="controls">
+                <div class="control-group">
+                    <label for="app-type">App Category (The Payload)</label>
+                    <select id="app-type" onchange="updateViz()">
+                        <option value="Productivity App">Productivity App</option>
+                        <option value="Casual Game">Casual Game</option>
+                        <option value="Utility Tool">Utility Tool</option>
+                        <option value="Communication App">Communication App</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="runtime">Desktop / Environment Runtime</label>
+                    <select id="runtime" onchange="updateViz()">
+                        <option value="tauri">Tauri (Rust / Lightweight)</option>
+                        <option value="electron">Electron (Node.js / Chromium)</option>
+                        <option value="pwa">Web / PWA (Browser)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="framework">Frontend UI Framework</label>
+                    <select id="framework" onchange="updateViz()">
+                        <option value="svelte">Svelte / SvelteKit</option>
+                        <option value="react">React / Next.js</option>
+                        <option value="vue">Vue / Nuxt</option>
+                        <option value="vanilla">Vanilla HTML/JS</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Shell Features (Boilerplate Modules)</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="feat-auth" onchange="updateViz()"> Authentication Flow
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="feat-db" onchange="updateViz()" checked> Local Database
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="feat-os" onchange="updateViz()" checked> Native File System Access
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="feat-updates" onchange="updateViz()"> Auto-Updater
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="stack-viz">
+                <div id="layer-app" class="layer">
+                    <div id="lbl-app">Productivity App</div>
+                    <span>Unique Business Logic & Assets</span>
+                </div>
+                <div id="layer-ui" class="layer">
+                    <div id="lbl-ui">Svelte</div>
+                    <span>Component Rendering & State</span>
+                </div>
+                <div id="layer-shell" class="layer">
+                    <div id="lbl-shell">App Shell Boilerplate</div>
+                    <span id="lbl-features">Local DB, FS Access</span>
+                </div>
+                <div id="layer-os" class="layer">
+                    <div id="lbl-os">Tauri Runtime</div>
+                    <span id="lbl-os-desc">System Webview & Rust Core</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="analysis" class="analysis">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <script>
+        function updateViz() {
+            // Get values
+            const appType = document.getElementById('app-type').value;
+            const runtime = document.getElementById('runtime').value;
+            const framework = document.getElementById('framework').value;
+            
+            // Get features
+            const features = [];
+            if(document.getElementById('feat-auth').checked) features.push("Auth");
+            if(document.getElementById('feat-db').checked) features.push("Local DB");
+            if(document.getElementById('feat-os').checked) features.push("FS Access");
+            if(document.getElementById('feat-updates').checked) features.push("Auto-Updates");
+
+            // Update DOM Elements
+            document.getElementById('lbl-app').textContent = appType;
+            
+            const frameworkNames = {
+                'svelte': 'Svelte Layer',
+                'react': 'React Layer',
+                'vue': 'Vue Layer',
+                'vanilla': 'Vanilla JS Layer'
+            };
+            document.getElementById('lbl-ui').textContent = frameworkNames[framework];
+
+            document.getElementById('lbl-features').textContent = features.length > 0 ? features.join(', ') : 'No core features selected';
+
+            // Runtime Logic
+            let osLabel = "";
+            let osDesc = "";
+            let analysisText = "";
+
+            if (runtime === 'tauri') {
+                osLabel = "Tauri (Rust Core)";
+                osDesc = "Relies on the host OS Webview (Edge/WebKit/Safari). Very small bundle size.";
+                analysisText = `<strong>Architecture Analysis:</strong> You are building a <em>${appType}</em> using a <em>${frameworkNames[framework]}</em> interface wrapped in a <em>Tauri</em> shell. Tauri leverages the native OS webview, meaning your app will be incredibly lightweight. The shell layer handles security and provides IPC (Inter-Process Communication) so your frontend can securely request ${features.length > 0 ? features.join(' and ') : 'native capabilities'} from the Rust backend.`;
+            } else if (runtime === 'electron') {
+                osLabel = "Electron (Node.js)";
+                osDesc = "Bundles an entire Chromium browser engine. Larger bundle size, highly consistent.";
+                analysisText = `<strong>Architecture Analysis:</strong> You are building a <em>${appType}</em> using a <em>${frameworkNames[framework]}</em> interface wrapped in an <em>Electron</em> shell. Electron bundles its own Chromium browser, ensuring your UI looks 100% identical on Windows, Mac, and Linux. Your shell runs a Node.js 'Main Process' which handles heavy lifting like ${features.length > 0 ? features.join(', ') : 'system integration'} while your frontend runs in a 'Renderer Process'.`;
+            } else if (runtime === 'pwa') {
+                osLabel = "Web Browser / PWA";
+                osDesc = "Runs purely in the browser sandbox. Limited native access.";
+                analysisText = `<strong>Architecture Analysis:</strong> You are building a <em>${appType}</em> as a Progressive Web App (PWA) using <em>${frameworkNames[framework]}</em>. There is no heavy desktop runtime. Your "Shell" consists of standard web technologies (Service Workers) to handle things like ${features.length > 0 ? features.join(', ') : 'offline capabilities'}. Note that features like direct File System Access are heavily restricted by browser security policies compared to native desktop runtimes.`;
+                
+                // Visual feedback that OS access is restricted in PWA
+                if(document.getElementById('feat-os').checked) {
+                    document.getElementById('feat-os').checked = false;
+                    alert("Direct Native File System Access is generally restricted in standard PWAs. It has been toggled off.");
+                    return updateViz(); // Re-run to update string
+                }
+            }
+
+            document.getElementById('lbl-os').textContent = osLabel;
+            document.getElementById('lbl-os-desc').textContent = osDesc;
+            document.getElementById('analysis').innerHTML = analysisText;
+        }
+
+        // Initialize on load
+        window.onload = updateViz;
+    </script>
+</body>
+</html>

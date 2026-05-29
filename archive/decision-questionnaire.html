@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shell Decision Questionnaire</title>
+<style>
+  /* ── Tokens (the config layer) ─────────────────────────────── */
+  :root {
+    --bg-page: #f0f2f5;
+    --bg-surface: #ffffff;
+    --bg-inset: #f8f9fa;
+    --bg-accent-soft: #eaf2fd;
+    --text-main: #1a1a1a;
+    --text-muted: #5b6470;
+    --border: #e2e5ea;
+    --border-strong: #cfd4dc;
+    --accent: #0366d6;
+    --accent-contrast: #ffffff;
+    --good: #1a7f4b;
+    --warn: #b25e00;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.6rem;
+    --maxw: 820px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+  }
+  [data-theme="dark"] {
+    --bg-page: #0d1117;
+    --bg-surface: #161b22;
+    --bg-inset: #1c222b;
+    --bg-accent-soft: #15263b;
+    --text-main: #e6edf3;
+    --text-muted: #9aa4b2;
+    --border: #2a313c;
+    --border-strong: #3a424f;
+    --accent: #58a6ff;
+    --accent-contrast: #0d1117;
+    --good: #4ec97e;
+    --warn: #e3a008;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    color: var(--text-main);
+    background: var(--bg-page);
+    margin: 0;
+    padding: 0 1.25rem 7rem;
+    transition: background-color .25s ease, color .25s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    padding: 2.4rem 0 1.2rem;
+  }
+  h1 {
+    font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem);
+    margin: 0 0 .3rem;
+    letter-spacing: -.02em;
+  }
+  .lede { color: var(--text-muted); margin: 0; max-width: 60ch; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  .ghost-btn {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: .45rem .8rem;
+    font-size: .85rem; font-weight: 500;
+    cursor: pointer; user-select: none;
+    transition: border-color .15s, color .15s;
+  }
+  .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Tier headings ──────────────────────────────────────────── */
+  .tier {
+    margin: 2.4rem 0 0;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--border);
+  }
+  .tier:first-of-type { border-top: none; }
+  .tier-title { font-size: 1.18rem; margin: 0 0 .15rem; }
+  .tier-sub { color: var(--text-muted); font-size: .9rem; margin: 0 0 1rem; }
+
+  /* ── Question cards ─────────────────────────────────────────── */
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.3rem 1.4rem;
+    margin-bottom: 1.1rem;
+    box-shadow: var(--shadow);
+    scroll-margin-top: 1rem;
+  }
+  .q-head { display: flex; gap: .6rem; align-items: baseline; }
+  .q-id {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; color: var(--accent);
+    font-size: .95rem; flex: none;
+  }
+  .q-title { font-weight: 650; font-size: 1.05rem; margin: 0; }
+  .why {
+    margin: .7rem 0 1rem;
+    padding: .6rem .85rem;
+    background: var(--bg-accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: .88rem; color: var(--text-muted);
+  }
+  .why b { color: var(--text-main); font-weight: 600; }
+
+  /* ── Options ────────────────────────────────────────────────── */
+  .opts { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+  .opt {
+    display: flex; gap: .65rem; align-items: flex-start;
+    padding: .65rem .8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .opt:hover { border-color: var(--border-strong); }
+  .opt.sel { border-color: var(--accent); background: var(--bg-accent-soft); }
+  .opt input { margin-top: .25rem; flex: none; accent-color: var(--accent); }
+  .opt-body { flex: 1; }
+  .opt-label { font-weight: 600; font-size: .92rem; }
+  .opt-key { color: var(--text-muted); font-weight: 700; margin-right: .25rem; }
+  .opt-desc { color: var(--text-muted); font-size: .85rem; margin-top: .1rem; }
+  .badge {
+    display: inline-block; vertical-align: middle;
+    font-size: .68rem; font-weight: 700; letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--good);
+    border: 1px solid var(--good);
+    border-radius: 999px;
+    padding: .05rem .45rem;
+    margin-left: .4rem;
+  }
+
+  /* ── Lean note ──────────────────────────────────────────────── */
+  .lean {
+    font-size: .85rem; color: var(--text-muted);
+    margin: 0 0 .9rem;
+  }
+  .lean .tag {
+    color: var(--good); font-weight: 700; margin-right: .35rem;
+  }
+
+  /* ── Notes textarea ─────────────────────────────────────────── */
+  .notes-label { font-size: .8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+  textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+    font: inherit; font-size: .9rem;
+    color: var(--text-main);
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .6rem .7rem;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Sticky export bar ──────────────────────────────────────── */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+    padding: .7rem 1.25rem;
+    z-index: 20;
+  }
+  .dock-inner {
+    max-width: var(--maxw); margin: 0 auto;
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  }
+  .progress { font-size: .85rem; color: var(--text-muted); margin-right: auto; }
+  .progress b { color: var(--text-main); }
+  .btn {
+    border: none; border-radius: var(--radius-sm);
+    padding: .55rem 1rem; font-size: .88rem; font-weight: 600;
+    cursor: pointer; user-select: none;
+    transition: filter .15s, border-color .15s, color .15s;
+  }
+  .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-sec {
+    background: transparent; color: var(--text-main);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-sec:hover { border-color: var(--accent); color: var(--accent); }
+  .toast {
+    font-size: .85rem; font-weight: 600; color: var(--good);
+    opacity: 0; transition: opacity .2s; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  footer { color: var(--text-muted); font-size: .82rem; margin: 2.5rem 0 0; }
+  code { background: var(--bg-inset); padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="topbar">
+      <div>
+        <h1>Shell Decision Questionnaire</h1>
+        <p class="lede">Pick the option you want for each decision (my recommendation is pre-selected and marked <span class="badge" style="margin:0">Lean</span>), add any notes, then export your answers to the <code>ideas/</code> folder for review.</p>
+      </div>
+      <button class="ghost-btn" id="themeBtn" type="button">◐ Theme</button>
+    </div>
+  </header>
+
+  <main id="form"></main>
+
+  <footer>
+    Answers auto-save in this browser as you go. Export writes a markdown file (<code>decision-answers.md</code>) — in Chrome/Edge you can save it straight into the <code>ideas/</code> folder; otherwise it downloads or copies to your clipboard.
+  </footer>
+</div>
+
+<div class="dock">
+  <div class="dock-inner">
+    <span class="progress" id="progress">0 of 11 decided</span>
+    <span class="toast" id="toast"></span>
+    <button class="btn btn-sec" id="copyBtn" type="button">Copy markdown</button>
+    <button class="btn btn-sec" id="downloadBtn" type="button">Download .md</button>
+    <button class="btn btn-primary" id="saveBtn" type="button">Save to folder…</button>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  // ── TIER 1 ──────────────────────────────────────────────
+  {
+    tier: 1, id: "Q1",
+    title: "What is the first real app you'll build on this shell?",
+    why: "A shell built in the abstract grows features nothing uses. Building one concrete app <b>through</b> the shell is what reveals which primitives are real. Name the actual first product.",
+    options: [
+      { key: "A", label: "A specific app you already want", desc: "e.g. an NPE story-development workspace, or a prompt-sequencing studio.", lean: true },
+      { key: "B", label: "A generic \"demo\" app", desc: "Just to exercise the shell." }
+    ],
+    lean: "Pick the app you'd build anyway. The shell falls out of it. B produces a shell that fits nothing."
+  },
+  {
+    tier: 1, id: "Q2",
+    title: "Single app, or genuinely multi-app from day one?",
+    why: "The core promise in your brief — \"fork the shell into a different app.\" Decides repo structure and whether \"which modules ship\" is a build-time or runtime concern.",
+    options: [
+      { key: "A", label: "Build-time forks", desc: "One core package; each app is a separate build bundling a chosen module set. Simpler; apps can't reconfigure themselves." },
+      { key: "B", label: "Runtime modules", desc: "One binary; modules enabled/disabled live by the user (Obsidian/VS Code model). More powerful; far more architecture." },
+      { key: "C", label: "Both", desc: "Runtime modules, and you can also produce a stripped build that hardcodes a module set." }
+    ],
+    lean: "Start A, design toward B. Ship build-time forks first (fast), but keep the module contract clean enough that runtime loading is a later addition, not a rewrite. C is the honest end state."
+  },
+  {
+    tier: 1, id: "Q3",
+    title: "Who writes modules — only you, or third parties too?",
+    why: "This single answer decides whether you need a security sandbox <b>at all</b>. Third-party modules mean untrusted code — forcing a permission/isolation model, the hardest part of the whole system.",
+    options: [
+      { key: "A", label: "Just you (and a small trusted circle)", desc: "No sandbox needed; modules get full access.", lean: true },
+      { key: "B", label: "Third-party / community modules", desc: "Requires the permission + capability service to be real, with teeth." }
+    ],
+    lean: "A for now. Obsidian runs community plugins with full renderer access and accepts the risk; defer sandboxing until you open the doors — but write permission declarations into the manifest from day one so the data exists when you need to enforce it."
+  },
+  // ── TIER 2 ──────────────────────────────────────────────
+  {
+    tier: 2, id: "Q4",
+    title: "Desktop runtime: Tauri, Electron, or web/PWA?",
+    why: "Decides bundle size, native file-system access, the security model, and how much Rust you touch. The security angle (Q3) is the tiebreaker the architecture configurator misses.",
+    options: [
+      { key: "Electron", label: "Electron", desc: "Node.js everywhere, huge ecosystem, you already know it, consistent rendering. Heavy bundle; broad attack surface if you ever run untrusted modules.", lean: true },
+      { key: "Tauri", label: "Tauri", desc: "Tiny bundle, Rust core, capability-based security allowlist (fits Q3→B). Steeper without Rust; OS webview means rendering varies by platform." },
+      { key: "PWA", label: "Web / PWA", desc: "No desktop runtime, but file-system access is heavily restricted — likely disqualifying for a local-first file-backed workspace." }
+    ],
+    lean: "Electron now, given your fluency and that Q3 leans single-author. Revisit Tauri if/when you commit to third-party modules — its capability model would do real work there."
+  },
+  {
+    tier: 2, id: "Q5",
+    title: "Frontend framework?",
+    why: "It's the language your modules' UI is written in, so it's a <b>contract</b>, not just a preference — hard to change later without breaking every module.",
+    options: [
+      { key: "Svelte", label: "Svelte / SvelteKit", desc: "Lean, fast, you have tooling for it; smaller component ecosystem.", lean: true },
+      { key: "React", label: "React", desc: "Largest ecosystem and most prior-art shells; heavier." },
+      { key: "VueVanilla", label: "Vue / Vanilla", desc: "Viable but less aligned with your existing work." }
+    ],
+    lean: "Svelte, matching your current stack — unless you expect to lean heavily on existing React component libraries inside modules."
+  },
+  {
+    tier: 2, id: "Q6",
+    title: "Document & persistence model?",
+    why: "Shapes search, sync, conflict handling, and how \"local-first\" actually feels. The decision most likely to be expensive to reverse.",
+    options: [
+      { key: "A", label: "Files-as-source-of-truth", desc: "Obsidian model — documents are real files; the app is a viewer/editor over them. Maximally portable; plays well with git/Obsidian." },
+      { key: "B", label: "Database-backed", desc: "Notion model — a local DB (SQLite) is the truth; files are exports. Richer relations; data locked in the app's format." },
+      { key: "C", label: "Hybrid", desc: "Files are truth; a DB is a rebuildable index/cache over them for search and relations.", lean: true }
+    ],
+    lean: "Hybrid. Files stay the truth (fits your Obsidian/indie-publishing world and local-first), with SQLite as a disposable index that can be deleted and rebuilt without data loss."
+  },
+  {
+    tier: 2, id: "Q7",
+    title: "Panel/layout model: fixed zones or module-defined zones?",
+    why: "How much layout freedom modules get vs. how consistent the shell stays. Total freedom → every module reinvents layout and the \"same mental model across apps\" principle dies.",
+    options: [
+      { key: "A", label: "Fixed zones", desc: "Shell defines slots (sidebar / main / inspector / bottom utility); modules fill them. Consistent — the VS Code approach.", lean: true },
+      { key: "B", label: "Module-defined zones", desc: "Modules can carve new regions. Flexible, but consistency and persistence get hard." }
+    ],
+    lean: "Fixed, named zones — directly serves your \"consistent panel grammar\" UX rule. Revisit only if a concrete module genuinely can't fit."
+  },
+  {
+    tier: 2, id: "Q8",
+    title: "How do modules load?",
+    why: "Bundled = simplest and most secure; from-disk = the real plugin experience but needs discovery, validation, and versioning.",
+    options: [
+      { key: "A", label: "Bundled at build time", desc: "Pairs with Q2 → A." },
+      { key: "B", label: "Loaded from a plugins folder at runtime", desc: "Pairs with Q2 → B; the Obsidian model." },
+      { key: "C", label: "Both", desc: "" }
+    ],
+    lean: "Follow Q2. If Q2 is \"start A, design toward B,\" then load bundled now but define the manifest + lifecycle as if disk-loading already existed."
+  },
+  // ── TIER 3 ──────────────────────────────────────────────
+  {
+    tier: 3, id: "Q9",
+    title: "Theming contract",
+    why: "Are design tokens a private stylesheet, or a documented, module-facing API — so a fork's re-theme propagates to every module?",
+    options: [
+      { key: "Private", label: "Private stylesheet", desc: "Tokens are internal; modules don't get a stable theming surface." },
+      { key: "API", label: "Documented token API", desc: "Modules consume published CSS variables; re-theming a fork propagates everywhere.", lean: true }
+    ],
+    lean: "A documented token API (see the reframing of single-file-css.md). This is what makes the \"fork into a new app\" promise visible."
+  },
+  {
+    tier: 3, id: "Q10",
+    title: "Target platforms",
+    why: "macOS-only first, or cross-platform (Win/Linux) from the start?",
+    options: [
+      { key: "Mac", label: "macOS only first", desc: "Move fast on one platform.", lean: true },
+      { key: "Cross", label: "Cross-platform from the start", desc: "Broader reach, more testing surface up front." }
+    ],
+    lean: "macOS-first to move fast; keep nothing platform-specific in the core so cross-platform stays cheap later."
+  },
+  {
+    tier: 3, id: "Q11",
+    title: "Distribution & updates",
+    why: "How does an app ship and update?",
+    options: [
+      { key: "Manual", label: "Manual", desc: "Hand off builds yourself; no infrastructure." },
+      { key: "GitHub", label: "GitHub releases", desc: "Tagged releases for early builds.", lean: true },
+      { key: "Auto", label: "Auto-updater", desc: "Background updates; more infrastructure." }
+    ],
+    lean: "Defer. GitHub releases for early builds; add an auto-updater once you have outside users."
+  }
+];
+
+const TIERS = {
+  1: { title: "Tier 1 — Foundational", sub: "These constrain every later choice. Settle them first." },
+  2: { title: "Tier 2 — Architecture", sub: "Settle once Tier 1 is fixed." },
+  3: { title: "Tier 3 — Refinement", sub: "Safe to defer; revisit after a first build." }
+};
+
+const STORE_KEY = "shell-questionnaire-v1";
+const state = loadState();
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveState() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ── Render ──────────────────────────────────────────────────
+function render() {
+  const form = document.getElementById("form");
+  let html = "";
+  let lastTier = null;
+  QUESTIONS.forEach(q => {
+    // default selection = lean, unless user already chose
+    if (state[q.id] === undefined) {
+      const leanOpt = q.options.find(o => o.lean);
+      state[q.id] = { choice: leanOpt ? leanOpt.key : "", notes: "" };
+    }
+    if (q.tier !== lastTier) {
+      const t = TIERS[q.tier];
+      html += `<section class="tier"><h2 class="tier-title">${t.title}</h2><p class="tier-sub">${t.sub}</p></section>`;
+      lastTier = q.tier;
+    }
+    const cur = state[q.id];
+    const opts = q.options.map(o => {
+      const checked = cur.choice === o.key ? "checked" : "";
+      const selCls = cur.choice === o.key ? " sel" : "";
+      const badge = o.lean ? ` <span class="badge">Lean</span>` : "";
+      const desc = o.desc ? `<div class="opt-desc">${o.desc}</div>` : "";
+      return `<label class="opt${selCls}" data-q="${q.id}" data-k="${o.key}">
+        <input type="radio" name="${q.id}" value="${o.key}" ${checked}>
+        <div class="opt-body">
+          <div class="opt-label"><span class="opt-key">${o.key}.</span>${o.label}${badge}</div>
+          ${desc}
+        </div>
+      </label>`;
+    }).join("");
+    html += `<div class="card" id="card-${q.id}">
+      <div class="q-head"><span class="q-id">${q.id}</span><h3 class="q-title">${q.title}</h3></div>
+      <div class="why">${q.why}</div>
+      <div class="opts">${opts}</div>
+      <p class="lean"><span class="tag">My lean:</span>${q.lean}</p>
+      <label class="notes-label" for="notes-${q.id}">Your notes / reasoning (optional)</label>
+      <textarea id="notes-${q.id}" data-q="${q.id}" placeholder="Anything that refines or overrides the choice…">${esc(cur.notes || "")}</textarea>
+    </div>`;
+  });
+  form.innerHTML = html;
+  wire();
+  updateProgress();
+}
+
+function wire() {
+  document.querySelectorAll('input[type="radio"]').forEach(r => {
+    r.addEventListener("change", e => {
+      const q = e.target.name;
+      state[q].choice = e.target.value;
+      // refresh selected styling within this group
+      document.querySelectorAll(`.opt[data-q="${q}"]`).forEach(l => {
+        l.classList.toggle("sel", l.dataset.k === e.target.value);
+      });
+      saveState(); updateProgress();
+    });
+  });
+  document.querySelectorAll("textarea").forEach(t => {
+    t.addEventListener("input", e => {
+      state[e.target.dataset.q].notes = e.target.value;
+      saveState();
+    });
+  });
+}
+
+function updateProgress() {
+  const decided = QUESTIONS.filter(q => state[q.id] && state[q.id].choice).length;
+  document.getElementById("progress").innerHTML =
+    `<b>${decided}</b> of ${QUESTIONS.length} decided`;
+}
+
+// ── Markdown export ─────────────────────────────────────────
+function labelFor(q, key) {
+  const o = q.options.find(x => x.key === key);
+  return o ? o.label : "—";
+}
+function buildMarkdown() {
+  const date = new Date().toISOString().slice(0, 10);
+  const L = [];
+  L.push("# Shell Decision Questionnaire — Answers");
+  L.push("");
+  L.push(`_Exported ${date} from decision-questionnaire.html_`);
+  L.push("");
+
+  // Overrides summary
+  const overrides = [];
+  QUESTIONS.forEach(q => {
+    const leanOpt = q.options.find(o => o.lean);
+    const choice = state[q.id] && state[q.id].choice;
+    if (leanOpt && choice && choice !== leanOpt.key) {
+      overrides.push(`- **${q.id}** — chose **${choice}** (${labelFor(q, choice)}); lean was ${leanOpt.key} (${labelFor(q, leanOpt.key)})`);
+    }
+  });
+  L.push("## Overrides vs. my leans");
+  L.push("");
+  L.push(overrides.length ? overrides.join("\n") : "_None — all answers match the recommended lean._");
+  L.push("");
+
+  let lastTier = null;
+  QUESTIONS.forEach(q => {
+    if (q.tier !== lastTier) {
+      L.push("---");
+      L.push("");
+      L.push(`## ${TIERS[q.tier].title}`);
+      L.push("");
+      lastTier = q.tier;
+    }
+    const s = state[q.id] || { choice: "", notes: "" };
+    const leanOpt = q.options.find(o => o.lean);
+    const matches = leanOpt && s.choice === leanOpt.key ? "yes" :
+                    (leanOpt ? "no (override)" : "n/a");
+    L.push(`### ${q.id}. ${q.title}`);
+    L.push(`- **Choice:** ${s.choice ? s.choice + " — " + labelFor(q, s.choice) : "_undecided_"}`);
+    L.push(`- **Matches lean:** ${matches}`);
+    L.push(`- **Notes:** ${s.notes ? s.notes.replace(/\n/g, " ") : "_none_"}`);
+    L.push("");
+  });
+  return L.join("\n");
+}
+
+// ── Actions ─────────────────────────────────────────────────
+function toast(msg, isErr) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.color = isErr ? "var(--warn)" : "var(--good)";
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+function downloadMd(md) {
+  const blob = new Blob([md], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "decision-answers.md";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function saveToFolder() {
+  const md = buildMarkdown();
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: "decision-answers.md",
+        types: [{ description: "Markdown", accept: { "text/markdown": [".md"] } }]
+      });
+      const w = await handle.createWritable();
+      await w.write(md); await w.close();
+      toast("Saved ✓ — navigate to the ideas/ folder when prompted");
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return; // user cancelled
+      // otherwise fall through to download
+    }
+  }
+  downloadMd(md);
+  toast("Downloaded — move it into ideas/ for review");
+}
+
+document.getElementById("saveBtn").addEventListener("click", saveToFolder);
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  downloadMd(buildMarkdown());
+  toast("Downloaded decision-answers.md");
+});
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(buildMarkdown());
+    toast("Copied — paste it back to me");
+  } catch (e) {
+    toast("Copy failed — use Download instead", true);
+  }
+});
+
+// ── Theme ───────────────────────────────────────────────────
+const themeKey = "shell-questionnaire-theme";
+function applyTheme(t) {
+  if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  else document.documentElement.removeAttribute("data-theme");
+}
+let theme = localStorage.getItem(themeKey) ||
+  (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+applyTheme(theme);
+document.getElementById("themeBtn").addEventListener("click", () => {
+  theme = theme === "dark" ? "light" : "dark";
+  applyTheme(theme);
+  localStorage.setItem(themeKey, theme);
+});
+
+render();
+saveState();
+</script>
+</body>
+</html>

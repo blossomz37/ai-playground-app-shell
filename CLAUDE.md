@@ -1,0 +1,88 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Status
+
+**Pre-implementation, decisions resolved.** No code yet, but the foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12). The spec documents in the root are the source of truth.
+
+**Committed stack:** Electron desktop shell + Svelte/SvelteKit UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* the renderer (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
+
+## What This Is
+
+A **reusable desktop shell** — not a writing app, AI chat, or workflow tool. A stable platform with universal primitives that purpose-built modules can extend. The mental model mirrors Obsidian and VS Code: the shell is the host; apps are modules.
+
+The same shell codebase can be forked and configured into different single-purpose apps by swapping which first-party (or custom) modules are active.
+
+## Core Architectural Constraints
+
+These are committed (see `0-shell-platform-spec.md` §12 for the full Q1–Q11 resolution):
+
+- **Shell owns the primitives; modules contribute to them.** Shell owns: workspace lifecycle, document IDs and open/save pipeline, panel layout and docking, command registry, settings store, job queue. Modules may contribute views/commands/settings/document types/jobs — they may not patch shell internals or redefine the workspace contract.
+- **Module boundary = unit of optionality.** Feature flags are for rollout only, not permanent substitutes for module boundaries. Long-lived flags are debt.
+- **Lazy activation.** Modules activate by explicit user enablement, workspace type, file type, or command invocation — not at startup.
+- **Data layering.** Three tiers: shell-level (app settings, layout state, recent workspaces, module registry), workspace-level (documents, module workspace state, jobs/history, indexes/cache), module-level (namespaced settings/cache/artifacts). Modules write only within their namespace.
+- **Local-first.** No cloud dependency in the core shell.
+
+## The Seven Primitives
+
+Defined in `0-shell-platform-spec.md`. Every architectural decision should trace back to one of these:
+
+1. **Workspace** — top-level project container
+2. **Documents** — file-backed or virtual content objects
+3. **Panels** — persistent UI regions (navigation, content, inspector, utilities)
+4. **Commands** — invokable actions addressable by ID, reachable through command palette
+5. **Settings** — typed, namespaced configuration
+6. **Jobs** — background/long-running tasks with managed queue and cancellation
+7. **Module registration** — manifest schema, lifecycle, compatibility checks
+
+## Module Contract
+
+Every module must declare: `id`, `name`, `version`, `required shell version`, `activation rules`, contributed commands/views/settings schema/document types/jobs, and permissions required.
+
+## Core Services (to be built)
+
+File system, search/index, event bus, command registry, layout manager, settings manager, job runner, notification/toast, theme/token, permission/capability.
+
+## What Belongs in Modules, Not the Shell
+
+- AI chat logic
+- Manuscript/writing workflow rules
+- Prompt runner execution
+- Graph editor semantics
+
+First-party starter modules planned: Documents, Journal, AI Chat, Prompt Studio, Workflow Runner, Table View.
+
+## Open Design Work (decisions resolved; these still need design)
+
+The Q1–Q11 questions are resolved (§12). What remains is design, not decision:
+- **Module contract** — the concrete manifest + per-module contribution interface (rail entry, navigation/main/inspector views, state slice, commands). This is what dissolves draftwell's `App.tsx` monolith.
+- **Built-in primitives draftwell lacks** — command palette, keybindings, and right-click context menus must be shell-provided (draftwell has none).
+- **Status bar zone** — net-new vs. draftwell's health-dot only.
+- **Document schema** — start from draftwell's `documents` + `document_versions` tables.
+
+## Workspace Layout
+
+```
+app-shell-project/
+├── CLAUDE.md                 ← you are here (durable orientation)
+├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
+│   └── HANDOFF_01.md         ← latest = highest number; read it first
+├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
+├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
+├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
+├── reference/                ← material that informs the work ahead
+│   ├── draftwell-anchor-analysis.md          (reference app → shell zones/modules)
+│   ├── obsidian-vscode-extensibility-teardown.md  (prior-art for the module system)
+│   └── single-file-css.md                    (CSS technique for theming/chrome)
+├── implementation/           ← planning + validation (see implementation/AGENTS.md)
+│   ├── plans/                ← detailed plans, written before executing a slice
+│   └── screenshots/          ← UI validation evidence
+└── archive/                  ← spent decision-phase artifacts; safe to skip (see archive/README.md)
+```
+
+**Implementation work:** ambitious slices get a plan in `implementation/plans/` before execution; UI changes get screenshot evidence in `implementation/screenshots/`. See `implementation/AGENTS.md` for the conventions.
+
+**Handoffs:** session handoffs live in `session-handoffs/`, numbered `HANDOFF_NN.md` — one per session, accumulating (never overwrite). Read the highest-numbered first. Each handoff is a **lean, slice-focused** brief whose only job is to get the next agent up to speed fast: status of the slice just completed or in progress, decisions made this session, what's being carried forward, and the recommended next action. Include only what's relevant to *that* slice — keep it minimal so new-session load stays light. (Distinct from this file: CLAUDE.md is durable workspace/project orientation; a handoff is session-to-session status. `HANDOFF_01.md` is the founding handoff and is naturally heavier — later ones should be leaner.)
+
+**Reading order for a fresh session:** latest `session-handoffs/HANDOFF_NN.md` → this file → `0-shell-platform-spec.md` §12 → `reference/` as needed.

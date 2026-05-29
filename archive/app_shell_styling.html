@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Shell Single-File CSS Architecture</title>
+    <style>
+        /* ==========================================================================
+           1. CSS Custom Properties (The API Layer)
+           ========================================================================== */
+        :root {
+            /* Light Theme (Default) */
+            --bg-page: #f0f2f5;
+            --bg-app-base: #ffffff;
+            --bg-app-surface: #f8f9fa;
+            --text-main: #1a1a1a;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
+            --accent-color: #0366d6;
+            
+            /* Fluid Typography & Spacing */
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --radius: 8px;
+        }
+
+        /* Dark Theme Override via Data Attribute */
+        [data-theme="dark"] {
+            --bg-page: #0d1117;
+            --bg-app-base: #161b22;
+            --bg-app-surface: #21262d;
+            --text-main: #e6edf3;
+            --text-muted: #8b949e;
+            --border-color: #30363d;
+            --accent-color: #58a6ff;
+        }
+
+        /* ==========================================================================
+           2. Global Setup & Minimal Document Styling
+           ========================================================================== */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-main);
+            background-color: var(--bg-page);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        h1, h2, h3 { color: var(--text-main); }
+        p { color: var(--text-muted); }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: var(--bg-app-base);
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+        }
+
+        button {
+            background: var(--bg-app-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        /* ==========================================================================
+           3. The App Shell Preview Components
+           ========================================================================== */
+        .app-window {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            background-color: var(--bg-app-base);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Native Feel: Titlebar */
+        .titlebar {
+            background-color: var(--bg-app-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--space-sm) var(--space-md);
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            user-select: none; /* Prevents text highlighting like a native app */
+        }
+
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Native Feel: Sidebar */
+        .sidebar {
+            width: 240px;
+            background-color: var(--bg-app-surface);
+            border-right: 1px solid var(--border-color);
+            padding: var(--space-md);
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.2s ease, 
+                        padding 0.3s ease;
+            user-select: none; /* Native interaction */
+            overflow-y: auto;
+        }
+
+        .sidebar-item {
+            padding: var(--space-sm);
+            margin-bottom: 0.25rem;
+            border-radius: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover, .sidebar-item.active {
+            background-color: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: clamp(1rem, 5vw, 3rem); /* Fluid spacing */
+            overflow-y: auto;
+            transition: padding 0.3s ease;
+        }
+
+        .content-block {
+            height: 100px;
+            background: var(--bg-app-surface);
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        /* Custom Slim Scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ==========================================================================
+           4. State-Driven Layouts (Zen Mode)
+           ========================================================================== */
+        
+        /* When .zen-mode is applied to the root/body, the cascade updates the shell */
+        [data-state="zen"] .app-window {
+            border-color: transparent;
+            box-shadow: 0 0 0 9999px var(--bg-page); /* Faux fullscreen effect */
+        }
+
+        [data-state="zen"] .titlebar {
+            opacity: 0.3; /* Dim non-essential UI */
+        }
+
+        [data-state="zen"] .sidebar {
+            width: 0;
+            padding-left: 0;
+            padding-right: 0;
+            opacity: 0;
+            border-right: none;
+            overflow: hidden;
+        }
+
+        [data-state="zen"] .main-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>App Shell CSS Architecture</h1>
+        <p>A demonstration of managing theming, native-feeling interactions, and structural states entirely through a single CSS file.</p>
+    </header>
+
+    <div class="controls">
+        <button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+        <button onclick="toggleZenMode()">Toggle Zen Mode</button>
+    </div>
+
+    <div class="app-window" id="app-preview">
+        <div class="titlebar">
+            <span>app-shell-demo.exe</span>
+        </div>
+        
+        <div class="workspace">
+            <div class="sidebar">
+                <div style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: bold;">Files</div>
+                <div class="sidebar-item active">index.html</div>
+                <div class="sidebar-item">styles.css</div>
+                <div class="sidebar-item">app.js</div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; margin: 1.5rem 0 0.5rem 0; font-weight: bold;">Settings</div>
+                <div class="sidebar-item">Preferences</div>
+            </div>
+
+            <div class="main-content">
+                <h2 style="margin-top: 0;">Main Workspace</h2>
+                <p>Notice how the sidebar text is unselectable (like a native app), the typography scales fluidly, and the scrollbars are customized.</p>
+                
+                <div class="content-block">Content Area 1</div>
+                <div class="content-block">Content Area 2</div>
+                <div class="content-block">Content Area 3</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Theme Toggling (Manipulating CSS Variables via Root Attribute)
+        function toggleTheme() {
+            const htmlElement = document.documentElement;
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                htmlElement.removeAttribute('data-theme');
+            } else {
+                htmlElement.setAttribute('data-theme', 'dark');
+            }
+        }
+
+        // 2. State Toggling (Manipulating Layouts via Body Attribute)
+        function toggleZenMode() {
+            const bodyElement = document.body;
+            const currentState = bodyElement.getAttribute('data-state');
+            if (currentState === 'zen') {
+                bodyElement.removeAttribute('data-state');
+            } else {
+                bodyElement.setAttribute('data-state', 'zen');
+            }
+        }
+    </script>
+
+</body>
+</html>
