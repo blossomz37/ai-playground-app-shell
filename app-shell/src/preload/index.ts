@@ -27,6 +27,7 @@ const api: ShellApi = {
   },
 
   commands: {
+    list: () => ipcRenderer.invoke('commands:list'),
     execute: (id, ...args) => ipcRenderer.invoke('commands:execute', id, ...args)
   }
 }

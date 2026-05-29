@@ -4,7 +4,11 @@
   import MainPane from './MainPane.svelte'
   import Inspector from './Inspector.svelte'
   import StatusBar from './StatusBar.svelte'
+  import CommandPalette from './CommandPalette.svelte'
+  import { handleGlobalKeydown } from '../store/commands'
 </script>
+
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <div class="app-shell">
   <div class="topbar"></div>
@@ -14,6 +18,8 @@
   <Inspector />
   <StatusBar />
 </div>
+
+<CommandPalette />
 
 <style>
   .app-shell {

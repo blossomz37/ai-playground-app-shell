@@ -43,6 +43,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('modules:list', () => moduleRegistry.list())
 
+  ipcMain.handle('commands:list', () => moduleRegistry.commands())
+
   ipcMain.handle('commands:execute', (_e, id: string, ...args: unknown[]) => {
     const h = getCommandHandler(id)
     if (!h) throw new Error(`Command not found: ${id}`)

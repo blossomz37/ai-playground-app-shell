@@ -5,9 +5,12 @@
   import StarterKit from '@tiptap/starter-kit'
   import { Markdown } from 'tiptap-markdown'
   import { activeDoc, editorContent, isDirty, saveDoc } from '../../store'
+  import { registerCommand } from '../../store/commands'
+  import type { Disposable } from '@shared/module-contract'
 
   let element = $state<HTMLDivElement>()
   let editor = $state<Editor | null>(null)
+  let saveCommand: Disposable | null = null
 
   onMount(() => {
     editor = new Editor({
@@ -19,9 +22,17 @@
         isDirty.set(true)
       },
     })
+
+    // Interactive handler for documents.save: the renderer owns it because the
+    // content to save lives in the open editor / store. Keybinding (CmdOrCtrl+S)
+    // and the command palette both dispatch here via executeCommand.
+    saveCommand = registerCommand('documents.save', () => saveDoc())
   })
 
-  onDestroy(() => editor?.destroy())
+  onDestroy(() => {
+    saveCommand?.dispose()
+    editor?.destroy()
+  })
 
   // Push store → editor only when the content arrives from outside the editor
   // (document switch, external reload). Editor-originated edits already match the
@@ -33,13 +44,6 @@
       editor.commands.setContent(md, { emitUpdate: false })
     }
   })
-
-  function handleKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault()
-      saveDoc()
-    }
-  }
 </script>
 
 <div class="main-view">
@@ -55,7 +59,6 @@
     class="editor-area"
     class:hidden={!$activeDoc}
     bind:this={element}
-    onkeydown={handleKeydown}
     role="textbox"
     tabindex="-1"
   ></div>

@@ -1,4 +1,4 @@
-import type { Module, ModuleContext } from '@shared/module-contract'
+import type { CommandCatalogEntry, Module, ModuleContext } from '@shared/module-contract'
 import { createModuleContext } from './context'
 
 interface ModuleRecord {
@@ -44,5 +44,18 @@ export const moduleRegistry = {
       enabled: r.enabled,
       activated: r.activated
     }))
+  },
+
+  // Declared commands across all registered modules. Per the contract, the
+  // palette lists commands from the manifest before a module's code runs, so
+  // this is not gated on activation.
+  commands(): CommandCatalogEntry[] {
+    const out: CommandCatalogEntry[] = []
+    for (const r of registry.values()) {
+      for (const c of r.module.manifest.contributes.commands ?? []) {
+        out.push({ id: c.id, title: c.title, keybinding: c.keybinding, moduleId: r.module.manifest.id })
+      }
+    }
+    return out
   }
 }

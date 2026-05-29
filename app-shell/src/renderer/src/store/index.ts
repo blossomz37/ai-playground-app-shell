@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store'
 import type { Doc, DocVersion } from '@shared/module-contract'
+import { loadCommands } from './commands'
 
 export const workspaceId   = writable<string>('ws-default')
 export const documents     = writable<Doc[]>([])
@@ -32,6 +33,8 @@ function buildTree(docs: Doc[]): DocNode[] {
 }
 
 export async function initStore(): Promise<void> {
+  await loadCommands()
+
   const wsId = get(workspaceId)
   const docs = await window.shell.documents.list(wsId)
   documents.set(docs)

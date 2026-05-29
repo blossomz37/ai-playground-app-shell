@@ -45,6 +45,14 @@ export interface CommandDecl {
   when?: string
 }
 
+// A declared command as surfaced to the shell UI (command palette, keybindings).
+export interface CommandCatalogEntry {
+  id: string
+  title: string
+  keybinding?: string
+  moduleId: string
+}
+
 export interface DocumentTypeDecl {
   kind: string
   label: string
@@ -187,6 +195,7 @@ export interface ShellApi {
     list(): Promise<Array<{ id: string; name: string; icon: string; enabled: boolean; activated: boolean }>>
   }
   commands: {
+    list(): Promise<CommandCatalogEntry[]>
     execute(id: string, ...args: unknown[]): Promise<unknown>
   }
 }
