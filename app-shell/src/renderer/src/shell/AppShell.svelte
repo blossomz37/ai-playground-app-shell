@@ -34,6 +34,7 @@
   let activeModule = $state<string | null>(null)
   let activeModuleUnsubscribe: (() => void) | null = null
   let captureModuleListener: ((event: Event) => void) | null = null
+  let captureSettingsListener: (() => void) | null = null
 
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
@@ -147,6 +148,9 @@
     }
     window.addEventListener('shell:capture-select-module', captureModuleListener)
 
+    captureSettingsListener = () => settingsPanel?.toggle()
+    window.addEventListener('shell:capture-open-settings', captureSettingsListener)
+
     if (window.shell.capture?.moduleId) {
       await selectModule(window.shell.capture.moduleId)
     }
@@ -156,6 +160,9 @@
     activeModuleUnsubscribe?.()
     if (captureModuleListener) {
       window.removeEventListener('shell:capture-select-module', captureModuleListener)
+    }
+    if (captureSettingsListener) {
+      window.removeEventListener('shell:capture-open-settings', captureSettingsListener)
     }
     for (const d of commandDisposables) d.dispose()
   })

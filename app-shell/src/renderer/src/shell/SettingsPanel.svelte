@@ -9,6 +9,17 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { editorSettings, type EditorSettings, themeMode, setThemePreference, type ThemeMode } from '../store'
+  import {
+    aiProviders,
+    aiSecretNames,
+    loadAiProviders,
+    selectAiModel,
+    selectAiProvider,
+    selectAiTemperature,
+    selectedAiModel,
+    selectedAiProviderId,
+    selectedAiTemperature
+  } from '../store/ai'
 
   let open = $state(false)
 
@@ -39,6 +50,8 @@
   let editingSecret = $state<string | null>(null)
   let editSecretValue = $state('')
   let secretsLoading = $state(false)
+  let activeAiProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
+  let aiProviderReady = $derived(!activeAiProvider?.secretName || $aiSecretNames.includes(activeAiProvider.secretName))
 
   // Sync when store changes externally
   $effect(() => {
@@ -85,6 +98,7 @@
     newSecretName = ''
     newSecretValue = ''
     await loadSecrets()
+    await loadAiProviders()
   }
 
   async function updateSecret(name: string) {
@@ -92,17 +106,23 @@
     await window.shell.secrets.set(name, editSecretValue)
     editingSecret = null
     editSecretValue = ''
+    await loadSecrets()
+    await loadAiProviders()
   }
 
   async function deleteSecret(name: string) {
     await window.shell.secrets.delete(name)
     if (editingSecret === name) editingSecret = null
     await loadSecrets()
+    await loadAiProviders()
   }
 
   export function toggle() {
     open = !open
-    if (open) loadSecrets()
+    if (open) {
+      void loadSecrets()
+      void loadAiProviders()
+    }
   }
 </script>
 
@@ -191,6 +211,65 @@
             >
               <span class="toggle-knob"></span>
             </button>
+          </div>
+        </section>
+
+        <!-- AI Provider section -->
+        <section class="section">
+          <h3 class="section-title">AI Provider</h3>
+
+          <div class="provider-toggle" role="radiogroup" aria-label="AI provider mode">
+            {#each $aiProviders as provider (provider.providerId)}
+              <button
+                class="provider-option"
+                class:active={$selectedAiProviderId === provider.providerId}
+                onclick={() => selectAiProvider(provider.providerId)}
+                role="radio"
+                aria-checked={$selectedAiProviderId === provider.providerId}
+              >
+                {provider.providerId === 'mock-local' ? 'Mock Local' : 'OpenAI'}
+              </button>
+            {/each}
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="settings-ai-model">Model</label>
+            <select
+              id="settings-ai-model"
+              class="field-select"
+              value={$selectedAiModel}
+              onchange={(event) => selectAiModel(event.currentTarget.value)}
+            >
+              {#each activeAiProvider?.availableModels ?? [$selectedAiModel] as model (model)}
+                <option value={model}>{model}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="settings-ai-temp">Temperature: {$selectedAiTemperature.toFixed(1)}</label>
+            <input
+              id="settings-ai-temp"
+              class="range-input"
+              type="range"
+              min="0"
+              max="2"
+              step="0.1"
+              value={$selectedAiTemperature}
+              oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
+            />
+          </div>
+
+          <div class="provider-status">
+            <span class="field-label">Status</span>
+            <span
+              class="status-pill"
+              class:mock={$selectedAiProviderId === 'mock-local'}
+              class:ready={aiProviderReady && $selectedAiProviderId !== 'mock-local'}
+              class:missing={!aiProviderReady}
+            >
+              {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
+            </span>
           </div>
         </section>
 
@@ -445,6 +524,68 @@
   .toggle-btn.active .toggle-knob {
     transform: translateX(18px);
     background: var(--color-accent);
+  }
+
+  /* AI provider section */
+  .provider-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-1);
+    padding: var(--space-1);
+    margin-bottom: var(--space-4);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-overlay);
+  }
+
+  .provider-option {
+    min-height: 34px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .provider-option.active {
+    background: var(--color-accent-dim);
+    color: var(--color-fg-primary);
+  }
+
+  .range-input {
+    width: 100%;
+    margin-top: var(--space-1);
+    accent-color: var(--color-accent);
+  }
+
+  .provider-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+  }
+
+  .status-pill {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .status-pill.mock {
+    color: var(--color-warn);
+  }
+
+  .status-pill.ready {
+    color: var(--color-success);
+  }
+
+  .status-pill.missing {
+    color: var(--color-danger);
   }
 
   /* Secrets section */
