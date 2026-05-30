@@ -1,6 +1,7 @@
 <!-- AI Chat MainView — chat interface with mock responses -->
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
+  import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { aiBusy, invokeAi, refreshAiContext } from '../../store/ai'
 
   interface Message { role: 'user' | 'assistant'; content: string }
@@ -10,9 +11,23 @@
   ])
 
   let input = $state('')
+  let captureMessageListener: ((event: Event) => void) | null = null
 
   onMount(() => {
     void refreshAiContext()
+    captureMessageListener = (event: Event) => {
+      const content = (event as CustomEvent<string>).detail
+      if (content) {
+        messages = [...messages, { role: 'assistant', content }]
+      }
+    }
+    window.addEventListener('shell:capture-ai-message', captureMessageListener)
+  })
+
+  onDestroy(() => {
+    if (captureMessageListener) {
+      window.removeEventListener('shell:capture-ai-message', captureMessageListener)
+    }
   })
 
   async function send() {
@@ -44,7 +59,13 @@
     {#each messages as msg, index (`${msg.role}-${index}-${msg.content.slice(0, 24)}`)}
       <div class="message" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'}>
         <span class="msg-avatar">{msg.role === 'user' ? '👤' : '🤖'}</span>
-        <div class="msg-content">{msg.content}</div>
+        <div class="msg-content">
+          {#if msg.role === 'assistant'}
+            <MarkdownContent content={msg.content} />
+          {:else}
+            {msg.content}
+          {/if}
+        </div>
       </div>
     {/each}
   </div>
@@ -72,6 +93,7 @@
     padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
     font-size: var(--font-size-sm); line-height: 1.6; white-space: pre-wrap;
   }
+  .assistant .msg-content { white-space: normal; }
   .assistant .msg-content { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
   .user .msg-content { background: var(--color-accent-dim); color: var(--color-fg-primary); }
   .input-area { display: flex; align-items: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-6); border-top: var(--border-subtle); }

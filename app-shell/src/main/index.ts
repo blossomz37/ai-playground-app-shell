@@ -36,6 +36,7 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
   const aiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
   const aiModel = process.env['SHELL_CAPTURE_AI_MODEL']
+  const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   // Delay so async IPC-loaded data (document tree, active doc) has rendered.
@@ -73,6 +74,12 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (moduleId) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (markdownMessage) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-ai-message', { detail: ${JSON.stringify(markdownMessage)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

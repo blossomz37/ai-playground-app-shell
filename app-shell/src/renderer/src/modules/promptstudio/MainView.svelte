@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { aiBusy, aiTemplates, invokeAi, loadAiTemplates, refreshAiContext } from '../../store/ai'
 
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
@@ -61,7 +62,9 @@
       <div class="section-title">Output Preview</div>
       <div class="output-box">
         {#if outputText}
-          <pre>{outputText}</pre>
+          <div class="output-markdown">
+            <MarkdownContent content={outputText} />
+          </div>
         {:else}
           <span class="placeholder-text">Run template to see output...</span>
         {/if}
@@ -232,13 +235,11 @@
     border: 1px dashed var(--color-border);
   }
 
-  .output-box pre {
+  .output-markdown {
     margin: 0;
     width: 100%;
     padding: var(--space-3);
-    white-space: pre-wrap;
     color: var(--color-fg-secondary);
-    font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     line-height: 1.5;
   }

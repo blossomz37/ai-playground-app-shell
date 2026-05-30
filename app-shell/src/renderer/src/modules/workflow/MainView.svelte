@@ -1,5 +1,6 @@
 <!-- Workflow MainView — job runner with output log -->
 <script lang="ts">
+  import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { addToast } from '../../store/toasts'
   import { invokeAi, refreshAiContext } from '../../store/ai'
 
@@ -44,7 +45,9 @@
       <p class="log-empty">No recent runs.</p>
     {:else}
       {#each log as line, index (`${index}-${line.slice(0, 24)}`)}
-        <div class="log-line">{line}</div>
+        <div class="log-line">
+          <MarkdownContent content={line} />
+        </div>
       {/each}
     {/if}
   </div>
@@ -61,7 +64,7 @@
   .run-btn:hover { opacity: 0.9; }
   .run-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .run-btn.running { background: var(--color-warn); }
-  .log-area { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-6); font-family: var(--font-mono); font-size: var(--font-size-sm); }
+  .log-area { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-6); font-size: var(--font-size-sm); }
   .log-empty { color: var(--color-fg-muted); }
   .log-line { color: var(--color-fg-secondary); padding: 2px 0; line-height: 1.6; }
 </style>
