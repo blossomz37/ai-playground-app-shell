@@ -1,11 +1,11 @@
 ---
 file: 11-prompt-studio.md
 description: Scaffold the Prompt Studio module (listed in §11 but missing)
-version: 0.1.0
+version: 0.2.0
 created: 2026-05-29
-modified: 2026-05-29
+modified: 2026-05-30
 author: antigravity
-status: placeholder
+status: implemented-by-15
 ---
 
 # 11 — Prompt Studio Module
@@ -53,3 +53,13 @@ The distinction (per the draftwell analysis): **AI Chat** is conversational (sen
 
 - `src/main/index.ts` — register + enable the new module
 - `src/renderer/src/shell/{Sidebar,MainPane,Inspector}.svelte` — add routing case
+
+## Outcome - 2026-05-30
+
+Prompt Studio now exists as `shell.promptstudio` with a manifest, activation, commands, and three renderer views:
+
+- Main process: `app-shell/src/main/modules/promptstudio/index.ts`
+- Renderer views: `app-shell/src/renderer/src/modules/promptstudio/{NavView,MainView,InspectorView}.svelte`
+- Registered in the shell module registry path from `app-shell/src/main/index.ts`
+
+The current implementation supports template browsing/editing in the UI, variable input, shared AI invocation, output preview, and provider/model/status controls through the shared AI orchestration layer. Batch runs and proposal accept/reject remain future work.

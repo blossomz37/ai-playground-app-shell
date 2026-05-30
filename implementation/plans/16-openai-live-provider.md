@@ -43,6 +43,7 @@ Implemented the live-provider slice without replacing mock mode:
 - Added `window.shell.ai.providers()` and shared renderer AI provider/model/temperature state persisted through shell settings.
 - AI Chat, Prompt Studio, and Workflow Runner inspectors now share the mock/live provider selector.
 - Added capture-only `SHELL_CAPTURE_AI_PROVIDER` / `SHELL_CAPTURE_AI_MODEL` overrides for validation without changing normal app behavior.
+- Alpha hardening later corrected the capture override so screenshots reflect the selected provider/model before the renderer loads.
 
 Validation evidence:
 
@@ -55,7 +56,16 @@ Validation evidence:
   - missing-key live run persisted with `providerId = openai-responses`, `status = failed`
   - both paths wrote context pack rows
 
-Live API validation remains pending until a correctly named `OPENAI_API_KEY` secret is added.
+Live API validation is now complete for the local alpha database. A correctly named `OPENAI_API_KEY` secret is stored in the app's encrypted secrets table, and a fresh OpenAI Responses run completed through the same capture path used for mock validation.
+
+Additional alpha-hardening evidence from 2026-05-30:
+
+- Mock AI capture: `implementation/screenshots/alpha-hardening-mock-ai-after-2026-05-30.png`
+- Live AI capture: `implementation/screenshots/alpha-hardening-live-ai-after-2026-05-30.png`
+- SQLite acceptance rows:
+  - `mock-local`, `mock-durable-context-v1`, `status = completed`
+  - `openai-responses`, `gpt-4.1-mini`, `status = completed`
+  - both rows wrote `ai_context_packs` using `included-candidates-v1`
 
 ## Current State
 
@@ -66,13 +76,9 @@ The app can already:
 - Persist completed/failed AI runs.
 - Route AI Chat, Prompt Studio, and Workflow Runner through one shared `invoke` path.
 - Run with `mock-local` without API keys.
-
-It cannot yet:
-
-- Call OpenAI.
-- Let a user choose mock vs. live provider.
-- Resolve `OPENAI_API_KEY` into an actual provider call.
-- Surface live-provider errors in a user-friendly way.
+- Call OpenAI through the Responses API when the encrypted `OPENAI_API_KEY` secret is present.
+- Let a user choose mock vs. live provider and model in AI-facing inspector/settings surfaces.
+- Show missing-key/live-ready/mock status in the provider UI.
 
 ## Approach
 

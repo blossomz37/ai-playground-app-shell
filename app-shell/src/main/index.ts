@@ -162,6 +162,14 @@ app.whenReady().then(async () => {
 
   // 0. Restore persisted theme before window creation to avoid flash.
   const shellSettings = createSettingsStore('shell')
+  const captureAiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
+  const captureAiModel = process.env['SHELL_CAPTURE_AI_MODEL']
+  if (process.env['SHELL_CAPTURE'] && captureAiProviderId) {
+    shellSettings.set('ai.providerId', captureAiProviderId)
+    if (captureAiModel) {
+      shellSettings.set(`ai.model.${captureAiProviderId}`, captureAiModel)
+    }
+  }
   const savedTheme = shellSettings.get<string>('theme') ?? 'system'
   nativeTheme.themeSource = savedTheme as 'light' | 'dark' | 'system'
   const isLight = savedTheme === 'light' ||

@@ -70,6 +70,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**AI orchestration Phase 1**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/15-ai-orchestration-and-context.md`): Shared AI contracts, SQLite persistence tables, mock provider, context candidates/packs, run history, renderer AI bridge, and wiring across AI Chat, Prompt Studio, and Workflow Runner. AI-specific behavior lives under `app-shell/src/main/ai/`, not shell core.
 - ~~**OpenAI live provider adapter**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/16-openai-live-provider.md`): Added `openai-responses` provider support through the Responses API using `OPENAI_API_KEY` from encrypted Secrets, while preserving `mock-local`, shared context packs, and persisted run history.
 - ~~**Workspace switching/creation + Jobs visibility**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/17-workspace-jobs-shell-slice.md`): Added a shell workspace service, topbar switcher/create flow, persisted active workspace, module-context refresh on switch, persistent jobs table, renderer jobs panel, status-bar job indicator, and Workflow Runner submission through the shared jobs service.
+- ~~**Alpha hardening + current status cleanup**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/18-alpha-hardening-current-status-cleanup.md`): Ran fresh mock and live AI acceptance passes, fixed capture-only provider/model status evidence, confirmed persisted completed AI rows/context packs, and reconciled stale roadmap/status docs for the next agent.
 
 ## Workspace Layout
 
@@ -77,7 +78,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_07.md         ← latest = highest number; read it first
+│   └── HANDOFF_10.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
