@@ -68,6 +68,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Toast/notification service**~~ — ✅ **DONE** (2026-05-29). Renderer sink for `shell:notify` events. `ToastContainer.svelte` + `store/toasts.ts`. Auto-dismiss timers, FIFO queue, glassmorphism styling.
 - ~~**Settings panel**~~ — ✅ **DONE** (2026-05-29). `SettingsPanel.svelte` modal via Cmd+,. Editor font/size/spellcheck with live preview + IPC persistence.
 - ~~**AI orchestration Phase 1**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/15-ai-orchestration-and-context.md`): Shared AI contracts, SQLite persistence tables, mock provider, context candidates/packs, run history, renderer AI bridge, and wiring across AI Chat, Prompt Studio, and Workflow Runner. AI-specific behavior lives under `app-shell/src/main/ai/`, not shell core.
+- ~~**OpenAI live provider adapter**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/16-openai-live-provider.md`): Added `openai-responses` provider support through the Responses API using `OPENAI_API_KEY` from encrypted Secrets, while preserving `mock-local`, shared context packs, and persisted run history.
 
 ## Workspace Layout
 

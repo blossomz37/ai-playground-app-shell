@@ -28,7 +28,7 @@
       prompt: text
     })
 
-    messages = [...messages, { role: 'assistant', content: result.run.outputText }]
+    messages = [...messages, { role: 'assistant', content: result.run.error ?? result.run.outputText }]
   }
 
   function onKeydown(e: KeyboardEvent) {

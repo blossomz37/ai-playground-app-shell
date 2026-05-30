@@ -8,7 +8,7 @@ import { secretsService } from './core/secrets'
 import { aiOrchestrator } from './ai/orchestrator'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
-import type { AiPromptTemplate, CollectAiContextParams, InvokeAiParams, ListAiRunsParams } from '@shared/ai'
+import type { AiPromptTemplate, CollectAiContextParams, InvokeAiParams, ListAiProvidersParams, ListAiRunsParams } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
 
@@ -92,6 +92,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:invoke', (_e, params: InvokeAiParams) =>
     aiOrchestrator.invoke(params)
+  )
+
+  ipcMain.handle('ai:providers', (_e, params: ListAiProvidersParams) =>
+    aiOrchestrator.listProviders(params)
   )
 
   ipcMain.handle('ai:runs', (_e, params: ListAiRunsParams) =>

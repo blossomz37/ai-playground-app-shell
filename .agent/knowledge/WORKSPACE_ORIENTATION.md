@@ -12,7 +12,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Worktree at orientation time: clean
 - App package: `app-shell/package.json`
 - Runtime stack: Electron, Svelte 5, TypeScript, SQLite via `better-sqlite3`, TipTap editor
-- Current implementation includes AI orchestration Phase 1: shared AI contracts, SQLite run/context/template tables, mock provider, and module wiring across AI Chat, Prompt Studio, and Workflow Runner.
+- Current implementation includes AI orchestration Phase 1 plus the OpenAI live-provider adapter: shared AI contracts, SQLite run/context/template tables, `mock-local`, `openai-responses`, provider selection, and module wiring across AI Chat, Prompt Studio, and Workflow Runner.
 
 `session-handoffs/HANDOFF_05.md` is stale relative to the code. It says notification, settings, context menus, and remaining modules are next, but the workspace now includes modules and plans/screenshots for later slices such as core services, theme modes, prompt studio, secrets, and zone interactivity. Start from `HANDOFF_06.md` or newer.
 

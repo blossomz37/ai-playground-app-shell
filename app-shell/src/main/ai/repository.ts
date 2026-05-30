@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import type {
   AiContextCandidate,
   AiContextPack,
+  AiProvider,
   AiPromptTemplate,
   AiRun,
   AiRunStatus,
@@ -54,34 +55,67 @@ function templateFromRow(row: Record<string, unknown>): AiPromptTemplate {
   }
 }
 
+function providerFromRow(row: Record<string, unknown>): AiProvider {
+  return {
+    providerId: String(row.id),
+    providerName: String(row.name),
+    secretName: row.secretName === null ? null : String(row.secretName),
+    baseUrl: row.baseUrl === null ? null : String(row.baseUrl),
+    defaultModel: String(row.defaultModel),
+    availableModels: parseJson(String(row.availableModelsJson), []),
+    supportsStreaming: Number(row.supportsStreaming) === 1,
+    supportsTools: Number(row.supportsTools) === 1
+  }
+}
+
 export const aiRepository = {
   ensureDefaults(workspaceId: string): void {
     const db = getDb()
     const now = new Date().toISOString()
 
-    const providerExists = db
-      .prepare('SELECT 1 FROM ai_providers WHERE id = ? AND workspaceId = ?')
-      .get('mock-local', workspaceId)
+    const upsertProvider = db.prepare(`
+      INSERT INTO ai_providers
+        (id, workspaceId, name, secretName, baseUrl, defaultModel, availableModelsJson, supportsStreaming, supportsTools, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        workspaceId = excluded.workspaceId,
+        name = excluded.name,
+        secretName = excluded.secretName,
+        baseUrl = excluded.baseUrl,
+        defaultModel = excluded.defaultModel,
+        availableModelsJson = excluded.availableModelsJson,
+        supportsStreaming = excluded.supportsStreaming,
+        supportsTools = excluded.supportsTools,
+        updatedAt = excluded.updatedAt
+    `)
 
-    if (!providerExists) {
-      db.prepare(`
-        INSERT INTO ai_providers
-          (id, workspaceId, name, secretName, baseUrl, defaultModel, availableModelsJson, supportsStreaming, supportsTools, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        'mock-local',
-        workspaceId,
-        'Mock Local Provider',
-        null,
-        null,
-        'mock-durable-context-v1',
-        JSON.stringify(['mock-durable-context-v1']),
-        0,
-        0,
-        now,
-        now
-      )
-    }
+    upsertProvider.run(
+      'mock-local',
+      workspaceId,
+      'Mock Local Provider',
+      null,
+      null,
+      'mock-durable-context-v1',
+      JSON.stringify(['mock-durable-context-v1']),
+      0,
+      0,
+      now,
+      now
+    )
+
+    upsertProvider.run(
+      'openai-responses',
+      workspaceId,
+      'OpenAI Responses API',
+      'OPENAI_API_KEY',
+      'https://api.openai.com/v1/responses',
+      'gpt-4.1-mini',
+      JSON.stringify(['gpt-4.1-mini', 'gpt-4.1']),
+      0,
+      0,
+      now,
+      now
+    )
 
     const templateCount = db
       .prepare('SELECT COUNT(*) as n FROM ai_prompt_templates WHERE workspaceId = ?')
@@ -103,6 +137,23 @@ export const aiRepository = {
         updatedAt: now
       })
     }
+  },
+
+  listProviders(workspaceId: string): AiProvider[] {
+    this.ensureDefaults(workspaceId)
+    return getDb()
+      .prepare('SELECT * FROM ai_providers WHERE workspaceId = ? ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, name ASC')
+      .all(workspaceId, 'mock-local')
+      .map(row => providerFromRow(row as Record<string, unknown>))
+  },
+
+  getProvider(workspaceId: string, providerId: string): AiProvider | undefined {
+    this.ensureDefaults(workspaceId)
+    const row = getDb()
+      .prepare('SELECT * FROM ai_providers WHERE workspaceId = ? AND id = ?')
+      .get(workspaceId, providerId) as Record<string, unknown> | undefined
+
+    return row ? providerFromRow(row) : undefined
   },
 
   createRun(params: InvokeAiParams): AiRun {

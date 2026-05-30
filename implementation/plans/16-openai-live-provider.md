@@ -1,11 +1,11 @@
 ---
 file: 16-openai-live-provider.md
 description: Add an OpenAI live-provider adapter for the shared AI orchestration layer
-version: 0.1.0
+version: 0.2.0
 created: 2026-05-30
 modified: 2026-05-30
 author: codex
-status: proposed
+status: implemented
 ---
 
 # 16 - OpenAI Live Provider Adapter
@@ -31,6 +31,31 @@ This slice delivers:
   - Responses API creates model responses with `POST https://api.openai.com/v1/responses`.
   - The Node/TypeScript quickstart uses the official OpenAI SDK and `client.responses.create(...)`.
   - Responses support text inputs/outputs and stateful interactions; streaming can remain deferred.
+
+## Implementation Outcome - 2026-05-30
+
+Implemented the live-provider slice without replacing mock mode:
+
+- Added `openai-responses` provider metadata alongside `mock-local`.
+- Added a main-process Responses API adapter using a narrow `fetch` call to `POST https://api.openai.com/v1/responses`.
+- The adapter reads `OPENAI_API_KEY` through the existing encrypted Secrets service and never logs or persists the secret value.
+- `aiOrchestrator.invoke()` now resolves provider defaults before creating a run, then persists the same `ai_runs` and `ai_context_packs` rows for mock, completed live, or failed live calls.
+- Added `window.shell.ai.providers()` and shared renderer AI provider/model/temperature state persisted through shell settings.
+- AI Chat, Prompt Studio, and Workflow Runner inspectors now share the mock/live provider selector.
+- Added capture-only `SHELL_CAPTURE_AI_PROVIDER` / `SHELL_CAPTURE_AI_MODEL` overrides for validation without changing normal app behavior.
+
+Validation evidence:
+
+- `npm run typecheck`
+- `npm run build`
+- Mock capture: `implementation/screenshots/openai-live-provider-selector-after-2026-05-30.png`
+- Missing-key live capture: `implementation/screenshots/openai-live-provider-missing-key-after-2026-05-30.png`
+- SQLite smoke check confirmed:
+  - latest mock run persisted with `providerId = mock-local`
+  - missing-key live run persisted with `providerId = openai-responses`, `status = failed`
+  - both paths wrote context pack rows
+
+Live API validation remains pending until a correctly named `OPENAI_API_KEY` secret is added.
 
 ## Current State
 

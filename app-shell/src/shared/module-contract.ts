@@ -5,10 +5,12 @@
 import type {
   AiContextCandidate,
   AiInvokeResult,
+  AiProvider,
   AiPromptTemplate,
   AiRun,
   CollectAiContextParams,
   InvokeAiParams,
+  ListAiProvidersParams,
   ListAiRunsParams
 } from './ai'
 
@@ -257,6 +259,7 @@ export interface ShellApi {
   ai: {
     collectContext(params: CollectAiContextParams): Promise<AiContextCandidate[]>
     invoke(params: InvokeAiParams): Promise<AiInvokeResult>
+    providers(params: ListAiProvidersParams): Promise<AiProvider[]>
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
     saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>

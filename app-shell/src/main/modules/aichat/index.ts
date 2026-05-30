@@ -18,7 +18,7 @@ export const aiChatModule: Module = {
     version: '0.1.0',
     requiredShellVersion: '^0.1.0',
     activation: [{ on: 'userEnable' }],
-    permissions: ['ai.invoke', 'documents.read'],
+    permissions: ['ai.invoke', 'documents.read', 'secrets.read', 'net.fetch'],
     contributes: {
       zones: {
         railEntry: { icon: 'bot', label: 'AI' },

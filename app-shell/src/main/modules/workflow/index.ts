@@ -18,7 +18,7 @@ export const workflowModule: Module = {
     version: '0.1.0',
     requiredShellVersion: '^0.1.0',
     activation: [{ on: 'userEnable' }],
-    permissions: ['ai.invoke', 'documents.read', 'fs.write', 'jobs.submit'],
+    permissions: ['ai.invoke', 'documents.read', 'fs.write', 'jobs.submit', 'secrets.read', 'net.fetch'],
     contributes: {
       zones: {
         railEntry: { icon: 'zap', label: 'Workflow' },

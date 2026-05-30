@@ -1,4 +1,4 @@
-export type AiProviderId = 'mock-local' | string
+export type AiProviderId = 'mock-local' | 'openai-responses' | string
 
 export type AiOriginType = 'chat' | 'template' | 'chain' | 'workflow'
 export type AiRunStatus = 'pending' | 'running' | 'completed' | 'failed'
@@ -137,6 +137,10 @@ export interface InvokeAiParams {
 export interface AiInvokeResult {
   run: AiRun
   contextPack: AiContextPack
+}
+
+export interface ListAiProvidersParams {
+  workspaceId: string
 }
 
 export interface ListAiRunsParams {

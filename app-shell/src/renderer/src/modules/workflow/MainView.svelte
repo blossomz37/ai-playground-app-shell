@@ -24,7 +24,7 @@
     log = [
       ...log,
       `[${new Date().toLocaleTimeString()}] Run ${result.run.status}: ${result.run.model}`,
-      result.run.outputText
+      result.run.error ?? result.run.outputText
     ]
 
     running = false

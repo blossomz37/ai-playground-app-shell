@@ -18,7 +18,7 @@ export const promptStudioModule: Module = {
     version: '0.1.0',
     requiredShellVersion: '^0.1.0',
     activation: [{ on: 'userEnable' }],
-    permissions: ['ai.invoke', 'documents.read', 'documents.write'],
+    permissions: ['ai.invoke', 'documents.read', 'documents.write', 'secrets.read', 'net.fetch'],
     contributes: {
       zones: {
         railEntry: { icon: 'terminal', label: 'Prompts' },

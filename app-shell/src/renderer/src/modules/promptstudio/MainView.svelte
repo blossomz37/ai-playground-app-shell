@@ -27,7 +27,7 @@
       prompt: promptText,
       variables: { text: variableText }
     })
-    outputText = result.run.outputText
+    outputText = result.run.error ?? result.run.outputText
   }
 </script>
 

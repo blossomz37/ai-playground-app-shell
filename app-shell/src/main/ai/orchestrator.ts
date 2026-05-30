@@ -1,15 +1,18 @@
 import type {
   AiContextCandidate,
   AiInvokeResult,
+  AiProvider,
   AiPromptTemplate,
   CollectAiContextParams,
   InvokeAiParams,
+  ListAiProvidersParams,
   ListAiRunsParams
 } from '@shared/ai'
 import { documents } from '../core/documents'
 import { events } from '../core/events'
 import { aiRepository } from './repository'
 import { runMockProvider } from './mock-provider'
+import { runOpenAiProvider } from './openai-provider'
 
 function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.trim().split(/\s+/).filter(Boolean).length * 1.35))
@@ -28,6 +31,15 @@ function renderContext(candidates: AiContextCandidate[]): string {
   return included
     .map(c => [`# ${c.title}`, c.content.trim()].filter(Boolean).join('\n\n'))
     .join('\n\n---\n\n')
+}
+
+function resolveProvider(workspaceId: string, providerId: string | undefined): AiProvider {
+  const provider = aiRepository.getProvider(workspaceId, providerId ?? 'mock-local')
+  if (provider) return provider
+
+  const fallback = aiRepository.getProvider(workspaceId, 'mock-local')
+  if (!fallback) throw new Error('Mock AI provider is not configured.')
+  return fallback
 }
 
 function candidateFromDocument(args: {
@@ -122,17 +134,23 @@ export const aiOrchestrator = {
 
   async invoke(params: InvokeAiParams): Promise<AiInvokeResult> {
     aiRepository.ensureDefaults(params.workspaceId)
+    const provider = resolveProvider(params.workspaceId, params.providerId)
+    const invokeParams: InvokeAiParams = {
+      ...params,
+      providerId: provider.providerId,
+      model: params.model ?? provider.defaultModel
+    }
 
-    const candidates = params.contextCandidates ?? this.collectContext({
-      workspaceId: params.workspaceId
+    const candidates = invokeParams.contextCandidates ?? this.collectContext({
+      workspaceId: invokeParams.workspaceId
     })
 
     const renderedText = renderContext(candidates)
-    const tokenEstimate = estimateTokens([params.prompt, renderedText].join('\n\n'))
-    const run = aiRepository.createRun(params)
+    const tokenEstimate = estimateTokens([invokeParams.prompt, renderedText].join('\n\n'))
+    const run = aiRepository.createRun(invokeParams)
 
     const contextPack = aiRepository.createContextPack({
-      workspaceId: params.workspaceId,
+      workspaceId: invokeParams.workspaceId,
       runId: run.id,
       candidates,
       renderedText,
@@ -143,7 +161,9 @@ export const aiOrchestrator = {
     events.emit('ai.run.started', run)
 
     try {
-      const output = await runMockProvider(params, candidates)
+      const output = provider.providerId === 'openai-responses'
+        ? await runOpenAiProvider({ params: invokeParams, provider, candidates, renderedContext: renderedText })
+        : await runMockProvider(invokeParams, candidates)
       const completed = aiRepository.completeRun(run.id, output)
       events.emit('ai.run.completed', completed)
       return { run: completed, contextPack }
@@ -153,6 +173,10 @@ export const aiOrchestrator = {
       events.emit('ai.run.failed', failed)
       return { run: failed, contextPack }
     }
+  },
+
+  listProviders(params: ListAiProvidersParams): AiProvider[] {
+    return aiRepository.listProviders(params.workspaceId)
   },
 
   listRuns(params: ListAiRunsParams) {

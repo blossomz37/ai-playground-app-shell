@@ -1,8 +1,26 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { aiContextCandidates, aiRuns, loadAiRuns, refreshAiContext } from '../../store/ai'
+  import {
+    aiContextCandidates,
+    aiProviders,
+    aiRuns,
+    aiSecretNames,
+    loadAiProviders,
+    loadAiRuns,
+    refreshAiContext,
+    selectAiModel,
+    selectAiProvider,
+    selectAiTemperature,
+    selectedAiModel,
+    selectedAiProviderId,
+    selectedAiTemperature
+  } from '../../store/ai'
+
+  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
+  let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
 
   onMount(() => {
+    void loadAiProviders()
     void refreshAiContext()
     void loadAiRuns('shell.promptstudio')
   })
@@ -14,21 +32,50 @@
     
     <div class="field">
       <label for="provider">Provider</label>
-      <select id="provider" class="select-input">
-        <option>Mock Local</option>
+      <select
+        id="provider"
+        class="select-input"
+        value={$selectedAiProviderId}
+        onchange={(event) => selectAiProvider(event.currentTarget.value)}
+      >
+        {#each $aiProviders as provider (provider.providerId)}
+          <option value={provider.providerId}>{provider.providerName}</option>
+        {/each}
       </select>
     </div>
 
     <div class="field">
       <label for="model">Model</label>
-      <select id="model" class="select-input">
-        <option>mock-durable-context-v1</option>
+      <select
+        id="model"
+        class="select-input"
+        value={$selectedAiModel}
+        onchange={(event) => selectAiModel(event.currentTarget.value)}
+      >
+        {#each activeProvider?.availableModels ?? [$selectedAiModel] as model (model)}
+          <option value={model}>{model}</option>
+        {/each}
       </select>
     </div>
 
     <div class="field">
-      <label for="temp">Temperature: <span class="val">0.7</span></label>
-      <input id="temp" type="range" min="0" max="2" step="0.1" value="0.7" />
+      <label for="temp">Temperature: <span class="val">{$selectedAiTemperature.toFixed(1)}</span></label>
+      <input
+        id="temp"
+        type="range"
+        min="0"
+        max="2"
+        step="0.1"
+        value={$selectedAiTemperature}
+        oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
+      />
+    </div>
+
+    <div class="history-item">
+      <div class="time">Provider status</div>
+      <div class:success={requiredSecretReady} class:error={!requiredSecretReady} class="status">
+        {$selectedAiProviderId === 'mock-local' ? 'Mock' : requiredSecretReady ? 'Ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
+      </div>
     </div>
   </div>
 

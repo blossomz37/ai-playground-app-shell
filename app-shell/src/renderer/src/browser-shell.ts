@@ -6,7 +6,7 @@ import type {
   ShellApi,
   ThemeMode
 } from '@shared/module-contract'
-import type { AiContextCandidate, AiPromptTemplate, AiRun } from '@shared/ai'
+import type { AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -76,6 +76,28 @@ function createBrowserShell(): ShellApi {
   const settings = new Map<string, unknown>()
   const docs = new Map(DEMO_DOCS.map(doc => [doc.id, { ...doc }]))
   const aiRuns: AiRun[] = []
+  const aiProviders: AiProvider[] = [
+    {
+      providerId: 'mock-local',
+      providerName: 'Mock Local Provider',
+      secretName: null,
+      baseUrl: null,
+      defaultModel: 'mock-durable-context-v1',
+      availableModels: ['mock-durable-context-v1'],
+      supportsStreaming: false,
+      supportsTools: false
+    },
+    {
+      providerId: 'openai-responses',
+      providerName: 'OpenAI Responses API',
+      secretName: 'OPENAI_API_KEY',
+      baseUrl: 'https://api.openai.com/v1/responses',
+      defaultModel: 'gpt-4.1-mini',
+      availableModels: ['gpt-4.1-mini', 'gpt-4.1'],
+      supportsStreaming: false,
+      supportsTools: false
+    }
+  ]
   const aiTemplates: AiPromptTemplate[] = [{
     id: 'browser-template-summary',
     workspaceId: 'ws-browser-preview',
@@ -164,6 +186,7 @@ function createBrowserShell(): ShellApi {
     ai: {
       collectContext: async (params) => collectContext(params.activeDocumentId),
       invoke: async (params) => {
+        const provider = aiProviders.find(item => item.providerId === params.providerId) ?? aiProviders[0]
         const now = new Date().toISOString()
         const run: AiRun = {
           id: `browser-run-${Date.now()}`,
@@ -171,12 +194,12 @@ function createBrowserShell(): ShellApi {
           moduleId: params.moduleId,
           originType: params.originType,
           originId: params.originId ?? 'browser-preview',
-          providerId: 'mock-local',
-          model: params.model ?? 'mock-durable-context-v1',
+          providerId: provider.providerId,
+          model: params.model ?? provider.defaultModel,
           temperature: params.temperature ?? 0.7,
           status: 'completed',
           inputSummary: params.prompt.slice(0, 240),
-          outputText: `Mock ${params.originType} run complete.\n\n${params.prompt}`,
+          outputText: `Browser ${provider.providerName} preview complete.\n\n${params.prompt}`,
           error: null,
           createdAt: now,
           completedAt: now
@@ -196,6 +219,7 @@ function createBrowserShell(): ShellApi {
           }
         }
       },
+      providers: async () => aiProviders,
       runs: async (params) => aiRuns
         .filter(run => !params.moduleId || run.moduleId === params.moduleId)
         .slice(0, params.limit ?? 12),

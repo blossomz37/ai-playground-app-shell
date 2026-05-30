@@ -34,6 +34,8 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const moduleId = process.env['SHELL_CAPTURE_MODULE']
   const documentId = process.env['SHELL_CAPTURE_DOCUMENT']
   const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
+  const aiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
+  const aiModel = process.env['SHELL_CAPTURE_AI_MODEL']
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   // Delay so async IPC-loaded data (document tree, active doc) has rendered.
   setTimeout(async () => {
@@ -59,6 +61,8 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
               originType: 'chat',
               originId: 'capture-smoke',
               prompt: ${JSON.stringify(aiPrompt)},
+              providerId: ${JSON.stringify(aiProviderId ?? undefined)},
+              model: ${JSON.stringify(aiModel ?? undefined)},
               contextCandidates
             })
           })()

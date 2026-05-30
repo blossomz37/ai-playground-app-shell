@@ -40,6 +40,7 @@ const api: ShellApi = {
   ai: {
     collectContext: (params) => ipcRenderer.invoke('ai:context:collect', params),
     invoke: (params) => ipcRenderer.invoke('ai:invoke', params),
+    providers: (params) => ipcRenderer.invoke('ai:providers', params),
     runs: (params) => ipcRenderer.invoke('ai:runs', params),
     templates: (workspaceId) => ipcRenderer.invoke('ai:templates', { workspaceId }),
     saveTemplate: (template) => ipcRenderer.invoke('ai:templates:save', template)
