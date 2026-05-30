@@ -41,7 +41,8 @@ const api: ShellApi = {
     get: ()             => ipcRenderer.invoke('layout:get'),
     set: (state)        => ipcRenderer.invoke('layout:set', state),
     toggle: (zone)      => ipcRenderer.invoke('layout:toggle', { zone }),
-    resize: (zone, px)  => ipcRenderer.invoke('layout:resize', { zone, px })
+    resize: (zone, px)  => ipcRenderer.invoke('layout:resize', { zone, px }),
+    toggleZen: ()       => ipcRenderer.invoke('layout:toggleZen')
   },
 
   secrets: {
@@ -54,6 +55,10 @@ const api: ShellApi = {
     onNotify: (cb) => {
       ipcRenderer.on('shell:notify', (_event, toast) => cb(toast))
     }
+  },
+
+  theme: {
+    set: (mode) => ipcRenderer.invoke('theme:set', { mode })
   }
 }
 

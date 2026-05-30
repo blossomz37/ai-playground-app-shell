@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { activeModuleId } from '../store'
+  import { executeCommand } from '../store/commands'
 
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
     PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
-    TableIcon, RobotIcon, GlobeSimpleIcon
+    TableIcon, RobotIcon, GlobeSimpleIcon, GearSixIcon
   } from 'phosphor-svelte'
 
   import type { Component } from 'svelte'
@@ -56,6 +57,16 @@
       />
     </button>
   {/each}
+
+  <div class="rail-bottom">
+    <button
+      class="rail-btn settings-btn"
+      title="Settings (Cmd+,)"
+      onclick={() => executeCommand('shell.settings')}
+    >
+      <GearSixIcon size={20} weight="light" />
+    </button>
+  </div>
 </nav>
 
 <style>
@@ -105,5 +116,11 @@
     width: 3px;
     border-radius: 0 2px 2px 0;
     background: var(--color-accent);
+  }
+
+  /* Bottom utilities */
+  .rail-bottom {
+    margin-top: auto;
+    padding-bottom: var(--space-2);
   }
 </style>

@@ -1,20 +1,14 @@
-/* Design token stubs — placeholder values; full theming system is a later slice */
-:root {
-  /* Color */
-  --color-bg-base:     #1e1e2e;
-  --color-bg-surface:  #24243e;
-  --color-bg-overlay:  #2d2d4d;
-  --color-bg-active:   #313158;
-  --color-fg-primary:  #cdd6f4;
-  --color-fg-secondary:#a6adc8;
-  --color-fg-muted:    #6c7086;
-  --color-accent:      #89b4fa;
-  --color-accent-dim:  #1e3a5f;
-  --color-border:      #45475a;
-  --color-danger:      #f38ba8;
-  --color-success:     #a6e3a1;
-  --color-warn:        #fab387;
+/* ──────────────────────────────────────────────
+   File:        tokens.css
+   Description: Design tokens — dual-palette theming (dark default, light, system)
+   Version:     0.2.0
+   Created:     2026-05-29
+   Modified:    2026-05-29
+   Author:      carlo
+   ────────────────────────────────────────────── */
 
+/* ── Theme-invariant tokens ───────────────────────────────────────────────── */
+:root {
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -43,4 +37,79 @@
 
   /* Utility aliases */
   --color-fg-accent: var(--color-accent);
+}
+
+/* ── Dark palette (default) ───────────────────────────────────────────────── */
+:root {
+  --color-bg-base:     #1e1e2e;
+  --color-bg-surface:  #24243e;
+  --color-bg-overlay:  #2d2d4d;
+  --color-bg-active:   #313158;
+  --color-fg-primary:  #cdd6f4;
+  --color-fg-secondary:#a6adc8;
+  --color-fg-muted:    #6c7086;
+  --color-accent:      #89b4fa;
+  --color-accent-dim:  #1e3a5f;
+  --color-border:      #45475a;
+  --color-danger:      #f38ba8;
+  --color-success:     #a6e3a1;
+  --color-warn:        #fab387;
+}
+
+/* Explicit dark attribute — mirrors the default :root colors above */
+[data-theme="dark"] {
+  --color-bg-base:     #1e1e2e;
+  --color-bg-surface:  #24243e;
+  --color-bg-overlay:  #2d2d4d;
+  --color-bg-active:   #313158;
+  --color-fg-primary:  #cdd6f4;
+  --color-fg-secondary:#a6adc8;
+  --color-fg-muted:    #6c7086;
+  --color-accent:      #89b4fa;
+  --color-accent-dim:  #1e3a5f;
+  --color-border:      #45475a;
+  --color-danger:      #f38ba8;
+  --color-success:     #a6e3a1;
+  --color-warn:        #fab387;
+}
+
+/* ── Light palette ────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg-base:     #f5f3f0;
+  --color-bg-surface:  #eae7e3;
+  --color-bg-overlay:  #dfdbd6;
+  --color-bg-active:   #d4d0ca;
+  --color-fg-primary:  #1e1e2e;
+  --color-fg-secondary:#44475a;
+  --color-fg-muted:    #888899;
+  --color-accent:      #3b6fd4;
+  --color-accent-dim:  #d0dff5;
+  --color-border:      #c8c4be;
+  --color-danger:      #c53d56;
+  --color-success:     #2d8a4e;
+  --color-warn:        #c47a2e;
+}
+
+/* ── System mode fallback ─────────────────────────────────────────────────── *
+ * When no data-theme attribute is set, the OS preference decides.
+ * The explicit [data-theme] blocks above have higher specificity and win
+ * when present, so system mode = "remove the attribute, let this media
+ * query take effect."
+ * ──────────────────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-bg-base:     #f5f3f0;
+    --color-bg-surface:  #eae7e3;
+    --color-bg-overlay:  #dfdbd6;
+    --color-bg-active:   #d4d0ca;
+    --color-fg-primary:  #1e1e2e;
+    --color-fg-secondary:#44475a;
+    --color-fg-muted:    #888899;
+    --color-accent:      #3b6fd4;
+    --color-accent-dim:  #d0dff5;
+    --color-border:      #c8c4be;
+    --color-danger:      #c53d56;
+    --color-success:     #2d8a4e;
+    --color-warn:        #c47a2e;
+  }
 }

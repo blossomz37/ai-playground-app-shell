@@ -1,16 +1,31 @@
 <!-- ──────────────────────────────────────────────
   File:        SettingsPanel.svelte
-  Description: Modal settings panel (Cmd+,) — editor + secrets management
-  Version:     0.2.0
+  Description: Modal settings panel (Cmd+,) — editor, appearance, secrets
+  Version:     0.3.0
   Created:     2026-05-29
   Modified:    2026-05-29
   Author:      carlo
   ────────────────────────────────────────────── -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { editorSettings, type EditorSettings } from '../store'
+  import { editorSettings, type EditorSettings, themeMode, setThemePreference, type ThemeMode } from '../store'
 
   let open = $state(false)
+
+  // Theme state
+  let currentTheme = $state<ThemeMode>($themeMode)
+  $effect(() => { currentTheme = $themeMode })
+
+  const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [
+    { mode: 'light', label: 'Light', icon: '☀️' },
+    { mode: 'dark',  label: 'Dark',  icon: '🌙' },
+    { mode: 'system', label: 'System', icon: '💻' },
+  ]
+
+  async function selectTheme(mode: ThemeMode) {
+    currentTheme = mode
+    await setThemePreference(mode)
+  }
 
   // Local copy for live editing
   let fontFamily = $state($editorSettings.fontFamily)
@@ -107,6 +122,30 @@
       </header>
 
       <div class="settings-body">
+        <!-- Appearance section -->
+        <section class="section">
+          <h3 class="section-title">Appearance</h3>
+
+          <div class="field">
+            <span class="field-label" id="theme-label">Theme</span>
+            <div class="theme-selector" role="radiogroup" aria-labelledby="theme-label">
+              {#each themeOptions as opt}
+                <button
+                  class="theme-btn"
+                  class:active={currentTheme === opt.mode}
+                  onclick={() => selectTheme(opt.mode)}
+                  title={opt.label}
+                  role="radio"
+                  aria-checked={currentTheme === opt.mode}
+                >
+                  <span class="theme-icon">{opt.icon}</span>
+                  <span class="theme-label">{opt.label}</span>
+                </button>
+              {/each}
+            </div>
+          </div>
+        </section>
+
         <!-- Editor section -->
         <section class="section">
           <h3 class="section-title">Editor</h3>
@@ -470,7 +509,7 @@
   }
 
   .secret-btn.danger:hover {
-    color: #ef4444;
+    color: var(--color-danger);
   }
 
   .secret-edit {
@@ -522,5 +561,48 @@
     font-size: var(--font-size-sm);
     color: var(--color-fg-muted);
     padding: var(--space-2) 0;
+  }
+
+  /* ── Theme selector (segmented control) ──────────────────────────────── */
+  .theme-selector {
+    display: flex;
+    gap: 2px;
+    background: var(--color-bg-overlay);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 2px;
+  }
+
+  .theme-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .theme-btn:hover {
+    color: var(--color-fg-secondary);
+  }
+
+  .theme-btn.active {
+    background: var(--color-bg-surface);
+    color: var(--color-accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+
+  .theme-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .theme-label {
+    font-weight: 500;
   }
 </style>

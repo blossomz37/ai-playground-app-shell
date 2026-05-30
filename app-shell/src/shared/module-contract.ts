@@ -2,6 +2,8 @@
 // Types only; no runtime code. Safe to import from main, preload, and renderer.
 // Source of truth: 3-module-contract.md
 
+export type ThemeMode = 'light' | 'dark' | 'system'
+
 export interface ModuleManifest {
   id: string
   name: string
@@ -143,6 +145,7 @@ export interface LayoutState {
   inspectorWidth: number
   sidebarVisible: boolean
   inspectorVisible: boolean
+  zenMode: boolean
 }
 
 export interface ModuleContext {
@@ -246,6 +249,7 @@ export interface ShellApi {
     set(state: Partial<LayoutState>): Promise<void>
     toggle(zone: 'sidebar' | 'inspector'): Promise<LayoutState>
     resize(zone: 'sidebar' | 'inspector', px: number): Promise<LayoutState>
+    toggleZen(): Promise<LayoutState>
   }
   secrets: {
     list(): Promise<string[]>
@@ -254,5 +258,8 @@ export interface ShellApi {
   }
   notifications: {
     onNotify(cb: (toast: { level: 'info' | 'warn' | 'error'; message: string }) => void): void
+  }
+  theme: {
+    set(mode: ThemeMode): Promise<void>
   }
 }

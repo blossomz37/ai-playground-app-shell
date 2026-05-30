@@ -1,7 +1,9 @@
 import { writable, derived, get } from 'svelte/store'
-import type { Doc, DocVersion } from '@shared/module-contract'
+import type { Doc, DocVersion, ThemeMode } from '@shared/module-contract'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
+
+export type { ThemeMode }
 
 export const workspaceId   = writable<string>('ws-default')
 export const documents     = writable<Doc[]>([])
@@ -22,6 +24,65 @@ export const editorSettings = writable<EditorSettings>({
   fontSize: 'var(--font-size-lg)',
   spellcheck: true
 })
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+export const themeMode = writable<ThemeMode>('system')
+
+let transitionTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Apply a theme mode to the DOM. Sets data-theme on <html> or removes it for system. */
+export function applyTheme(mode: ThemeMode): void {
+  const html = document.documentElement
+
+  // Enable smooth transition
+  html.classList.add('theme-transitioning')
+  if (transitionTimer) clearTimeout(transitionTimer)
+  transitionTimer = setTimeout(() => {
+    html.classList.remove('theme-transitioning')
+    transitionTimer = null
+  }, 350)
+
+  if (mode === 'system') {
+    html.removeAttribute('data-theme')
+  } else {
+    html.setAttribute('data-theme', mode)
+  }
+
+  themeMode.set(mode)
+}
+
+/** Load persisted theme preference and apply it. */
+async function loadThemePreference(): Promise<void> {
+  try {
+    const saved = await window.shell.settings.get('theme') as ThemeMode | undefined
+    const mode = saved ?? 'system'
+    applyTheme(mode)
+  } catch {
+    // Settings may not exist yet — keep system default
+  }
+}
+
+/** Set, persist, and sync theme preference with the main process. */
+export async function setThemePreference(mode: ThemeMode): Promise<void> {
+  applyTheme(mode)
+  // Persist via generic settings and sync native theme via dedicated IPC
+  await Promise.all([
+    window.shell.settings.set('theme', mode),
+    window.shell.theme.set(mode)
+  ])
+}
+
+// Listen for OS theme changes so system mode updates live
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const mql = window.matchMedia('(prefers-color-scheme: dark)')
+  mql.addEventListener('change', () => {
+    // Only react if we're in system mode (no explicit data-theme attribute)
+    if (get(themeMode) === 'system') {
+      // Re-trigger to ensure any dependent state refreshes
+      applyTheme('system')
+    }
+  })
+}
 
 export const activeDoc = derived(
   [documents, activeDocId],
@@ -87,6 +148,7 @@ async function loadEditorSettings(): Promise<void> {
 export async function initStore(): Promise<void> {
   initToasts()
   await loadCommands()
+  await loadThemePreference()
   await loadEditorSettings()
 
   const wsId = get(workspaceId)

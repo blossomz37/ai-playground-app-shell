@@ -1,9 +1,10 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, nativeTheme } from 'electron'
 import { join, dirname } from 'path'
 import { mkdirSync, writeFileSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 import { initDb } from './core/db'
 import { events } from './core/events'
+import { createSettingsStore } from './core/settings'
 import { moduleRegistry } from './modules/registry'
 import { documentsModule } from './modules/documents'
 import { journalModule } from './modules/journal'
@@ -44,6 +45,8 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   }, delay)
 }
 
+let initialBgColor = '#1e1e2e' // Updated below once DB is ready
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -51,7 +54,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#1e1e2e',
+    backgroundColor: initialBgColor,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -77,6 +80,14 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   initDb()
   registerIpcHandlers()
+
+  // 0. Restore persisted theme before window creation to avoid flash.
+  const shellSettings = createSettingsStore('shell')
+  const savedTheme = shellSettings.get<string>('theme') ?? 'system'
+  nativeTheme.themeSource = savedTheme as 'light' | 'dark' | 'system'
+  const isLight = savedTheme === 'light' ||
+    (savedTheme === 'system' && !nativeTheme.shouldUseDarkColors)
+  initialBgColor = isLight ? '#f5f3f0' : '#1e1e2e'
 
   // 1. Register all modules — reads manifests only, no code runs.
   const allModules = [

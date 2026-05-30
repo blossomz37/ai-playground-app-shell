@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron'
+import { ipcMain, nativeTheme, BrowserWindow } from 'electron'
+import type { ThemeMode } from '@shared/module-contract'
 import { documents } from './core/documents'
 import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
@@ -97,6 +98,8 @@ export function registerIpcHandlers(): void {
     layoutService.resize(zone, px)
   )
 
+  ipcMain.handle('layout:toggleZen', () => layoutService.toggleZen())
+
   // ── Secrets ───────────────────────────────────────────────────────────────
   ipcMain.handle('secrets:list', () => secretsService.list())
 
@@ -106,5 +109,20 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('secrets:delete', (_e, { name }: { name: string }) => {
     secretsService.delete(name)
+  })
+
+  // ── Theme ────────────────────────────────────────────────────────────────
+  ipcMain.handle('theme:set', (_e, { mode }: { mode: ThemeMode }) => {
+    // Persist
+    shellSettings.set('theme', mode)
+    // Sync Electron's native chrome (title bar, native dialogs)
+    nativeTheme.themeSource = mode
+    // Update window background color to prevent flash on next cold launch
+    const bgColor = mode === 'light' || (mode === 'system' && !nativeTheme.shouldUseDarkColors)
+      ? '#f5f3f0'
+      : '#1e1e2e'
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.setBackgroundColor(bgColor)
+    }
   })
 }
