@@ -1,7 +1,7 @@
 <!-- ──────────────────────────────────────────────
   File:        AppShell.svelte
   Description: Root layout shell with dynamic grid, resize handles, persist/restore
-  Version:     0.2.0
+  Version:     0.3.0
   Created:     2026-05-29
   Modified:    2026-05-29
   Author:      carlo
@@ -28,7 +28,12 @@
   let inspectorWidth = $state(280)
   let sidebarVisible = $state(true)
   let inspectorVisible = $state(true)
+  let zenMode = $state(false)
   let layoutLoaded = $state(false)
+
+  // Default widths for double-click reset
+  const DEFAULT_SIDEBAR_WIDTH = 240
+  const DEFAULT_INSPECTOR_WIDTH = 280
 
   // Active resize tracking
   let resizing = $state<'sidebar' | 'inspector' | null>(null)
@@ -36,8 +41,11 @@
   let resizeStartWidth = 0
 
   // Compute grid-template-columns dynamically
+  // In zen mode, hide the activity rail too for full immersion
   let gridColumns = $derived(
-    `48px ${sidebarVisible ? sidebarWidth + 'px' : '0px'} 1fr ${inspectorVisible ? inspectorWidth + 'px' : '0px'}`
+    zenMode
+      ? '0px 0px 1fr 0px'
+      : `48px ${sidebarVisible ? sidebarWidth + 'px' : '0px'} 1fr ${inspectorVisible ? inspectorWidth + 'px' : '0px'}`
   )
 
   function applyLayout(state: LayoutState) {
@@ -45,6 +53,7 @@
     inspectorWidth = state.inspectorWidth
     sidebarVisible = state.sidebarVisible
     inspectorVisible = state.inspectorVisible
+    zenMode = state.zenMode
   }
 
   async function toggleSidebar() {
@@ -54,6 +63,11 @@
 
   async function toggleInspector() {
     const state = await window.shell.layout.toggle('inspector')
+    applyLayout(state)
+  }
+
+  async function toggleZen() {
+    const state = await window.shell.layout.toggleZen()
     applyLayout(state)
   }
 
@@ -86,6 +100,17 @@
     window.shell.layout.resize(zone, px)
   }
 
+  /** Double-click a resize handle to reset to default width. */
+  function onResizeReset(zone: 'sidebar' | 'inspector') {
+    const defaultPx = zone === 'sidebar' ? DEFAULT_SIDEBAR_WIDTH : DEFAULT_INSPECTOR_WIDTH
+    if (zone === 'sidebar') {
+      sidebarWidth = defaultPx
+    } else {
+      inspectorWidth = defaultPx
+    }
+    window.shell.layout.resize(zone, defaultPx)
+  }
+
   onMount(async () => {
     // Restore persisted layout
     try {
@@ -98,7 +123,8 @@
     commandDisposables.push(
       registerCommand('shell.settings', () => settingsPanel?.toggle()),
       registerCommand('shell.layout.toggleSidebar', toggleSidebar),
-      registerCommand('shell.layout.toggleInspector', toggleInspector)
+      registerCommand('shell.layout.toggleInspector', toggleInspector),
+      registerCommand('shell.layout.zenMode', toggleZen)
     )
   })
 
@@ -109,16 +135,25 @@
 
 <svelte:window onkeydown={handleGlobalKeydown} />
 
-<div class="app-shell" style:grid-template-columns={gridColumns}>
+<div
+  class="app-shell"
+  class:zen={zenMode}
+  class:resizing={resizing !== null}
+  style:grid-template-columns={gridColumns}
+  style:--_sidebar-w="{sidebarWidth}px"
+  style:--_inspector-w="{inspectorWidth}px"
+>
   <div class="topbar"></div>
-  <ActivityRail />
-  {#if sidebarVisible}
+  {#if !zenMode}
+    <ActivityRail />
+  {/if}
+  {#if sidebarVisible && !zenMode}
     <Sidebar />
   {/if}
   <MainPane />
 
   <!-- Sidebar resize handle -->
-  {#if sidebarVisible}
+  {#if sidebarVisible && !zenMode}
     <div
       class="resize-handle resize-sidebar"
       class:active={resizing === 'sidebar'}
@@ -128,10 +163,11 @@
       onpointerdown={(e) => onResizeStart('sidebar', e)}
       onpointermove={onResizeMove}
       onpointerup={onResizeEnd}
+      ondblclick={() => onResizeReset('sidebar')}
     ></div>
   {/if}
 
-  {#if inspectorVisible}
+  {#if inspectorVisible && !zenMode}
     <!-- Inspector resize handle -->
     <div
       class="resize-handle resize-inspector"
@@ -142,10 +178,13 @@
       onpointerdown={(e) => onResizeStart('inspector', e)}
       onpointermove={onResizeMove}
       onpointerup={onResizeEnd}
+      ondblclick={() => onResizeReset('inspector')}
     ></div>
     <Inspector />
   {/if}
-  <StatusBar />
+  {#if !zenMode}
+    <StatusBar />
+  {/if}
 </div>
 
 <CommandPalette />
@@ -165,6 +204,22 @@
     overflow: hidden;
     background: var(--color-bg-base);
     position: relative;
+    /* Smooth panel slide transitions */
+    transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Disable transition while actively dragging so resize feels instant */
+  .app-shell.resizing {
+    transition: none;
+  }
+
+  /* Zen mode: simplified grid — only main pane visible */
+  .app-shell.zen {
+    grid-template-areas:
+      "topbar topbar topbar topbar"
+      "main   main   main   main"
+      "main   main   main   main";
+    grid-template-rows: 36px 1fr 0px;
   }
 
   /* Full-width draggable zone that clears the macOS traffic lights.
@@ -174,6 +229,12 @@
     background: var(--color-bg-surface);
     -webkit-app-region: drag;
     border-bottom: var(--border-subtle);
+  }
+
+  /* In zen mode, make the topbar transparent so the content feels full-bleed */
+  .zen .topbar {
+    background: transparent;
+    border-bottom: none;
   }
 
   /* ── Resize handles ──────────────────────────────────────────────────── */

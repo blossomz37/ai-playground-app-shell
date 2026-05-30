@@ -14,6 +14,8 @@
   import AIChatNavView from '../modules/aichat/NavView.svelte'
   // Web
   import WebNavView from '../modules/web/NavView.svelte'
+  // Prompt Studio
+  import PromptStudioNavView from '../modules/promptstudio/NavView.svelte'
 </script>
 
 <aside class="sidebar">
@@ -31,6 +33,8 @@
     <AIChatNavView />
   {:else if $activeModuleId === 'shell.web'}
     <WebNavView />
+  {:else if $activeModuleId === 'shell.promptstudio'}
+    <PromptStudioNavView />
   {:else}
     <div class="empty">No module selected</div>
   {/if}

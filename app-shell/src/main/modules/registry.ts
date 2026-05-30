@@ -61,12 +61,21 @@ export const moduleRegistry = {
    * On first launch (no persisted state), all registered modules default to enabled.
    */
   restoreEnabledState(): void {
-    const persisted = shellSettings.get<string[]>(ENABLED_KEY)
-    if (persisted) {
-      const enabledSet = new Set(persisted)
+    const persistedEnabled = shellSettings.get<string[]>(ENABLED_KEY)
+    const persistedKnown = shellSettings.get<string[]>('known_modules')
+    
+    if (persistedEnabled) {
+      const enabledSet = new Set(persistedEnabled)
+      const knownSet = persistedKnown ? new Set(persistedKnown) : enabledSet
+      
       for (const [id, r] of registry) {
-        r.enabled = enabledSet.has(id)
+        if (!knownSet.has(id)) {
+          r.enabled = true // New module auto-enables
+        } else {
+          r.enabled = enabledSet.has(id)
+        }
       }
+      this._persistEnabled()
     } else {
       // First launch — enable everything and persist
       for (const r of registry.values()) r.enabled = true
@@ -165,9 +174,12 @@ export const moduleRegistry = {
   // ── Internal ───────────────────────────────────────────────────────────
 
   _persistEnabled(): void {
-    const ids = Array.from(registry.entries())
+    const enabledIds = Array.from(registry.entries())
       .filter(([, r]) => r.enabled)
       .map(([id]) => id)
-    shellSettings.set(ENABLED_KEY, ids)
+    const allIds = Array.from(registry.keys())
+    
+    shellSettings.set(ENABLED_KEY, enabledIds)
+    shellSettings.set('known_modules', allIds)
   }
 }

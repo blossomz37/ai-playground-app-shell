@@ -14,6 +14,8 @@
   import AIChatMainView from '../modules/aichat/MainView.svelte'
   // Web
   import WebMainView from '../modules/web/MainView.svelte'
+  // Prompt Studio
+  import PromptStudioMainView from '../modules/promptstudio/MainView.svelte'
 </script>
 
 <main class="main-pane">
@@ -31,6 +33,8 @@
     <AIChatMainView />
   {:else if $activeModuleId === 'shell.web'}
     <WebMainView />
+  {:else if $activeModuleId === 'shell.promptstudio'}
+    <PromptStudioMainView />
   {:else}
     <div class="empty">
       <p>Select a module from the activity rail.</p>

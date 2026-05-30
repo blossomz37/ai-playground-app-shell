@@ -1,5 +1,14 @@
 <script lang="ts">
   import { activeDoc, versions, editorContent, countWords } from '../../store'
+  import { slide } from 'svelte/transition'
+
+  let collapsed = $state(new Set<string>())
+
+  function toggleSection(id: string) {
+    const next = new Set(collapsed)
+    next.has(id) ? next.delete(id) : next.add(id)
+    collapsed = next
+  }
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
@@ -13,47 +22,69 @@
   {#if $activeDoc}
     <!-- Metadata section -->
     <section class="section">
-      <h3 class="section-title">Document</h3>
-      <div class="field">
-        <span class="label">Title</span>
-        <span class="value">{$activeDoc.title}</span>
-      </div>
-      <div class="field">
-        <span class="label">Kind</span>
-        <span class="value kind-badge">{$activeDoc.kind}</span>
-      </div>
-      <div class="field">
-        <span class="label">Words</span>
-        <span class="value">{countWords($editorContent)}</span>
-      </div>
-      <div class="field">
-        <span class="label">Format</span>
-        <span class="value">{$activeDoc.contentFormat}</span>
-      </div>
-      <div class="field">
-        <span class="label">Created</span>
-        <span class="value">{fmt($activeDoc.createdAt)}</span>
-      </div>
-      <div class="field">
-        <span class="label">Updated</span>
-        <span class="value">{fmt($activeDoc.updatedAt)}</span>
-      </div>
+      <button
+        class="section-header"
+        onclick={() => toggleSection('document')}
+        aria-expanded={!collapsed.has('document')}
+      >
+        <span class="chevron" class:collapsed={collapsed.has('document')}>▼</span>
+        <h3 class="section-title">Document</h3>
+      </button>
+      {#if !collapsed.has('document')}
+        <div class="section-body" transition:slide={{ duration: 200 }}>
+          <div class="field">
+            <span class="label">Title</span>
+            <span class="value">{$activeDoc.title}</span>
+          </div>
+          <div class="field">
+            <span class="label">Kind</span>
+            <span class="value kind-badge">{$activeDoc.kind}</span>
+          </div>
+          <div class="field">
+            <span class="label">Words</span>
+            <span class="value">{countWords($editorContent)}</span>
+          </div>
+          <div class="field">
+            <span class="label">Format</span>
+            <span class="value">{$activeDoc.contentFormat}</span>
+          </div>
+          <div class="field">
+            <span class="label">Created</span>
+            <span class="value">{fmt($activeDoc.createdAt)}</span>
+          </div>
+          <div class="field">
+            <span class="label">Updated</span>
+            <span class="value">{fmt($activeDoc.updatedAt)}</span>
+          </div>
+        </div>
+      {/if}
     </section>
 
     <!-- Version history section -->
     <section class="section">
-      <h3 class="section-title">History</h3>
-      {#if $versions.length === 0}
-        <p class="empty-text">No versions yet — save to create one.</p>
-      {:else}
-        <ul class="version-list">
-          {#each $versions as v}
-            <li class="version-item">
-              <span class="v-date">{fmt(v.createdAt)}</span>
-              {#if v.label}<span class="v-label">{v.label}</span>{/if}
-            </li>
-          {/each}
-        </ul>
+      <button
+        class="section-header"
+        onclick={() => toggleSection('history')}
+        aria-expanded={!collapsed.has('history')}
+      >
+        <span class="chevron" class:collapsed={collapsed.has('history')}>▼</span>
+        <h3 class="section-title">History</h3>
+      </button>
+      {#if !collapsed.has('history')}
+        <div class="section-body" transition:slide={{ duration: 200 }}>
+          {#if $versions.length === 0}
+            <p class="empty-text">No versions yet — save to create one.</p>
+          {:else}
+            <ul class="version-list">
+              {#each $versions as v}
+                <li class="version-item">
+                  <span class="v-date">{fmt(v.createdAt)}</span>
+                  {#if v.label}<span class="v-label">{v.label}</span>{/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
       {/if}
     </section>
   {:else}
@@ -69,8 +100,38 @@
   }
 
   .section {
-    padding: var(--space-4);
     border-bottom: var(--border-subtle);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    transition: background 0.15s;
+  }
+
+  .section-header:hover {
+    background: var(--color-bg-overlay);
+  }
+
+  .chevron {
+    font-size: 10px;
+    color: var(--color-fg-muted);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+  }
+
+  .chevron.collapsed {
+    transform: rotate(-90deg);
   }
 
   .section-title {
@@ -79,7 +140,11 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-fg-muted);
-    margin-bottom: var(--space-3);
+    margin: 0;
+  }
+
+  .section-body {
+    padding: 0 var(--space-4) var(--space-3);
   }
 
   .field {

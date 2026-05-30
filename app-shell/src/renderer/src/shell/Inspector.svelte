@@ -14,6 +14,8 @@
   import AIChatInspectorView from '../modules/aichat/InspectorView.svelte'
   // Web
   import WebInspectorView from '../modules/web/InspectorView.svelte'
+  // Prompt Studio
+  import PromptStudioInspectorView from '../modules/promptstudio/InspectorView.svelte'
 </script>
 
 <aside class="inspector">
@@ -31,6 +33,8 @@
     <AIChatInspectorView />
   {:else if $activeModuleId === 'shell.web'}
     <WebInspectorView />
+  {:else if $activeModuleId === 'shell.promptstudio'}
+    <PromptStudioInspectorView />
   {:else}
     <div class="empty">No inspector</div>
   {/if}

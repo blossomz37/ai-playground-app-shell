@@ -1,6 +1,7 @@
 <script lang="ts">
   import { docTree, activeDocId, selectDoc } from '../../store'
   import { showContextMenu, type ContextMenuItem } from '../../store/contextmenu'
+  import { slide } from 'svelte/transition'
   import type { Doc } from '@shared/module-contract'
 
   interface DocNode extends Doc { children: DocNode[] }
@@ -12,6 +13,31 @@
     next.has(id) ? next.delete(id) : next.add(id)
     expanded = next
   }
+
+  /** Collect all folder IDs from the tree. */
+  function allFolderIds(nodes: DocNode[]): string[] {
+    const ids: string[] = []
+    for (const n of nodes) {
+      if (n.kind === 'folder') {
+        ids.push(n.id)
+        ids.push(...allFolderIds(n.children))
+      }
+    }
+    return ids
+  }
+
+  function expandAll() {
+    expanded = new Set(allFolderIds($docTree as DocNode[]))
+  }
+
+  function collapseAll() {
+    expanded = new Set()
+  }
+
+  let allExpanded = $derived(() => {
+    const folderIds = allFolderIds($docTree as DocNode[])
+    return folderIds.length > 0 && folderIds.every(id => expanded.has(id))
+  })
 
   function onTreeContextMenu(e: MouseEvent, node: DocNode) {
     e.preventDefault()
@@ -40,7 +66,7 @@
   >
     <span class="glyph" class:is-folder={node.kind === 'folder'}>
       {#if node.kind === 'folder'}
-        {expanded.has(node.id) ? '▼' : '▶'}
+        <span class="folder-chevron" class:open={expanded.has(node.id)}>▶</span>
       {:else if node.kind === 'chapter'}
         ◉
       {:else}
@@ -51,15 +77,25 @@
   </div>
 
   {#if node.kind === 'folder' && expanded.has(node.id)}
-    {#each node.children as child}
-      {@render treeNode(child, depth + 1)}
-    {/each}
+    <div transition:slide={{ duration: 150 }}>
+      {#each node.children as child}
+        {@render treeNode(child, depth + 1)}
+      {/each}
+    </div>
   {/if}
 {/snippet}
 
 <div class="nav-view">
   <header class="nav-header">
     <span class="nav-title">Manuscript</span>
+    <button
+      class="collapse-btn"
+      onclick={() => allExpanded() ? collapseAll() : expandAll()}
+      title={allExpanded() ? 'Collapse all' : 'Expand all'}
+      aria-label={allExpanded() ? 'Collapse all folders' : 'Expand all folders'}
+    >
+      {allExpanded() ? '⊟' : '⊞'}
+    </button>
   </header>
   <div class="nav-tree">
     {#each $docTree as node}
@@ -79,6 +115,7 @@
   .nav-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: var(--space-3);
     border-bottom: var(--border-subtle);
     flex-shrink: 0;
@@ -90,6 +127,23 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-fg-muted);
+  }
+
+  .collapse-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-fg-muted);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .collapse-btn:hover {
+    color: var(--color-fg-primary);
+    background: var(--color-bg-overlay);
   }
 
   .nav-tree {
@@ -122,6 +176,15 @@
     flex-shrink: 0;
   }
   .glyph.is-folder { color: var(--color-accent); }
+
+  .folder-chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+
+  .folder-chevron.open {
+    transform: rotate(90deg);
+  }
 
   .title {
     flex: 1;

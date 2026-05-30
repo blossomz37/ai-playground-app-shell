@@ -6,7 +6,7 @@
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
     PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
-    TableIcon, RobotIcon, GlobeSimpleIcon, GearSixIcon
+    TableIcon, RobotIcon, GlobeSimpleIcon, GearSixIcon, TerminalIcon
   } from 'phosphor-svelte'
 
   import type { Component } from 'svelte'
@@ -22,7 +22,8 @@
     'shell.workflow':  LightningIcon,
     'shell.tableview': TableIcon,
     'shell.aichat':    RobotIcon,
-    'shell.web':       GlobeSimpleIcon
+    'shell.web':       GlobeSimpleIcon,
+    'shell.promptstudio': TerminalIcon
   }
 
   onMount(async () => {

@@ -23,7 +23,10 @@ export const documentsModule: Module = {
         { id: 'documents.newFolder',  title: 'New Folder' },
         { id: 'documents.rename',     title: 'Rename' },
         { id: 'documents.archive',    title: 'Archive' },
-        { id: 'shell.settings',       title: 'Open Settings',  keybinding: 'CmdOrCtrl+,' }
+        { id: 'shell.settings',       title: 'Open Settings',      keybinding: 'CmdOrCtrl+,' },
+        { id: 'shell.layout.toggleSidebar',   title: 'Toggle Sidebar',   keybinding: 'CmdOrCtrl+B' },
+        { id: 'shell.layout.toggleInspector', title: 'Toggle Inspector', keybinding: 'CmdOrCtrl+I' },
+        { id: 'shell.layout.zenMode',         title: 'Zen Mode',         keybinding: 'CmdOrCtrl+Shift+Z' }
       ],
       documentTypes: [
         { kind: 'folder',  label: 'Folder',  icon: 'folder' },

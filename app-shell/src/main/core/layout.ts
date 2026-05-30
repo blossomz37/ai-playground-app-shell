@@ -16,10 +16,15 @@ const DEFAULTS: LayoutState = {
   sidebarWidth: 240,
   inspectorWidth: 280,
   sidebarVisible: true,
-  inspectorVisible: true
+  inspectorVisible: true,
+  zenMode: false
 }
 
 const store = createSettingsStore('shell')
+
+// Pre-zen visibility state — kept in memory so we can restore after exiting zen.
+let preZenSidebar = true
+let preZenInspector = true
 
 /**
  * Layout manager service.
@@ -57,5 +62,28 @@ export const layoutService = {
     // Clamp to reasonable bounds
     const clamped = Math.max(120, Math.min(600, px))
     return this.set({ [key]: clamped })
+  },
+
+  /** Toggle zen mode — hide everything except the main pane, or restore. */
+  toggleZen(): LayoutState {
+    const current = this.get()
+    if (current.zenMode) {
+      // Exiting zen — restore pre-zen visibility
+      return this.set({
+        zenMode: false,
+        sidebarVisible: preZenSidebar,
+        inspectorVisible: preZenInspector
+      })
+    } else {
+      // Entering zen — store current visibility, hide panels
+      preZenSidebar = current.sidebarVisible
+      preZenInspector = current.inspectorVisible
+      return this.set({
+        zenMode: true,
+        sidebarVisible: false,
+        inspectorVisible: false
+      })
+    }
   }
 }
+

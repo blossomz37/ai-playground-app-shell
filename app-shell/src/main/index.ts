@@ -13,6 +13,7 @@ import { workflowModule } from './modules/workflow'
 import { tableViewModule } from './modules/tableview'
 import { aiChatModule } from './modules/aichat'
 import { webModule } from './modules/web'
+import { promptStudioModule } from './modules/promptstudio'
 import { registerIpcHandlers } from './ipc'
 
 /**
@@ -92,7 +93,8 @@ app.whenReady().then(async () => {
   // 1. Register all modules — reads manifests only, no code runs.
   const allModules = [
     documentsModule, journalModule, assetsModule,
-    workflowModule, tableViewModule, aiChatModule, webModule
+    workflowModule, tableViewModule, aiChatModule, webModule,
+    promptStudioModule
   ]
   for (const mod of allModules) {
     moduleRegistry.register(mod)
