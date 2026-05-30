@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - navigation "Module navigation" [ref=e5]:
+    - button "Documents" [ref=e6] [cursor=pointer]:
+      - img [ref=e7]
+    - button "Journal" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+    - button "Assets" [ref=e14] [cursor=pointer]:
+      - img [ref=e15]
+    - button "Workflow Runner" [ref=e18] [cursor=pointer]:
+      - img [ref=e19]
+    - button "Table View" [ref=e22] [cursor=pointer]:
+      - img [ref=e23]
+    - button "AI Chat" [ref=e26] [cursor=pointer]:
+      - img [ref=e27]
+    - button "Web" [ref=e30] [cursor=pointer]:
+      - img [ref=e31]
+    - button "Prompt Studio" [active] [ref=e34] [cursor=pointer]:
+      - img [ref=e35]
+    - button "Settings (Cmd+,)" [ref=e39] [cursor=pointer]:
+      - img [ref=e40]
+  - complementary [ref=e43]:
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - heading "Templates" [level=2] [ref=e60]
+        - button "➕" [ref=e61] [cursor=pointer]
+      - generic [ref=e62]:
+        - generic [ref=e63] [cursor=pointer]:
+          - generic [ref=e64]: Summarize Document
+          - generic [ref=e65]: "Last run: Today"
+        - generic [ref=e66] [cursor=pointer]:
+          - generic [ref=e67]: Extract Entities
+          - generic [ref=e68]: "Last run: 2d ago"
+  - main [ref=e45]:
+    - paragraph [ref=e47]: Nothing selected
+  - separator "Resize sidebar" [ref=e48]
+  - separator "Resize inspector" [ref=e49]
+  - complementary [ref=e50]:
+    - generic [ref=e51]: Nothing selected
+  - contentinfo [ref=e52]:
+    - generic [ref=e53]:
+      - generic [ref=e54]: authoring
+      - generic [ref=e55]: ·
+      - generic [ref=e56]: App Shell v0.1.0
