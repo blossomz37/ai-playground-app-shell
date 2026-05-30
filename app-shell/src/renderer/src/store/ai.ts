@@ -73,8 +73,11 @@ export async function loadAiProviders(): Promise<void> {
   aiSecretNames.set(secretNames)
 
   const savedProviderId = await window.shell.settings.get('ai.providerId')
+  const currentProviderId = get(selectedAiProviderId)
   const providerId = typeof savedProviderId === 'string' && providers.some(provider => provider.providerId === savedProviderId)
     ? savedProviderId
+    : providers.some(provider => provider.providerId === currentProviderId)
+      ? currentProviderId
     : 'mock-local'
   selectedAiProviderId.set(providerId)
 

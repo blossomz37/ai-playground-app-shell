@@ -50,8 +50,11 @@
   let editingSecret = $state<string | null>(null)
   let editSecretValue = $state('')
   let secretsLoading = $state(false)
+  let openAiKeyValue = $state('')
+  let openAiKeySaving = $state(false)
   let activeAiProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let aiProviderReady = $derived(!activeAiProvider?.secretName || $aiSecretNames.includes(activeAiProvider.secretName))
+  let openAiKeyStored = $derived($aiSecretNames.includes('OPENAI_API_KEY'))
 
   // Sync when store changes externally
   $effect(() => {
@@ -115,6 +118,25 @@
     if (editingSecret === name) editingSecret = null
     await loadSecrets()
     await loadAiProviders()
+  }
+
+  async function chooseAiProvider(providerId: string) {
+    await selectAiProvider(providerId)
+  }
+
+  async function saveOpenAiKey() {
+    const value = openAiKeyValue.trim()
+    if (!value) return
+    openAiKeySaving = true
+    try {
+      await window.shell.secrets.set('OPENAI_API_KEY', value)
+      openAiKeyValue = ''
+      await loadSecrets()
+      await loadAiProviders()
+      await selectAiProvider('openai-responses')
+    } finally {
+      openAiKeySaving = false
+    }
   }
 
   export function toggle() {
@@ -221,15 +243,40 @@
           <div class="provider-toggle" role="radiogroup" aria-label="AI provider mode">
             {#each $aiProviders as provider (provider.providerId)}
               <button
+                type="button"
                 class="provider-option"
                 class:active={$selectedAiProviderId === provider.providerId}
-                onclick={() => selectAiProvider(provider.providerId)}
+                onclick={() => chooseAiProvider(provider.providerId)}
                 role="radio"
                 aria-checked={$selectedAiProviderId === provider.providerId}
               >
                 {provider.providerId === 'mock-local' ? 'Mock Local' : 'OpenAI'}
               </button>
             {/each}
+          </div>
+
+          <div class="openai-key-box">
+            <div class="provider-status compact">
+              <span class="field-label">OpenAI key</span>
+              <span class="status-pill" class:ready={openAiKeyStored} class:missing={!openAiKeyStored}>
+                {openAiKeyStored ? 'Stored' : 'Missing'}
+              </span>
+            </div>
+            <div class="secret-edit inline">
+              <input
+                type="password"
+                class="field-input"
+                bind:value={openAiKeyValue}
+                placeholder="Paste OpenAI API key"
+                onkeydown={(e) => e.key === 'Enter' && saveOpenAiKey()}
+              />
+              <button
+                type="button"
+                class="action-btn primary"
+                onclick={saveOpenAiKey}
+                disabled={!openAiKeyValue.trim() || openAiKeySaving}
+              >{openAiKeySaving ? 'Saving...' : 'Save & Use'}</button>
+            </div>
           </div>
 
           <div class="field">
@@ -261,7 +308,7 @@
           </div>
 
           <div class="provider-status">
-            <span class="field-label">Status</span>
+            <span class="field-label">Active mode</span>
             <span
               class="status-pill"
               class:mock={$selectedAiProviderId === 'mock-local'}
@@ -293,6 +340,7 @@
                       <span class="secret-value-mask">••••••••</span>
                       <div class="secret-actions">
                         <button
+                          type="button"
                           class="secret-btn"
                           onclick={() => {
                             editingSecret = editingSecret === name ? null : name
@@ -301,6 +349,7 @@
                           title="Edit"
                         >✎</button>
                         <button
+                          type="button"
                           class="secret-btn danger"
                           onclick={() => deleteSecret(name)}
                           title="Delete"
@@ -317,6 +366,7 @@
                           onkeydown={(e) => e.key === 'Enter' && updateSecret(name)}
                         />
                         <button
+                          type="button"
                           class="action-btn"
                           onclick={() => updateSecret(name)}
                           disabled={!editSecretValue}
@@ -346,6 +396,7 @@
                 onkeydown={(e) => e.key === 'Enter' && addSecret()}
               />
               <button
+                type="button"
                 class="action-btn primary"
                 onclick={addSecret}
                 disabled={!newSecretName.trim() || !newSecretValue}
@@ -569,6 +620,19 @@
     border: var(--border-subtle);
     border-radius: var(--radius-sm);
     background: var(--color-bg-overlay);
+  }
+
+  .provider-status.compact {
+    margin-bottom: var(--space-2);
+  }
+
+  .openai-key-box {
+    margin-bottom: var(--space-4);
+  }
+
+  .secret-edit.inline {
+    padding: 0;
+    border-top: 0;
   }
 
   .status-pill {
