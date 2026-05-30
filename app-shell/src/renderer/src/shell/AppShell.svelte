@@ -18,6 +18,7 @@
   import ContextMenu from './ContextMenu.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
+  import { activeModuleId } from '../store'
   import type { Disposable, LayoutState } from '@shared/module-contract'
 
   let settingsPanel = $state<{ toggle(): void }>()
@@ -30,6 +31,8 @@
   let inspectorVisible = $state(true)
   let zenMode = $state(false)
   let layoutLoaded = $state(false)
+  let activeModule = $state<string | null>(null)
+  let activeModuleUnsubscribe: (() => void) | null = null
 
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
@@ -69,6 +72,12 @@
   async function toggleZen() {
     const state = await window.shell.layout.toggleZen()
     applyLayout(state)
+  }
+
+  async function selectModule(id: string) {
+    activeModule = id
+    activeModuleId.set(id)
+    await window.shell.modules.activate(id)
   }
 
   // ── Resize handles ────────────────────────────────────────────────────────
@@ -112,6 +121,10 @@
   }
 
   onMount(async () => {
+    activeModuleUnsubscribe = activeModuleId.subscribe((id) => {
+      activeModule = id
+    })
+
     // Restore persisted layout
     try {
       const state = await window.shell.layout.get()
@@ -129,6 +142,7 @@
   })
 
   onDestroy(() => {
+    activeModuleUnsubscribe?.()
     for (const d of commandDisposables) d.dispose()
   })
 </script>
@@ -145,12 +159,30 @@
 >
   <div class="topbar"></div>
   {#if !zenMode}
-    <ActivityRail />
+    <ActivityRail moduleId={activeModule} onSelect={selectModule} />
   {/if}
   {#if sidebarVisible && !zenMode}
-    <Sidebar />
+    <Sidebar moduleId={activeModule} />
   {/if}
-  <MainPane />
+  {#if activeModule === 'shell.documents'}
+    <MainPane moduleId="shell.documents" />
+  {:else if activeModule === 'shell.journal'}
+    <MainPane moduleId="shell.journal" />
+  {:else if activeModule === 'shell.assets'}
+    <MainPane moduleId="shell.assets" />
+  {:else if activeModule === 'shell.workflow'}
+    <MainPane moduleId="shell.workflow" />
+  {:else if activeModule === 'shell.tableview'}
+    <MainPane moduleId="shell.tableview" />
+  {:else if activeModule === 'shell.aichat'}
+    <MainPane moduleId="shell.aichat" />
+  {:else if activeModule === 'shell.web'}
+    <MainPane moduleId="shell.web" />
+  {:else if activeModule === 'shell.promptstudio'}
+    <MainPane moduleId="shell.promptstudio" />
+  {:else}
+    <MainPane moduleId={null} />
+  {/if}
 
   <!-- Sidebar resize handle -->
   {#if sidebarVisible && !zenMode}
@@ -180,10 +212,32 @@
       onpointerup={onResizeEnd}
       ondblclick={() => onResizeReset('inspector')}
     ></div>
-    <Inspector />
+    {#if activeModule === 'shell.documents'}
+      <Inspector moduleId="shell.documents" />
+    {:else if activeModule === 'shell.journal'}
+      <Inspector moduleId="shell.journal" />
+    {:else if activeModule === 'shell.assets'}
+      <Inspector moduleId="shell.assets" />
+    {:else if activeModule === 'shell.workflow'}
+      <Inspector moduleId="shell.workflow" />
+    {:else if activeModule === 'shell.tableview'}
+      <Inspector moduleId="shell.tableview" />
+    {:else if activeModule === 'shell.aichat'}
+      <Inspector moduleId="shell.aichat" />
+    {:else if activeModule === 'shell.web'}
+      <Inspector moduleId="shell.web" />
+    {:else if activeModule === 'shell.promptstudio'}
+      <Inspector moduleId="shell.promptstudio" />
+    {:else}
+      <Inspector moduleId={null} />
+    {/if}
   {/if}
   {#if !zenMode}
-    <StatusBar />
+    {#if activeModule === 'shell.documents'}
+      <StatusBar moduleId="shell.documents" />
+    {:else}
+      <StatusBar moduleId={null} />
+    {/if}
   {/if}
 </div>
 

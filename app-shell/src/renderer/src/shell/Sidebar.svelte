@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { activeModuleId } from '../store'
   // Documents
   import DocsNavView from '../modules/documents/NavView.svelte'
   // Journal
@@ -16,27 +15,29 @@
   import WebNavView from '../modules/web/NavView.svelte'
   // Prompt Studio
   import PromptStudioNavView from '../modules/promptstudio/NavView.svelte'
+
+  let { moduleId }: { moduleId: string | null } = $props()
 </script>
 
 <aside class="sidebar">
-  {#if $activeModuleId === 'shell.documents'}
+  {#if moduleId === 'shell.documents'}
     <DocsNavView />
-  {:else if $activeModuleId === 'shell.journal'}
+  {:else if moduleId === 'shell.journal'}
     <JournalNavView />
-  {:else if $activeModuleId === 'shell.assets'}
+  {:else if moduleId === 'shell.assets'}
     <AssetsNavView />
-  {:else if $activeModuleId === 'shell.workflow'}
+  {:else if moduleId === 'shell.workflow'}
     <WorkflowNavView />
-  {:else if $activeModuleId === 'shell.tableview'}
+  {:else if moduleId === 'shell.tableview'}
     <TableNavView />
-  {:else if $activeModuleId === 'shell.aichat'}
+  {:else if moduleId === 'shell.aichat'}
     <AIChatNavView />
-  {:else if $activeModuleId === 'shell.web'}
+  {:else if moduleId === 'shell.web'}
     <WebNavView />
-  {:else if $activeModuleId === 'shell.promptstudio'}
+  {:else if moduleId === 'shell.promptstudio'}
     <PromptStudioNavView />
   {:else}
-    <div class="empty">No module selected</div>
+    <div class="empty">Nothing selected</div>
   {/if}
 </aside>
 

@@ -21,6 +21,10 @@ export default defineConfig({
   },
   renderer: {
     plugins: [svelte({ preprocess: vitePreprocess() })],
+    server: {
+      port: 5183,
+      strictPort: true
+    },
     resolve: {
       alias: {
         '@renderer': resolve(__dirname, 'src/renderer/src'),

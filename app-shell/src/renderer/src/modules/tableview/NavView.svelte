@@ -8,8 +8,8 @@
   <header class="nav-header"><span class="nav-title">Filters</span></header>
   <div class="controls">
     <div class="field">
-      <label class="field-label">Kind</label>
-      <select class="field-select" bind:value={filterKind}>
+      <label class="field-label" for="table-filter-kind">Kind</label>
+      <select id="table-filter-kind" class="field-select" bind:value={filterKind}>
         <option value="all">All Types</option>
         <option value="chapter">Chapters</option>
         <option value="scene">Scenes</option>
@@ -18,8 +18,8 @@
       </select>
     </div>
     <div class="field">
-      <label class="field-label">Sort By</label>
-      <select class="field-select" bind:value={sortBy}>
+      <label class="field-label" for="table-sort-by">Sort By</label>
+      <select id="table-sort-by" class="field-select" bind:value={sortBy}>
         <option value="title">Title</option>
         <option value="updatedAt">Last Modified</option>
         <option value="createdAt">Created</option>

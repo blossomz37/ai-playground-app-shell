@@ -24,6 +24,12 @@ button {
   font: inherit;
 }
 
+select {
+  appearance: none;
+  background-repeat: no-repeat !important;
+  padding-inline-end: 36px !important;
+}
+
 /* ── Theme transition ─────────────────────────────────────────────────────── *
  * Applied briefly (350ms) when switching themes so background/color/border
  * animate smoothly. Removed afterwards to avoid impacting resize/scroll perf. */

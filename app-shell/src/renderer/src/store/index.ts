@@ -7,7 +7,7 @@ export type { ThemeMode }
 
 export const workspaceId   = writable<string>('ws-default')
 export const documents     = writable<Doc[]>([])
-export const activeModuleId = writable<string>('shell.documents')
+export const activeModuleId = writable<string | null>(null)
 export const activeDocId   = writable<string | null>(null)
 export const editorContent = writable<string>('')
 export const isDirty       = writable<boolean>(false)
@@ -155,9 +155,6 @@ export async function initStore(): Promise<void> {
   const docs = await window.shell.documents.list(wsId)
   documents.set(docs)
 
-  const firstEditable = docs.find(d => d.kind !== 'folder')
-  if (firstEditable) await selectDoc(firstEditable.id)
-
   window.shell.documents.onChanged(async (id) => {
     const updated = await window.shell.documents.open(id)
     if (updated) {
@@ -196,4 +193,3 @@ export async function saveDoc(): Promise<void> {
 export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
-

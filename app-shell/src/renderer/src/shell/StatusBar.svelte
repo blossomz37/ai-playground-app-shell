@@ -7,13 +7,15 @@
   Author:      carlo
   ────────────────────────────────────────────── -->
 <script lang="ts">
-  import { activeModuleId, isDirty, editorContent, activeDoc, countWords } from '../store'
+  import { isDirty, editorContent, activeDoc, countWords } from '../store'
+
+  let { moduleId }: { moduleId: string | null } = $props()
 </script>
 
 <footer class="status-bar">
   <!-- Left zone: module-contributed status items -->
   <div class="zone zone-left">
-    {#if $activeModuleId === 'shell.documents' && $activeDoc}
+    {#if moduleId === 'shell.documents' && $activeDoc}
       <span class="item doc-title" title={$activeDoc.title}>
         {$activeDoc.title}
       </span>
@@ -127,4 +129,3 @@
   .sep { color: var(--color-fg-muted); opacity: 0.5; flex-shrink: 0; }
   .muted { color: var(--color-fg-muted); }
 </style>
-

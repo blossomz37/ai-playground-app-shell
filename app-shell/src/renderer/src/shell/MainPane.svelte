@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { activeModuleId } from '../store'
   // Documents
   import DocsMainView from '../modules/documents/MainView.svelte'
   // Journal
@@ -16,28 +15,30 @@
   import WebMainView from '../modules/web/MainView.svelte'
   // Prompt Studio
   import PromptStudioMainView from '../modules/promptstudio/MainView.svelte'
+
+  let { moduleId }: { moduleId: string | null } = $props()
 </script>
 
 <main class="main-pane">
-  {#if $activeModuleId === 'shell.documents'}
+  {#if moduleId === 'shell.documents'}
     <DocsMainView />
-  {:else if $activeModuleId === 'shell.journal'}
+  {:else if moduleId === 'shell.journal'}
     <JournalMainView />
-  {:else if $activeModuleId === 'shell.assets'}
+  {:else if moduleId === 'shell.assets'}
     <AssetsMainView />
-  {:else if $activeModuleId === 'shell.workflow'}
+  {:else if moduleId === 'shell.workflow'}
     <WorkflowMainView />
-  {:else if $activeModuleId === 'shell.tableview'}
+  {:else if moduleId === 'shell.tableview'}
     <TableMainView />
-  {:else if $activeModuleId === 'shell.aichat'}
+  {:else if moduleId === 'shell.aichat'}
     <AIChatMainView />
-  {:else if $activeModuleId === 'shell.web'}
+  {:else if moduleId === 'shell.web'}
     <WebMainView />
-  {:else if $activeModuleId === 'shell.promptstudio'}
+  {:else if moduleId === 'shell.promptstudio'}
     <PromptStudioMainView />
   {:else}
     <div class="empty">
-      <p>Select a module from the activity rail.</p>
+      <p>Nothing selected</p>
     </div>
   {/if}
 </main>

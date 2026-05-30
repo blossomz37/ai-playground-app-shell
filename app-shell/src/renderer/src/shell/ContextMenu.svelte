@@ -23,6 +23,14 @@
     }
   }
 
+  function onMenuKeydown(e: KeyboardEvent) {
+    e.stopPropagation()
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      hideContextMenu()
+    }
+  }
+
   // Viewport-clamp the menu position
   function clampStyle(x: number, y: number): string {
     const menuW = 200
@@ -46,12 +54,14 @@
     <div
       class="ctx-menu"
       role="menu"
+      tabindex="-1"
       style={clampStyle($contextMenu.x, $contextMenu.y)}
       onclick={(e) => e.stopPropagation()}
+      onkeydown={onMenuKeydown}
     >
       {#each $contextMenu.items as item (item.id)}
         {#if item.separator}
-          <div class="ctx-sep"></div>
+          <div class="ctx-sep" role="separator"></div>
         {:else}
           <button
             class="ctx-item"

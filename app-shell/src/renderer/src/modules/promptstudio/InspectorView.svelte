@@ -53,8 +53,8 @@
   .inspector-view {
     display: flex;
     flex-direction: column;
+    gap: var(--space-5);
     padding: var(--space-4);
-    gap: var(--space-6);
   }
 
   .section {
@@ -65,12 +65,12 @@
 
   h3 {
     margin: 0;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     color: var(--color-fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: var(--border-subtle);
     padding-bottom: var(--space-2);
   }
 
@@ -85,6 +85,7 @@
     font-weight: 500;
     display: flex;
     justify-content: space-between;
+    color: var(--color-fg-primary);
   }
 
   .val {
@@ -92,17 +93,25 @@
   }
 
   .select-input {
-    padding: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
     background: var(--color-bg-base);
-    color: var(--color-fg-default);
+    color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
+    line-height: 1.4;
+  }
+
+  .select-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
   }
 
   input[type="range"] {
     width: 100%;
     margin-top: var(--space-2);
+    accent-color: var(--color-accent);
   }
 
   .history-list {
@@ -114,9 +123,12 @@
   .history-item {
     display: flex;
     justify-content: space-between;
-    padding: var(--space-2);
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     background: var(--color-bg-base);
     border-radius: var(--radius-sm);
+    border: 1px solid transparent;
     font-size: var(--font-size-xs);
   }
 

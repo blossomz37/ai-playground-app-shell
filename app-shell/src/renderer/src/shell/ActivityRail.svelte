@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { activeModuleId } from '../store'
   import { executeCommand } from '../store/commands'
 
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
@@ -12,7 +11,12 @@
   import type { Component } from 'svelte'
 
   interface RailItem { id: string; label: string; icon: Component }
+  interface Props {
+    moduleId: string | null
+    onSelect: (id: string) => void | Promise<void>
+  }
 
+  let { moduleId, onSelect }: Props = $props()
   let modules = $state<RailItem[]>([])
 
   const iconMap: Record<string, Component> = {
@@ -40,17 +44,14 @@
 
 <nav class="activity-rail" aria-label="Module navigation">
   <div class="rail-spacer"></div>
-  {#each modules as mod}
-    {@const isActive = $activeModuleId === mod.id}
+  {#each modules as mod (mod.id)}
+    {@const isActive = moduleId === mod.id}
     <button
       class="rail-btn"
       class:active={isActive}
       title={mod.label}
       aria-current={isActive ? 'page' : undefined}
-      onclick={async () => {
-        activeModuleId.set(mod.id)
-        await window.shell.modules.activate(mod.id)
-      }}
+      onclick={() => onSelect(mod.id)}
     >
       <mod.icon
         size={20}

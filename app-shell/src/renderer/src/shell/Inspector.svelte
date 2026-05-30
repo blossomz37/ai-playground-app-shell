@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { activeModuleId } from '../store'
   // Documents
   import DocsInspectorView from '../modules/documents/InspectorView.svelte'
   // Journal
@@ -16,27 +15,29 @@
   import WebInspectorView from '../modules/web/InspectorView.svelte'
   // Prompt Studio
   import PromptStudioInspectorView from '../modules/promptstudio/InspectorView.svelte'
+
+  let { moduleId }: { moduleId: string | null } = $props()
 </script>
 
 <aside class="inspector">
-  {#if $activeModuleId === 'shell.documents'}
+  {#if moduleId === 'shell.documents'}
     <DocsInspectorView />
-  {:else if $activeModuleId === 'shell.journal'}
+  {:else if moduleId === 'shell.journal'}
     <JournalInspectorView />
-  {:else if $activeModuleId === 'shell.assets'}
+  {:else if moduleId === 'shell.assets'}
     <AssetsInspectorView />
-  {:else if $activeModuleId === 'shell.workflow'}
+  {:else if moduleId === 'shell.workflow'}
     <WorkflowInspectorView />
-  {:else if $activeModuleId === 'shell.tableview'}
+  {:else if moduleId === 'shell.tableview'}
     <TableInspectorView />
-  {:else if $activeModuleId === 'shell.aichat'}
+  {:else if moduleId === 'shell.aichat'}
     <AIChatInspectorView />
-  {:else if $activeModuleId === 'shell.web'}
+  {:else if moduleId === 'shell.web'}
     <WebInspectorView />
-  {:else if $activeModuleId === 'shell.promptstudio'}
+  {:else if moduleId === 'shell.promptstudio'}
     <PromptStudioInspectorView />
   {:else}
-    <div class="empty">No inspector</div>
+    <div class="empty">Nothing selected</div>
   {/if}
 </aside>
 
