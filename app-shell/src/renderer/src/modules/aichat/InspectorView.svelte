@@ -8,6 +8,7 @@
     aiSecretNames,
     loadAiRuns,
     loadAiProviders,
+    modelOptionsForProvider,
     refreshAiContext,
     selectAiModel,
     selectAiProvider,
@@ -19,6 +20,7 @@
   } from '../../store/ai'
 
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
+  let modelOptions = $derived(modelOptionsForProvider(activeProvider))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
 
   onMount(() => {
@@ -75,7 +77,7 @@
         value={$selectedAiModel}
         onchange={(event) => selectAiModel(event.currentTarget.value)}
       >
-        {#each activeProvider?.availableModels ?? [$selectedAiModel] as model (model)}
+        {#each modelOptions as model (model)}
           <option value={model}>{model}</option>
         {/each}
       </select>

@@ -93,7 +93,7 @@ function createBrowserShell(): ShellApi {
       secretName: 'OPENAI_API_KEY',
       baseUrl: 'https://api.openai.com/v1/responses',
       defaultModel: 'gpt-4.1-mini',
-      availableModels: ['gpt-4.1-mini', 'gpt-4.1'],
+      availableModels: ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'],
       supportsStreaming: false,
       supportsTools: false
     }

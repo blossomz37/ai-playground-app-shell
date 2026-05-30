@@ -13,6 +13,7 @@
     aiProviders,
     aiSecretNames,
     loadAiProviders,
+    modelOptionsForProvider,
     selectAiModel,
     selectAiProvider,
     selectAiTemperature,
@@ -52,9 +53,12 @@
   let secretsLoading = $state(false)
   let openAiKeyValue = $state('')
   let openAiKeySaving = $state(false)
+  let openAiKeyError = $state('')
   let activeAiProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
-  let aiProviderReady = $derived(!activeAiProvider?.secretName || $aiSecretNames.includes(activeAiProvider.secretName))
-  let openAiKeyStored = $derived($aiSecretNames.includes('OPENAI_API_KEY'))
+  let aiModelOptions = $derived(modelOptionsForProvider(activeAiProvider))
+  let knownSecretNames = $derived(new Set([...$aiSecretNames, ...secretNames]))
+  let aiProviderReady = $derived(!activeAiProvider?.secretName || knownSecretNames.has(activeAiProvider.secretName))
+  let openAiKeyStored = $derived(knownSecretNames.has('OPENAI_API_KEY'))
 
   // Sync when store changes externally
   $effect(() => {
@@ -87,10 +91,21 @@
     secretsLoading = true
     try {
       secretNames = await window.shell.secrets.list()
+      aiSecretNames.set(secretNames)
     } catch {
       secretNames = []
+      aiSecretNames.set([])
     }
     secretsLoading = false
+  }
+
+  function markSecretStored(name: string) {
+    if (!secretNames.includes(name)) {
+      secretNames = [...secretNames, name].sort()
+    }
+    aiSecretNames.update(names =>
+      names.includes(name) ? names : [...names, name].sort()
+    )
   }
 
   async function addSecret() {
@@ -121,6 +136,7 @@
   }
 
   async function chooseAiProvider(providerId: string) {
+    openAiKeyError = ''
     await selectAiProvider(providerId)
   }
 
@@ -128,12 +144,17 @@
     const value = openAiKeyValue.trim()
     if (!value) return
     openAiKeySaving = true
+    openAiKeyError = ''
     try {
       await window.shell.secrets.set('OPENAI_API_KEY', value)
       openAiKeyValue = ''
+      markSecretStored('OPENAI_API_KEY')
+      await selectAiProvider('openai-responses')
       await loadSecrets()
       await loadAiProviders()
       await selectAiProvider('openai-responses')
+    } catch (err) {
+      openAiKeyError = err instanceof Error ? err.message : String(err)
     } finally {
       openAiKeySaving = false
     }
@@ -255,6 +276,18 @@
             {/each}
           </div>
 
+          <div class="provider-status">
+            <span class="field-label">Active mode</span>
+            <span
+              class="status-pill"
+              class:mock={$selectedAiProviderId === 'mock-local'}
+              class:ready={aiProviderReady && $selectedAiProviderId !== 'mock-local'}
+              class:missing={!aiProviderReady}
+            >
+              {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
+            </span>
+          </div>
+
           <div class="openai-key-box">
             <div class="provider-status compact">
               <span class="field-label">OpenAI key</span>
@@ -277,6 +310,9 @@
                 disabled={!openAiKeyValue.trim() || openAiKeySaving}
               >{openAiKeySaving ? 'Saving...' : 'Save & Use'}</button>
             </div>
+            {#if openAiKeyError}
+              <p class="error-text">{openAiKeyError}</p>
+            {/if}
           </div>
 
           <div class="field">
@@ -287,10 +323,22 @@
               value={$selectedAiModel}
               onchange={(event) => selectAiModel(event.currentTarget.value)}
             >
-              {#each activeAiProvider?.availableModels ?? [$selectedAiModel] as model (model)}
+              {#each aiModelOptions as model (model)}
                 <option value={model}>{model}</option>
               {/each}
             </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="settings-ai-custom-model">Custom model</label>
+            <input
+              id="settings-ai-custom-model"
+              type="text"
+              class="field-input"
+              value={$selectedAiModel}
+              oninput={(event) => selectAiModel(event.currentTarget.value)}
+              placeholder="Enter model id"
+            />
           </div>
 
           <div class="field">
@@ -305,18 +353,6 @@
               value={$selectedAiTemperature}
               oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
             />
-          </div>
-
-          <div class="provider-status">
-            <span class="field-label">Active mode</span>
-            <span
-              class="status-pill"
-              class:mock={$selectedAiProviderId === 'mock-local'}
-              class:ready={aiProviderReady && $selectedAiProviderId !== 'mock-local'}
-              class:missing={!aiProviderReady}
-            >
-              {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
-            </span>
           </div>
         </section>
 
@@ -496,6 +532,13 @@
     line-height: 1.4;
   }
 
+  .error-text {
+    margin-top: var(--space-2);
+    color: var(--color-danger);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+  }
+
   .field {
     display: flex;
     flex-direction: column;
@@ -627,7 +670,7 @@
   }
 
   .openai-key-box {
-    margin-bottom: var(--space-4);
+    margin: var(--space-3) 0 var(--space-4);
   }
 
   .secret-edit.inline {

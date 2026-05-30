@@ -110,7 +110,14 @@ export const aiRepository = {
       'OPENAI_API_KEY',
       'https://api.openai.com/v1/responses',
       'gpt-4.1-mini',
-      JSON.stringify(['gpt-4.1-mini', 'gpt-4.1']),
+      JSON.stringify([
+        'gpt-5.2',
+        'gpt-5-mini',
+        'gpt-5-nano',
+        'gpt-4.1',
+        'gpt-4.1-mini',
+        'gpt-4.1-nano'
+      ]),
       0,
       0,
       now,

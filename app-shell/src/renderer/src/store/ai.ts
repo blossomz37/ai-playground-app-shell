@@ -21,6 +21,8 @@ export const selectedAiModel = writable('mock-durable-context-v1')
 export const selectedAiTemperature = writable(0.7)
 export const aiBusy = writable(false)
 
+const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
+
 let lastContextDocId: string | null = null
 
 activeDocId.subscribe((id) => {
@@ -83,12 +85,26 @@ export async function loadAiProviders(): Promise<void> {
 
   const provider = providers.find(item => item.providerId === providerId) ?? providers[0]
   const savedModel = await window.shell.settings.get(`ai.model.${providerId}`)
+  const fallbackModel = provider?.providerId === 'openai-responses'
+    ? 'gpt-4.1-mini'
+    : 'mock-durable-context-v1'
   selectedAiModel.set(typeof savedModel === 'string' && savedModel.trim()
     ? savedModel
-    : provider?.defaultModel ?? 'mock-durable-context-v1')
+    : provider?.defaultModel ?? fallbackModel)
 
   const savedTemperature = await window.shell.settings.get('ai.temperature')
   selectedAiTemperature.set(typeof savedTemperature === 'number' ? savedTemperature : 0.7)
+}
+
+export function modelOptionsForProvider(provider: AiProvider | undefined): string[] {
+  const selected = get(selectedAiModel)
+  const options = provider?.availableModels?.length
+    ? provider.availableModels
+    : provider?.providerId === 'openai-responses'
+      ? FALLBACK_OPENAI_MODELS
+      : ['mock-durable-context-v1']
+
+  return options.includes(selected) ? options : [selected, ...options]
 }
 
 export async function selectAiProvider(providerId: AiProviderId): Promise<void> {
