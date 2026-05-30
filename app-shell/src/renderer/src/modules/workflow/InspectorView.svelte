@@ -1,19 +1,19 @@
-<!-- Workflow InspectorView — profile configuration -->
+<!-- Workflow InspectorView — chain configuration -->
 <div class="inspector-view">
   <section class="section">
-    <h3 class="section-title">Profile Config</h3>
+    <h3 class="section-title">Chain Config</h3>
     <div class="meta-grid">
-      <span class="meta-label">Format</span><span class="meta-value">Markdown</span>
-      <span class="meta-label">Output</span><span class="meta-value">~/exports/</span>
-      <span class="meta-label">Include</span><span class="meta-value">All chapters</span>
+      <span class="meta-label">Provider</span><span class="meta-value">Mock Local</span>
+      <span class="meta-label">Model</span><span class="meta-value">mock-durable-context-v1</span>
+      <span class="meta-label">Context</span><span class="meta-value">Selected candidates</span>
       <span class="meta-label">Last Run</span><span class="meta-value">Never</span>
     </div>
   </section>
   <section class="section">
     <h3 class="section-title">Options</h3>
-    <label class="option"><input type="checkbox" checked /> Include front matter</label>
-    <label class="option"><input type="checkbox" checked /> Merge into single file</label>
-    <label class="option"><input type="checkbox" /> Strip comments</label>
+    <label class="option"><input type="checkbox" checked /> Include active document</label>
+    <label class="option"><input type="checkbox" checked /> Include descendants</label>
+    <label class="option"><input type="checkbox" /> Create proposal</label>
   </section>
 </div>
 

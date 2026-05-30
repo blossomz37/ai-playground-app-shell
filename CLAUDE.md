@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**Pre-implementation, decisions resolved.** No code yet, but the foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12). The spec documents in the root are the source of truth.
+**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`.
 
-**Committed stack:** Electron desktop shell + Svelte/SvelteKit UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* the renderer (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
+**Committed stack:** Electron desktop shell + Svelte 5 UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* renderer components where practical (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
 
 ## What This Is
 
@@ -67,6 +67,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Remaining modules**~~ — ✅ **DONE** (2026-05-29). All six modules scaffolded: Journal (📓 daily entries), Assets (🖼 file gallery), Workflow Runner (⚡ export jobs), Table View (📊 data table), AI Chat (🤖 mock chat), Web (🌐 browser placeholder). Each has manifest + activate in main, three views (nav/main/inspector) in renderer. Shell chrome refactored to dynamic module routing. Screenshot: `implementation/screenshots/all-modules-after-2026-05-29.png`.
 - ~~**Toast/notification service**~~ — ✅ **DONE** (2026-05-29). Renderer sink for `shell:notify` events. `ToastContainer.svelte` + `store/toasts.ts`. Auto-dismiss timers, FIFO queue, glassmorphism styling.
 - ~~**Settings panel**~~ — ✅ **DONE** (2026-05-29). `SettingsPanel.svelte` modal via Cmd+,. Editor font/size/spellcheck with live preview + IPC persistence.
+- ~~**AI orchestration Phase 1**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/15-ai-orchestration-and-context.md`): Shared AI contracts, SQLite persistence tables, mock provider, context candidates/packs, run history, renderer AI bridge, and wiring across AI Chat, Prompt Studio, and Workflow Runner. AI-specific behavior lives under `app-shell/src/main/ai/`, not shell core.
 
 ## Workspace Layout
 
@@ -74,7 +75,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_05.md         ← latest = highest number; read it first
+│   └── HANDOFF_07.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map

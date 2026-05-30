@@ -1,5 +1,13 @@
 <script lang="ts">
-  // Placeholder for Prompt Studio navigation (template list)
+  import { onMount } from 'svelte'
+  import { aiTemplates, loadAiTemplates } from '../../store/ai'
+
+  let activeTemplateId = $state<string | null>(null)
+
+  onMount(async () => {
+    await loadAiTemplates()
+    activeTemplateId = $aiTemplates[0]?.id ?? null
+  })
 </script>
 
 <div class="nav-view">
@@ -11,14 +19,18 @@
   </header>
 
   <div class="template-list">
-    <div class="template-item active">
-      <div class="template-title">Summarize Document</div>
-      <div class="template-meta">Last run: Today</div>
-    </div>
-    <div class="template-item">
-      <div class="template-title">Extract Entities</div>
-      <div class="template-meta">Last run: 2d ago</div>
-    </div>
+    {#each $aiTemplates as template (template.id)}
+      <button
+        class="template-item"
+        class:active={activeTemplateId === template.id}
+        onclick={() => (activeTemplateId = template.id)}
+      >
+        <div class="template-title">{template.name}</div>
+        <div class="template-meta">{template.tags.join(', ') || 'Prompt template'}</div>
+      </button>
+    {:else}
+      <div class="template-empty">No templates</div>
+    {/each}
   </div>
 </div>
 
@@ -67,10 +79,14 @@
   }
 
   .template-item {
+    display: block;
+    width: 100%;
     padding: var(--space-3);
     border-radius: var(--radius-md);
     cursor: pointer;
     margin-bottom: var(--space-1);
+    color: var(--color-fg-secondary);
+    text-align: left;
   }
 
   .template-item:hover {
@@ -90,5 +106,11 @@
   .template-meta {
     font-size: var(--font-size-xs);
     color: var(--color-fg-muted);
+  }
+
+  .template-empty {
+    padding: var(--space-3);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
   }
 </style>

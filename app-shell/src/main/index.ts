@@ -31,9 +31,46 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const out = process.env['SHELL_CAPTURE']
   if (!out) return
   const delay = Number(process.env['SHELL_CAPTURE_DELAY'] ?? 3500)
+  const moduleId = process.env['SHELL_CAPTURE_MODULE']
+  const documentId = process.env['SHELL_CAPTURE_DOCUMENT']
+  const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
+  const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   // Delay so async IPC-loaded data (document tree, active doc) has rendered.
   setTimeout(async () => {
     try {
+      if (documentId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (aiPrompt) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const contextCandidates = await window.shell.ai.collectContext({
+              workspaceId: workspace.id,
+              activeDocumentId: ${JSON.stringify(documentId ?? null)},
+              includeDescendants: true
+            })
+            await window.shell.ai.invoke({
+              workspaceId: workspace.id,
+              moduleId: ${JSON.stringify(moduleId ?? 'shell.aichat')},
+              originType: 'chat',
+              originId: 'capture-smoke',
+              prompt: ${JSON.stringify(aiPrompt)},
+              contextCandidates
+            })
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (moduleId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       const img = await win.webContents.capturePage()
       mkdirSync(dirname(out), { recursive: true })
       writeFileSync(out, img.toPNG())

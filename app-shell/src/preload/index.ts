@@ -37,6 +37,14 @@ const api: ShellApi = {
     query: (text, limit) => ipcRenderer.invoke('search:query', { query: text, limit })
   },
 
+  ai: {
+    collectContext: (params) => ipcRenderer.invoke('ai:context:collect', params),
+    invoke: (params) => ipcRenderer.invoke('ai:invoke', params),
+    runs: (params) => ipcRenderer.invoke('ai:runs', params),
+    templates: (workspaceId) => ipcRenderer.invoke('ai:templates', { workspaceId }),
+    saveTemplate: (template) => ipcRenderer.invoke('ai:templates:save', template)
+  },
+
   layout: {
     get: ()             => ipcRenderer.invoke('layout:get'),
     set: (state)        => ipcRenderer.invoke('layout:set', state),
@@ -59,6 +67,11 @@ const api: ShellApi = {
 
   theme: {
     set: (mode) => ipcRenderer.invoke('theme:set', { mode })
+  },
+
+  capture: {
+    moduleId: process.env['SHELL_CAPTURE_MODULE'],
+    documentId: process.env['SHELL_CAPTURE_DOCUMENT']
   }
 }
 

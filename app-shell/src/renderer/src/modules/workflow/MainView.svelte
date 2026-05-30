@@ -1,40 +1,49 @@
 <!-- Workflow MainView — job runner with output log -->
 <script lang="ts">
   import { addToast } from '../../store/toasts'
+  import { invokeAi, refreshAiContext } from '../../store/ai'
 
   let running = $state(false)
   let log = $state<string[]>([])
 
-  async function runExport() {
+  async function runWorkflow() {
     running = true
-    log = ['[15:22:01] Starting Markdown export…']
-    addToast('info', 'Export started: Markdown Export')
+    log = [`[${new Date().toLocaleTimeString()}] Starting prompt chain run...`]
+    addToast('info', 'Workflow started: Manuscript Context Pass')
 
-    // Simulate export steps
-    await new Promise(r => setTimeout(r, 800))
-    log = [...log, '[15:22:02] Processing 3 chapters…']
-    await new Promise(r => setTimeout(r, 600))
-    log = [...log, '[15:22:02] Writing output files…']
-    await new Promise(r => setTimeout(r, 400))
-    log = [...log, '[15:22:03] ✓ Export complete — 3 files written']
+    await refreshAiContext()
+    log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
+
+    const result = await invokeAi({
+      moduleId: 'shell.workflow',
+      originType: 'chain',
+      originId: 'manuscript-context-pass',
+      prompt: 'Run a first-pass manuscript workflow over the included context. Return notable signals, missing context, and the next useful prompt step.'
+    })
+
+    log = [
+      ...log,
+      `[${new Date().toLocaleTimeString()}] Run ${result.run.status}: ${result.run.model}`,
+      result.run.outputText
+    ]
 
     running = false
-    addToast('info', 'Export complete: 3 files written')
+    addToast('info', 'Workflow complete: run history updated')
   }
 </script>
 
 <div class="main-view">
   <header class="runner-header">
-    <h1 class="runner-title">Markdown Export</h1>
-    <button class="run-btn" class:running onclick={runExport} disabled={running}>
-      {running ? '⟳ Running…' : '▶ Run Export'}
+    <h1 class="runner-title">Manuscript Context Pass</h1>
+    <button class="run-btn" class:running onclick={runWorkflow} disabled={running}>
+      {running ? 'Running...' : 'Run Chain'}
     </button>
   </header>
   <div class="log-area">
     {#if log.length === 0}
-      <p class="log-empty">No recent runs. Click "Run Export" to start.</p>
+      <p class="log-empty">No recent runs.</p>
     {:else}
-      {#each log as line}
+      {#each log as line, index (`${index}-${line.slice(0, 24)}`)}
         <div class="log-line">{line}</div>
       {/each}
     {/if}

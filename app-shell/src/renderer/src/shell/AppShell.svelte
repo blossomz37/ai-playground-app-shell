@@ -33,6 +33,7 @@
   let layoutLoaded = $state(false)
   let activeModule = $state<string | null>(null)
   let activeModuleUnsubscribe: (() => void) | null = null
+  let captureModuleListener: ((event: Event) => void) | null = null
 
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
@@ -139,10 +140,23 @@
       registerCommand('shell.layout.toggleInspector', toggleInspector),
       registerCommand('shell.layout.zenMode', toggleZen)
     )
+
+    captureModuleListener = (event: Event) => {
+      const moduleId = (event as CustomEvent<string>).detail
+      if (moduleId) void selectModule(moduleId)
+    }
+    window.addEventListener('shell:capture-select-module', captureModuleListener)
+
+    if (window.shell.capture?.moduleId) {
+      await selectModule(window.shell.capture.moduleId)
+    }
   })
 
   onDestroy(() => {
     activeModuleUnsubscribe?.()
+    if (captureModuleListener) {
+      window.removeEventListener('shell:capture-select-module', captureModuleListener)
+    }
     for (const d of commandDisposables) d.dispose()
   })
 </script>

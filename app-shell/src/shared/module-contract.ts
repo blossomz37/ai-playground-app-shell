@@ -2,6 +2,16 @@
 // Types only; no runtime code. Safe to import from main, preload, and renderer.
 // Source of truth: 3-module-contract.md
 
+import type {
+  AiContextCandidate,
+  AiInvokeResult,
+  AiPromptTemplate,
+  AiRun,
+  CollectAiContextParams,
+  InvokeAiParams,
+  ListAiRunsParams
+} from './ai'
+
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface ModuleManifest {
@@ -244,6 +254,13 @@ export interface ShellApi {
   search: {
     query(text: string, limit?: number): Promise<SearchResult[]>
   }
+  ai: {
+    collectContext(params: CollectAiContextParams): Promise<AiContextCandidate[]>
+    invoke(params: InvokeAiParams): Promise<AiInvokeResult>
+    runs(params: ListAiRunsParams): Promise<AiRun[]>
+    templates(workspaceId: string): Promise<AiPromptTemplate[]>
+    saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>
+  }
   layout: {
     get(): Promise<LayoutState>
     set(state: Partial<LayoutState>): Promise<void>
@@ -261,5 +278,9 @@ export interface ShellApi {
   }
   theme: {
     set(mode: ThemeMode): Promise<void>
+  }
+  capture?: {
+    moduleId?: string
+    documentId?: string
   }
 }

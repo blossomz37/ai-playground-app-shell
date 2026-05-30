@@ -5,8 +5,10 @@ import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
 import { layoutService } from './core/layout'
 import { secretsService } from './core/secrets'
+import { aiOrchestrator } from './ai/orchestrator'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
+import type { AiPromptTemplate, CollectAiContextParams, InvokeAiParams, ListAiRunsParams } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
 
@@ -81,6 +83,27 @@ export function registerIpcHandlers(): void {
   // ── Search ────────────────────────────────────────────────────────────────
   ipcMain.handle('search:query', (_e, { query, limit }: { query: string; limit?: number }) =>
     searchService.search(query, 'ws-default', limit)
+  )
+
+  // ── AI orchestration ─────────────────────────────────────────────────────
+  ipcMain.handle('ai:context:collect', (_e, params: CollectAiContextParams) =>
+    aiOrchestrator.collectContext(params)
+  )
+
+  ipcMain.handle('ai:invoke', (_e, params: InvokeAiParams) =>
+    aiOrchestrator.invoke(params)
+  )
+
+  ipcMain.handle('ai:runs', (_e, params: ListAiRunsParams) =>
+    aiOrchestrator.listRuns(params)
+  )
+
+  ipcMain.handle('ai:templates', (_e, { workspaceId }: { workspaceId: string }) =>
+    aiOrchestrator.listTemplates(workspaceId)
+  )
+
+  ipcMain.handle('ai:templates:save', (_e, template: AiPromptTemplate) =>
+    aiOrchestrator.saveTemplate(template)
   )
 
   // ── Layout ────────────────────────────────────────────────────────────────

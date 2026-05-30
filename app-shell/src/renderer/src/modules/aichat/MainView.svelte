@@ -1,15 +1,19 @@
 <!-- AI Chat MainView — chat interface with mock responses -->
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import { aiBusy, invokeAi, refreshAiContext } from '../../store/ai'
+
   interface Message { role: 'user' | 'assistant'; content: string }
 
   let messages = $state<Message[]>([
     { role: 'assistant', content: 'Hello! I\'m your AI writing assistant. How can I help with your manuscript today?' },
-    { role: 'user', content: 'Can you help me develop the antagonist\'s motivation?' },
-    { role: 'assistant', content: 'Of course! Let\'s think about what drives your antagonist. Consider these dimensions:\n\n1. **Core wound** — what happened in their past that shapes their worldview?\n2. **Justified belief** — from their perspective, why is their goal righteous?\n3. **Mirror to the protagonist** — how do they reflect or invert the hero\'s journey?\n\nTell me about your antagonist and I\'ll help flesh out their motivation.' },
   ])
 
   let input = $state('')
-  let inputEl = $state<HTMLTextAreaElement>()
+
+  onMount(() => {
+    void refreshAiContext()
+  })
 
   async function send() {
     const text = input.trim()
@@ -17,12 +21,14 @@
     messages = [...messages, { role: 'user', content: text }]
     input = ''
 
-    // Mock AI response after a brief delay
-    await new Promise(r => setTimeout(r, 1200))
-    messages = [...messages, {
-      role: 'assistant',
-      content: 'That\'s an interesting angle. Let me think about how to develop that further for your story...\n\n*[AI model integration coming soon — this is a mock response]*'
-    }]
+    const result = await invokeAi({
+      moduleId: 'shell.aichat',
+      originType: 'chat',
+      originId: 'default-conversation',
+      prompt: text
+    })
+
+    messages = [...messages, { role: 'assistant', content: result.run.outputText }]
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -35,7 +41,7 @@
 
 <div class="main-view">
   <div class="messages">
-    {#each messages as msg}
+    {#each messages as msg, index (`${msg.role}-${index}-${msg.content.slice(0, 24)}`)}
       <div class="message" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'}>
         <span class="msg-avatar">{msg.role === 'user' ? '👤' : '🤖'}</span>
         <div class="msg-content">{msg.content}</div>
@@ -44,14 +50,15 @@
   </div>
   <div class="input-area">
     <textarea
-      bind:this={inputEl}
       bind:value={input}
       class="chat-input"
       placeholder="Ask about your manuscript…"
       rows="1"
       onkeydown={onKeydown}
     ></textarea>
-    <button class="send-btn" onclick={send} disabled={!input.trim()}>↑</button>
+    <button class="send-btn" onclick={send} disabled={!input.trim() || $aiBusy}>
+      {$aiBusy ? '...' : '↑'}
+    </button>
   </div>
 </div>
 

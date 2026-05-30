@@ -110,6 +110,7 @@ function buildTree(docs: Doc[]): DocNode[] {
 
 const AUTO_SAVE_MS = 3000
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+let captureDocumentListenerInstalled = false
 
 /** Schedule a debounced auto-save. Resets on every call. */
 export function scheduleAutoSave(): void {
@@ -155,6 +156,10 @@ export async function initStore(): Promise<void> {
   const docs = await window.shell.documents.list(wsId)
   documents.set(docs)
 
+  if (window.shell.capture?.documentId) {
+    await selectDoc(window.shell.capture.documentId)
+  }
+
   window.shell.documents.onChanged(async (id) => {
     const updated = await window.shell.documents.open(id)
     if (updated) {
@@ -165,6 +170,14 @@ export async function initStore(): Promise<void> {
       }
     }
   })
+
+  if (!captureDocumentListenerInstalled) {
+    window.addEventListener('shell:capture-select-document', (event) => {
+      const id = (event as CustomEvent<string>).detail
+      if (id) void selectDoc(id)
+    })
+    captureDocumentListenerInstalled = true
+  }
 }
 
 export async function selectDoc(id: string): Promise<void> {

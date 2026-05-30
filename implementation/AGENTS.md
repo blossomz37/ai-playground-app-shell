@@ -60,4 +60,7 @@ The app launches, waits for async IPC data to render, writes the PNG via `webCon
 
 - `SHELL_CAPTURE` — absolute or relative output path (relative resolves from `app-shell/`). Parent dirs are created. Required to activate the hook; unset = normal launch.
 - `SHELL_CAPTURE_DELAY` — ms to wait after `ready-to-show` before capturing (default `3500`). Bump it if a slice loads data slowly or you need to see a later state.
+- `SHELL_CAPTURE_MODULE` — optional module id to select before capture, e.g. `shell.aichat`.
+- `SHELL_CAPTURE_DOCUMENT` — optional document id to select before capture, e.g. `doc-chapter-1`.
+- `SHELL_CAPTURE_AI_PROMPT` — optional mock prompt to invoke before capture; useful when a screenshot should show persisted AI run evidence.
 - The capture reflects whatever the app renders on a cold launch (seeded/persisted SQLite state). For a *specific* interaction state (mid-edit, a panel open), you still need computer-use to drive the UI — but that path can't write the file, so use it to verify and `SHELL_CAPTURE` for the saved cold-launch shot.

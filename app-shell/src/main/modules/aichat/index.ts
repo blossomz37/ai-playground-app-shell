@@ -8,6 +8,8 @@
 // ──────────────────────────────────────────────
 
 import type { Module, ModuleContext } from '@shared/module-contract'
+import type { InvokeAiParams } from '@shared/ai'
+import { aiOrchestrator } from '../../ai/orchestrator'
 
 export const aiChatModule: Module = {
   manifest: {
@@ -27,6 +29,8 @@ export const aiChatModule: Module = {
       commands: [
         { id: 'aichat.new',    title: 'New AI Conversation' },
         { id: 'aichat.clear',  title: 'Clear Chat' },
+        { id: 'ai.invoke',     title: 'Invoke AI' },
+        { id: 'ai.context.collect', title: 'Collect AI Context' },
         { id: 'ai.review',     title: 'Run AI Review' }
       ]
     }
@@ -41,8 +45,26 @@ export const aiChatModule: Module = {
       ctx.notify({ level: 'info', message: 'Chat cleared.' })
     })
 
+    ctx.commands.register('ai.invoke', async (payload) => {
+      return aiOrchestrator.invoke(payload as InvokeAiParams)
+    })
+
+    ctx.commands.register('ai.context.collect', async (payload) => {
+      return aiOrchestrator.collectContext({
+        workspaceId: ctx.workspace.id,
+        ...(typeof payload === 'object' && payload !== null ? payload : {})
+      })
+    })
+
     ctx.commands.register('ai.review', async () => {
-      ctx.notify({ level: 'info', message: 'AI review — model integration coming soon.' })
+      await aiOrchestrator.invoke({
+        workspaceId: ctx.workspace.id,
+        moduleId: ctx.moduleId,
+        originType: 'chat',
+        originId: 'ai-review',
+        prompt: 'Review the currently selected writing context and identify the highest-value revision opportunity.'
+      })
+      ctx.notify({ level: 'info', message: 'AI review run recorded.' })
     })
   }
 }

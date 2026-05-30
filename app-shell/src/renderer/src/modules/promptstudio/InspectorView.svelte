@@ -1,5 +1,11 @@
 <script lang="ts">
-  // Placeholder for Prompt Studio inspector (Run Settings & History)
+  import { onMount } from 'svelte'
+  import { aiContextCandidates, aiRuns, loadAiRuns, refreshAiContext } from '../../store/ai'
+
+  onMount(() => {
+    void refreshAiContext()
+    void loadAiRuns('shell.promptstudio')
+  })
 </script>
 
 <div class="inspector-view">
@@ -9,18 +15,14 @@
     <div class="field">
       <label for="provider">Provider</label>
       <select id="provider" class="select-input">
-        <option>OpenAI</option>
-        <option>Anthropic</option>
-        <option>Google</option>
-        <option>Local (Ollama)</option>
+        <option>Mock Local</option>
       </select>
     </div>
 
     <div class="field">
       <label for="model">Model</label>
       <select id="model" class="select-input">
-        <option>gpt-4o</option>
-        <option>gpt-3.5-turbo</option>
+        <option>mock-durable-context-v1</option>
       </select>
     </div>
 
@@ -31,20 +33,36 @@
   </div>
 
   <div class="section">
+    <h3>Context</h3>
+    <div class="history-list">
+      {#each $aiContextCandidates.filter(candidate => candidate.included) as candidate (candidate.id)}
+        <div class="history-item">
+          <div class="time">{candidate.title}</div>
+          <div class="status success">~{candidate.estimatedTokens}</div>
+        </div>
+      {:else}
+        <div class="history-item">
+          <div class="time">No context selected</div>
+          <div class="status">Idle</div>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
     <h3>Run History</h3>
     <div class="history-list">
-      <div class="history-item">
-        <div class="time">10:42 AM</div>
-        <div class="status success">Success</div>
-      </div>
-      <div class="history-item">
-        <div class="time">10:35 AM</div>
-        <div class="status error">Error</div>
-      </div>
-      <div class="history-item">
-        <div class="time">Yesterday</div>
-        <div class="status success">Success</div>
-      </div>
+      {#each $aiRuns as run (run.id)}
+        <div class="history-item">
+          <div class="time">{run.inputSummary || run.originType}</div>
+          <div class:success={run.status === 'completed'} class:error={run.status === 'failed'} class="status">{run.status}</div>
+        </div>
+      {:else}
+        <div class="history-item">
+          <div class="time">No runs yet</div>
+          <div class="status">Ready</div>
+        </div>
+      {/each}
     </div>
   </div>
 </div>

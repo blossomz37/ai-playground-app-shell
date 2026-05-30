@@ -6,6 +6,7 @@ import type {
   ShellApi,
   ThemeMode
 } from '@shared/module-contract'
+import type { AiContextCandidate, AiPromptTemplate, AiRun } from '@shared/ai'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -74,6 +75,38 @@ function createBrowserShell(): ShellApi {
   let layout = { ...DEFAULT_LAYOUT }
   const settings = new Map<string, unknown>()
   const docs = new Map(DEMO_DOCS.map(doc => [doc.id, { ...doc }]))
+  const aiRuns: AiRun[] = []
+  const aiTemplates: AiPromptTemplate[] = [{
+    id: 'browser-template-summary',
+    workspaceId: 'ws-browser-preview',
+    name: 'Summarize Document',
+    description: 'Browser preview template',
+    body: 'Summarize the included context in 3 useful bullet points.\n\n{{text}}',
+    variables: ['text'],
+    defaultModel: 'mock-durable-context-v1',
+    defaultTemperature: 0.7,
+    contextPolicy: { includeActiveDocument: true },
+    tags: ['starter', 'summary'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }]
+
+  function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
+    const doc = docs.get(activeDocumentId ?? 'demo-chapter-1') ?? DEMO_DOCS[1]
+    return [{
+      id: `active-document:${doc.id}`,
+      sourceType: 'active-document',
+      sourceId: doc.id,
+      title: doc.title,
+      kind: doc.kind,
+      excerpt: doc.content.replace(/\s+/g, ' ').slice(0, 180),
+      content: doc.content,
+      estimatedTokens: Math.max(1, Math.ceil(doc.content.split(/\s+/).filter(Boolean).length * 1.35)),
+      included: true,
+      priority: 100,
+      reason: 'Currently open document'
+    }]
+  }
 
   return {
     documents: {
@@ -127,6 +160,50 @@ function createBrowserShell(): ShellApi {
     },
     search: {
       query: async () => []
+    },
+    ai: {
+      collectContext: async (params) => collectContext(params.activeDocumentId),
+      invoke: async (params) => {
+        const now = new Date().toISOString()
+        const run: AiRun = {
+          id: `browser-run-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          moduleId: params.moduleId,
+          originType: params.originType,
+          originId: params.originId ?? 'browser-preview',
+          providerId: 'mock-local',
+          model: params.model ?? 'mock-durable-context-v1',
+          temperature: params.temperature ?? 0.7,
+          status: 'completed',
+          inputSummary: params.prompt.slice(0, 240),
+          outputText: `Mock ${params.originType} run complete.\n\n${params.prompt}`,
+          error: null,
+          createdAt: now,
+          completedAt: now
+        }
+        aiRuns.unshift(run)
+        return {
+          run,
+          contextPack: {
+            id: `browser-pack-${Date.now()}`,
+            workspaceId: params.workspaceId,
+            runId: run.id,
+            createdAt: now,
+            candidates: params.contextCandidates ?? collectContext(),
+            renderedText: '',
+            tokenEstimate: 1,
+            packingStrategy: 'browser-preview'
+          }
+        }
+      },
+      runs: async (params) => aiRuns
+        .filter(run => !params.moduleId || run.moduleId === params.moduleId)
+        .slice(0, params.limit ?? 12),
+      templates: async () => aiTemplates,
+      saveTemplate: async (template) => {
+        aiTemplates.unshift(template)
+        return template
+      }
     },
     layout: {
       get: async () => ({ ...layout }),

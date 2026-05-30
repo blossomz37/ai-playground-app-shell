@@ -8,6 +8,8 @@
 // ──────────────────────────────────────────────
 
 import type { Module, ModuleContext } from '@shared/module-contract'
+import type { InvokeAiParams } from '@shared/ai'
+import { aiOrchestrator } from '../../ai/orchestrator'
 
 export const workflowModule: Module = {
   manifest: {
@@ -16,17 +18,18 @@ export const workflowModule: Module = {
     version: '0.1.0',
     requiredShellVersion: '^0.1.0',
     activation: [{ on: 'userEnable' }],
-    permissions: ['documents.read', 'fs.write', 'jobs.submit'],
+    permissions: ['ai.invoke', 'documents.read', 'fs.write', 'jobs.submit'],
     contributes: {
       zones: {
-        railEntry: { icon: 'zap', label: 'Export' },
-        navigation: { title: 'Profiles' },
+        railEntry: { icon: 'zap', label: 'Workflow' },
+        navigation: { title: 'Chains' },
         main: { title: 'Runner' },
-        inspector: { title: 'Profile Config' }
+        inspector: { title: 'Chain Config' }
       },
       commands: [
-        { id: 'workflow.run',       title: 'Run Export' },
-        { id: 'workflow.newProfile', title: 'New Export Profile' }
+        { id: 'workflow.run',       title: 'Run Workflow Chain' },
+        { id: 'workflow.newProfile', title: 'New Workflow Chain' },
+        { id: 'ai.chain.run',       title: 'Run AI Chain' }
       ],
       jobs: [
         { type: 'export.markdown', title: 'Export to Markdown' },
@@ -36,12 +39,35 @@ export const workflowModule: Module = {
   },
 
   async activate(ctx: ModuleContext): Promise<void> {
-    ctx.commands.register('workflow.run', async () => {
-      ctx.notify({ level: 'info', message: 'Export workflow started.' })
+    const runChain = async (payload?: unknown) => {
+      const params = typeof payload === 'object' && payload !== null
+        ? payload as Partial<InvokeAiParams>
+        : {}
+      const result = await aiOrchestrator.invoke({
+        workspaceId: ctx.workspace.id,
+        moduleId: ctx.moduleId,
+        originType: 'chain',
+        originId: params.originId ?? 'command-chain-run',
+        prompt: params.prompt ?? 'Run the active workflow chain against the selected context.',
+        variables: params.variables,
+        contextCandidates: params.contextCandidates
+      })
+      ctx.notify({ level: 'info', message: 'Workflow chain run recorded.' })
+      return result
+    }
+
+    ctx.commands.register('workflow.run', runChain)
+
+    ctx.commands.register('ai.chain.run', runChain)
+
+    ctx.jobs.defineRunner('ai.chain.mock', async (payload, handle) => {
+      handle.progress(10, 'Packing context')
+      const result = await runChain(payload)
+      handle.progress(100, `Completed ${result.run.id}`)
     })
 
     ctx.commands.register('workflow.newProfile', async () => {
-      ctx.notify({ level: 'info', message: 'New export profile — coming soon.' })
+      ctx.notify({ level: 'info', message: 'New workflow chain — coming soon.' })
     })
   }
 }

@@ -1,11 +1,11 @@
 ---
 file: 15-ai-orchestration-and-context.md
 description: Design chat, prompt chaining, and user-configurable AI context across AI Chat, Prompt Studio, and Workflow Runner
-version: 0.1.0
+version: 0.2.0
 created: 2026-05-30
 modified: 2026-05-30
 author: codex
-status: draft
+status: phase-1-implemented
 ---
 
 # 15 - AI Orchestration and Configurable Context
@@ -20,6 +20,24 @@ This slice produces the shared AI execution model that first-party modules can u
 - Prompt Studio: structured templates, variables, test runs, and reusable prompt assets.
 - Workflow Runner: multi-step prompt chains, long-running jobs, and repeatable workflows.
 - Documents: readable source material and proposal writeback target.
+
+## Phase 1 Implementation - 2026-05-30
+
+Implemented the first durable AI orchestration layer:
+
+- Shared AI contracts live in `app-shell/src/shared/ai.ts`.
+- Workspace SQLite tables now cover providers, conversations/messages, templates, runs, context packs, chains, proposals, and tool calls.
+- Main-process orchestration lives under `app-shell/src/main/ai/`, outside shell core services.
+- `mock-local` provider records completed runs and immutable context packs without requiring API keys.
+- Renderer bridge exposes `window.shell.ai.collectContext`, `invoke`, `runs`, `templates`, and `saveTemplate`.
+- AI Chat, Prompt Studio, and Workflow Runner now call the shared layer instead of owning isolated mock behavior.
+- Dev capture supports `SHELL_CAPTURE_MODULE`, `SHELL_CAPTURE_DOCUMENT`, and `SHELL_CAPTURE_AI_PROMPT` for UI evidence.
+
+Validation evidence:
+
+- `npm run typecheck`
+- `npm run start` with capture: `implementation/screenshots/ai-orchestration-chat-after-2026-05-30.png`
+- SQLite smoke check confirmed `ai_*` tables, a starter template, and a completed `shell.aichat` run.
 
 ## Problem
 

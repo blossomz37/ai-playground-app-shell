@@ -1,19 +1,44 @@
 <script lang="ts">
-  // Placeholder for Prompt Studio main view (template editor)
+  import { onMount } from 'svelte'
+  import { aiBusy, aiTemplates, invokeAi, loadAiTemplates, refreshAiContext } from '../../store/ai'
+
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
   const textPlaceholder = 'Value for {{text}}...'
 
-  let promptText = $state("Please summarize the following text in 3 bullet points:\n\n{{text}}")
+  let templateName = $state('Summarize Document')
+  let promptText = $state('Please summarize the included context in 3 useful bullet points.\n\n{{text}}')
+  let variableText = $state('')
+  let outputText = $state('')
+
+  onMount(async () => {
+    await Promise.all([loadAiTemplates(), refreshAiContext()])
+    const first = $aiTemplates[0]
+    if (first) {
+      templateName = first.name
+      promptText = first.body
+    }
+  })
+
+  async function runTemplate() {
+    const result = await invokeAi({
+      moduleId: 'shell.promptstudio',
+      originType: 'template',
+      originId: templateName,
+      prompt: promptText,
+      variables: { text: variableText }
+    })
+    outputText = result.run.outputText
+  }
 </script>
 
 <div class="main-view">
   <header class="template-header">
     <div class="title-block">
-      <h1>Summarize Document</h1>
+      <h1>{templateName}</h1>
     </div>
     <div class="actions">
-      <button class="btn primary" onclick={() => window.shell.commands.execute('promptstudio.run')}>
-        Run Template
+      <button class="btn primary" onclick={runTemplate} disabled={$aiBusy}>
+        {$aiBusy ? 'Running...' : 'Run Template'}
       </button>
     </div>
   </header>
@@ -28,14 +53,18 @@
       <div class="section-title">Variables</div>
       <div class="variable-row">
         <label for="var-text" class="var-name">text</label>
-        <textarea id="var-text" class="var-input" placeholder={textPlaceholder}></textarea>
+        <textarea id="var-text" class="var-input" bind:value={variableText} placeholder={textPlaceholder}></textarea>
       </div>
     </section>
 
     <section class="template-section output-section">
       <div class="section-title">Output Preview</div>
       <div class="output-box">
-        <span class="placeholder-text">Run template to see output...</span>
+        {#if outputText}
+          <pre>{outputText}</pre>
+        {:else}
+          <span class="placeholder-text">Run template to see output...</span>
+        {/if}
       </div>
     </section>
   </div>
@@ -80,6 +109,11 @@
     border: 1px solid var(--border-subtle);
     background: var(--color-bg-surface);
     color: var(--color-fg-primary);
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .btn.primary {
@@ -191,14 +225,26 @@
     flex: 1;
     overflow-y: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     border-radius: var(--radius-md);
     background: var(--color-bg-surface);
     border: 1px dashed var(--color-border);
   }
 
+  .output-box pre {
+    margin: 0;
+    width: 100%;
+    padding: var(--space-3);
+    white-space: pre-wrap;
+    color: var(--color-fg-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+  }
+
   .placeholder-text {
+    margin: auto;
     color: var(--color-fg-muted);
     font-style: italic;
   }

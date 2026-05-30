@@ -1,17 +1,17 @@
-<!-- Workflow NavView — export profile list -->
+<!-- Workflow NavView — prompt chain list -->
 <script lang="ts">
   const profiles = [
-    { id: '1', name: 'Markdown Export', format: 'MD', status: 'ready' },
-    { id: '2', name: 'HTML Manuscript', format: 'HTML', status: 'ready' },
-    { id: '3', name: 'EPUB Package', format: 'EPUB', status: 'draft' },
+    { id: '1', name: 'Manuscript Context Pass', format: 'AI', status: 'ready' },
+    { id: '2', name: 'Scene Diagnosis', format: 'AI', status: 'ready' },
+    { id: '3', name: 'Revision Chain', format: 'AI', status: 'draft' },
   ]
   let activeProfile = $state('1')
 </script>
 
 <div class="nav-view">
-  <header class="nav-header"><span class="nav-title">Profiles</span></header>
+  <header class="nav-header"><span class="nav-title">Chains</span></header>
   <div class="profile-list">
-    {#each profiles as profile}
+    {#each profiles as profile (profile.id)}
       <button class="profile-item" class:active={activeProfile === profile.id} onclick={() => (activeProfile = profile.id)}>
         <span class="profile-format">{profile.format}</span>
         <div class="profile-info">
