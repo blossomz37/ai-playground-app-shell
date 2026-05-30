@@ -121,6 +121,30 @@ export interface InspectorSection {
   component: unknown // SvelteComponent — typed as unknown here; cast in renderer
 }
 
+export interface FsEntry {
+  name: string
+  isDir: boolean
+}
+
+export interface FsStat {
+  size: number
+  mtime: string
+}
+
+export interface SearchResult {
+  documentId: string
+  title: string
+  snippet: string
+  rank: number
+}
+
+export interface LayoutState {
+  sidebarWidth: number
+  inspectorWidth: number
+  sidebarVisible: boolean
+  inspectorVisible: boolean
+}
+
 export interface ModuleContext {
   moduleId: string
 
@@ -138,6 +162,20 @@ export interface ModuleContext {
   secrets: {
     get(name: string): Promise<string | undefined>
     list(): Promise<string[]>
+  }
+
+  fs: {
+    readFile(path: string): Promise<string>
+    writeFile(path: string, content: string): Promise<void>
+    readDir(path: string): Promise<FsEntry[]>
+    stat(path: string): Promise<FsStat | null>
+    exists(path: string): Promise<boolean>
+    mkdir(path: string): Promise<void>
+    remove(path: string): Promise<void>
+  }
+
+  search: {
+    query(text: string, opts?: { limit?: number }): Promise<SearchResult[]>
   }
 
   jobs: {
@@ -199,6 +237,20 @@ export interface ShellApi {
   commands: {
     list(): Promise<CommandCatalogEntry[]>
     execute(id: string, ...args: unknown[]): Promise<unknown>
+  }
+  search: {
+    query(text: string, limit?: number): Promise<SearchResult[]>
+  }
+  layout: {
+    get(): Promise<LayoutState>
+    set(state: Partial<LayoutState>): Promise<void>
+    toggle(zone: 'sidebar' | 'inspector'): Promise<LayoutState>
+    resize(zone: 'sidebar' | 'inspector', px: number): Promise<LayoutState>
+  }
+  secrets: {
+    list(): Promise<string[]>
+    set(name: string, value: string): Promise<void>
+    delete(name: string): Promise<void>
   }
   notifications: {
     onNotify(cb: (toast: { level: 'info' | 'warn' | 'error'; message: string }) => void): void

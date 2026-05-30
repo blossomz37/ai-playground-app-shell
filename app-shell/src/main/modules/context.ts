@@ -3,6 +3,9 @@ import { documents } from '../core/documents'
 import { events } from '../core/events'
 import { jobs } from '../core/jobs'
 import { createSettingsStore } from '../core/settings'
+import { createFileSystemService } from '../core/filesystem'
+import { searchService } from '../core/search'
+import { secretsService } from '../core/secrets'
 
 const commandHandlers = new Map<string, (...args: unknown[]) => unknown>()
 
@@ -18,6 +21,7 @@ export interface DisposableModuleContext extends ModuleContext {
 export function createModuleContext(moduleId: string, workspace: Workspace): DisposableModuleContext {
   const settings = createSettingsStore(moduleId)
   const disposables: Disposable[] = []
+  const fs = createFileSystemService(workspace.root)
 
   /** Wrap a Disposable — track it for bulk cleanup and return the original. */
   function track(d: Disposable): Disposable {
@@ -48,8 +52,16 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Dis
     settings,
 
     secrets: {
-      async get(_name) { return undefined }, // TODO: Electron safeStorage
-      async list() { return [] }
+      async get(name) { return secretsService.get(name) },
+      async list() { return secretsService.list() }
+    },
+
+    fs,
+
+    search: {
+      async query(text, opts) {
+        return searchService.search(text, workspace.id, opts?.limit)
+      }
     },
 
     jobs: {

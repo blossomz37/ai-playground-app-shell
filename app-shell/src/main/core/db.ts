@@ -57,6 +57,37 @@ function migrate(db: Database.Database): void {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS secrets (
+      name  TEXT PRIMARY KEY,
+      value BLOB NOT NULL
+    );
+
+    -- FTS5 virtual table for full-text search on documents
+    CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+      title, content, content='documents', content_rowid='rowid'
+    );
+
+    -- Triggers to keep FTS index in sync with documents table
+    CREATE TRIGGER IF NOT EXISTS documents_fts_insert AFTER INSERT ON documents
+    BEGIN
+      INSERT INTO documents_fts(rowid, title, content)
+      VALUES (NEW.rowid, NEW.title, NEW.content);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS documents_fts_update AFTER UPDATE ON documents
+    BEGIN
+      INSERT INTO documents_fts(documents_fts, rowid, title, content)
+      VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
+      INSERT INTO documents_fts(rowid, title, content)
+      VALUES (NEW.rowid, NEW.title, NEW.content);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS documents_fts_delete AFTER DELETE ON documents
+    BEGIN
+      INSERT INTO documents_fts(documents_fts, rowid, title, content)
+      VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
+    END;
   `)
 }
 

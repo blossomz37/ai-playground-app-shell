@@ -80,6 +80,13 @@ export function handleGlobalKeydown(e: KeyboardEvent): void {
     return
   }
 
+  // Cmd/Ctrl+Shift+F opens the palette in search mode.
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    searchOpener?.()
+    return
+  }
+
   // While the palette is open it owns its keys.
   if (get(paletteOpen)) return
 
@@ -88,4 +95,10 @@ export function handleGlobalKeydown(e: KeyboardEvent): void {
     e.preventDefault()
     void executeCommand(id)
   }
+}
+
+// Allow CommandPalette to register its search opener function.
+let searchOpener: (() => void) | null = null
+export function setSearchOpener(fn: () => void): void {
+  searchOpener = fn
 }

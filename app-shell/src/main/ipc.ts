@@ -1,6 +1,9 @@
 import { ipcMain } from 'electron'
 import { documents } from './core/documents'
 import { createSettingsStore } from './core/settings'
+import { searchService } from './core/search'
+import { layoutService } from './core/layout'
+import { secretsService } from './core/secrets'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
 
@@ -72,5 +75,36 @@ export function registerIpcHandlers(): void {
     }
     if (!h) throw new Error(`Command not found: ${id}`)
     return h(...args)
+  })
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  ipcMain.handle('search:query', (_e, { query, limit }: { query: string; limit?: number }) =>
+    searchService.search(query, 'ws-default', limit)
+  )
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+  ipcMain.handle('layout:get', () => layoutService.get())
+
+  ipcMain.handle('layout:set', (_e, state: Record<string, unknown>) => {
+    layoutService.set(state)
+  })
+
+  ipcMain.handle('layout:toggle', (_e, { zone }: { zone: 'sidebar' | 'inspector' }) =>
+    layoutService.toggle(zone)
+  )
+
+  ipcMain.handle('layout:resize', (_e, { zone, px }: { zone: 'sidebar' | 'inspector'; px: number }) =>
+    layoutService.resize(zone, px)
+  )
+
+  // ── Secrets ───────────────────────────────────────────────────────────────
+  ipcMain.handle('secrets:list', () => secretsService.list())
+
+  ipcMain.handle('secrets:set', (_e, { name, value }: { name: string; value: string }) => {
+    secretsService.set(name, value)
+  })
+
+  ipcMain.handle('secrets:delete', (_e, { name }: { name: string }) => {
+    secretsService.delete(name)
   })
 }

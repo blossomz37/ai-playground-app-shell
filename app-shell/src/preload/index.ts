@@ -33,6 +33,23 @@ const api: ShellApi = {
     execute: (id, ...args) => ipcRenderer.invoke('commands:execute', id, ...args)
   },
 
+  search: {
+    query: (text, limit) => ipcRenderer.invoke('search:query', { query: text, limit })
+  },
+
+  layout: {
+    get: ()             => ipcRenderer.invoke('layout:get'),
+    set: (state)        => ipcRenderer.invoke('layout:set', state),
+    toggle: (zone)      => ipcRenderer.invoke('layout:toggle', { zone }),
+    resize: (zone, px)  => ipcRenderer.invoke('layout:resize', { zone, px })
+  },
+
+  secrets: {
+    list:   ()              => ipcRenderer.invoke('secrets:list'),
+    set:    (name, value)   => ipcRenderer.invoke('secrets:set', { name, value }),
+    delete: (name)          => ipcRenderer.invoke('secrets:delete', { name })
+  },
+
   notifications: {
     onNotify: (cb) => {
       ipcRenderer.on('shell:notify', (_event, toast) => cb(toast))
