@@ -116,17 +116,40 @@ export interface DocVersion {
 
 export interface Workspace {
   id: string
+  name: string
   type: string
   root: string
-  name?: string
+  createdAt?: string
+  updatedAt?: string
+  lastOpenedAt?: string | null
+  archivedAt?: string | null
 }
 
 export type JobRunner = (payload: unknown, handle: JobHandle) => Promise<void>
 
 export interface JobHandle {
   id: string
+  get cancelled(): boolean
   cancel(): void
   progress(pct: number, message?: string): void
+}
+
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface JobSnapshot {
+  id: string
+  workspaceId: string
+  moduleId: string
+  type: string
+  title: string
+  status: JobStatus
+  progress: number
+  message: string
+  error: string | null
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+  updatedAt: string
 }
 
 export interface InspectorSection {
@@ -238,7 +261,10 @@ export interface ShellApi {
     onChanged(cb: (id: string) => void): void
   }
   workspace: {
-    get(): Promise<{ id: string; type: string; root: string }>
+    get(): Promise<Workspace>
+    list(): Promise<Workspace[]>
+    create(params: { name: string; type?: string; root?: string }): Promise<Workspace>
+    switch(id: string): Promise<Workspace>
   }
   settings: {
     get(key: string): Promise<unknown>
@@ -278,6 +304,12 @@ export interface ShellApi {
   }
   notifications: {
     onNotify(cb: (toast: { level: 'info' | 'warn' | 'error'; message: string }) => void): void
+  }
+  jobs: {
+    list(params?: { workspaceId?: string; limit?: number }): Promise<JobSnapshot[]>
+    submit(type: string, payload?: unknown): Promise<JobSnapshot | null>
+    cancel(id: string): Promise<JobSnapshot | null>
+    onChanged(cb: (job: JobSnapshot) => void): void
   }
   theme: {
     set(mode: ThemeMode): Promise<void>

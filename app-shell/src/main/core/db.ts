@@ -25,7 +25,9 @@ function migrate(db: Database.Database): void {
       type        TEXT NOT NULL DEFAULT 'default',
       root        TEXT NOT NULL,
       createdAt   TEXT NOT NULL,
-      updatedAt   TEXT NOT NULL
+      updatedAt   TEXT NOT NULL,
+      lastOpenedAt TEXT,
+      archivedAt  TEXT
     );
 
     CREATE TABLE IF NOT EXISTS documents (
@@ -194,6 +196,23 @@ function migrate(db: Database.Database): void {
       completedAt TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS job_runs (
+      id          TEXT PRIMARY KEY,
+      workspaceId TEXT NOT NULL REFERENCES workspaces(id),
+      moduleId    TEXT NOT NULL,
+      type        TEXT NOT NULL,
+      title       TEXT NOT NULL,
+      status      TEXT NOT NULL,
+      progress    INTEGER NOT NULL DEFAULT 0,
+      message     TEXT NOT NULL DEFAULT '',
+      error       TEXT,
+      payloadJson TEXT NOT NULL DEFAULT '{}',
+      createdAt   TEXT NOT NULL,
+      startedAt   TEXT,
+      completedAt TEXT,
+      updatedAt   TEXT NOT NULL
+    );
+
     -- FTS5 virtual table for full-text search on documents
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
       title, content, content='documents', content_rowid='rowid'
@@ -220,6 +239,17 @@ function migrate(db: Database.Database): void {
       VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
     END;
   `)
+
+  ensureColumn(db, 'workspaces', 'lastOpenedAt', 'TEXT')
+  ensureColumn(db, 'workspaces', 'archivedAt', 'TEXT')
+  const now = new Date().toISOString()
+  db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)
+}
+
+function ensureColumn(db: Database.Database, table: string, column: string, definition: string): void {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (rows.some(row => row.name === column)) return
+  db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run()
 }
 
 function seedIfEmpty(db: Database.Database): void {
@@ -229,8 +259,8 @@ function seedIfEmpty(db: Database.Database): void {
   const now = new Date().toISOString()
 
   db.prepare(
-    'INSERT INTO workspaces (id, name, type, root, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run('ws-default', 'My Workspace', 'authoring', app.getPath('home'), now, now)
+    'INSERT INTO workspaces (id, name, type, root, createdAt, updatedAt, lastOpenedAt) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run('ws-default', 'My Workspace', 'authoring', app.getPath('home'), now, now, now)
 
   const insert = db.prepare(`
     INSERT INTO documents

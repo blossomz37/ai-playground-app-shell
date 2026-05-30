@@ -5,6 +5,7 @@ import { is } from '@electron-toolkit/utils'
 import { initDb } from './core/db'
 import { events } from './core/events'
 import { createSettingsStore } from './core/settings'
+import { workspaceService } from './core/workspaces'
 import { moduleRegistry } from './modules/registry'
 import { documentsModule } from './modules/documents'
 import { journalModule } from './modules/journal'
@@ -36,6 +37,7 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
   const aiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
   const aiModel = process.env['SHELL_CAPTURE_AI_MODEL']
+  const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
   const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
@@ -76,6 +78,18 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
         )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (jobType) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            await window.shell.jobs.submit(${JSON.stringify(jobType)}, {
+              originId: 'capture-job',
+              prompt: 'Run a short capture workflow and report the current workspace context.'
+            })
+            window.dispatchEvent(new CustomEvent('shell:capture-open-jobs'))
+          })()
+        `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (markdownMessage) {
@@ -143,6 +157,8 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   initDb()
   registerIpcHandlers()
+  const activeWorkspace = workspaceService.getActive()
+  moduleRegistry.setWorkspace(activeWorkspace)
 
   // 0. Restore persisted theme before window creation to avoid flash.
   const shellSettings = createSettingsStore('shell')
@@ -167,7 +183,7 @@ app.whenReady().then(async () => {
 
   // 3. Auto-activate any enabled module whose activation rules match the workspace type.
   //    Everything else activates on first use (rail click, command execution, file open).
-  await moduleRegistry.activateByWorkspaceType('authoring')
+  await moduleRegistry.activateByWorkspaceType(activeWorkspace.type)
 
   createWindow()
 
@@ -175,6 +191,12 @@ app.whenReady().then(async () => {
   events.on('shell:notify', (toast) => {
     BrowserWindow.getAllWindows().forEach(win => {
       win.webContents.send('shell:notify', toast)
+    })
+  })
+
+  events.on('jobs:changed', (job) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('jobs:changed', job)
     })
   })
 

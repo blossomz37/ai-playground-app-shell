@@ -14,7 +14,10 @@ const api: ShellApi = {
   },
 
   workspace: {
-    get: () => ipcRenderer.invoke('workspace:get')
+    get:    ()         => ipcRenderer.invoke('workspace:get'),
+    list:   ()         => ipcRenderer.invoke('workspace:list'),
+    create: (params)   => ipcRenderer.invoke('workspace:create', params),
+    switch: (id)       => ipcRenderer.invoke('workspace:switch', { id })
   },
 
   settings: {
@@ -63,6 +66,15 @@ const api: ShellApi = {
   notifications: {
     onNotify: (cb) => {
       ipcRenderer.on('shell:notify', (_event, toast) => cb(toast))
+    }
+  },
+
+  jobs: {
+    list:     (params)        => ipcRenderer.invoke('jobs:list', params),
+    submit:   (type, payload) => ipcRenderer.invoke('jobs:submit', { type, payload }),
+    cancel:   (id)            => ipcRenderer.invoke('jobs:cancel', { id }),
+    onChanged: (cb) => {
+      ipcRenderer.on('jobs:changed', (_event, job) => cb(job))
     }
   },
 

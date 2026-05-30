@@ -68,7 +68,9 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Dis
       defineRunner(jobType, run) {
         return track(jobs.defineRunner(jobType, run))
       },
-      submit: jobs.submit.bind(jobs)
+      submit(jobType, payload) {
+        return jobs.submit(jobType, payload, { workspaceId: workspace.id, moduleId })
+      }
     },
 
     events: {

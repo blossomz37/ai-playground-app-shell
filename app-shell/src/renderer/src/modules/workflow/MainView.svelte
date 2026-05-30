@@ -2,7 +2,8 @@
 <script lang="ts">
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { addToast } from '../../store/toasts'
-  import { invokeAi, refreshAiContext } from '../../store/ai'
+  import { refreshAiContext, includedAiContextCandidates } from '../../store/ai'
+  import { submitJob } from '../../store/jobs'
 
   let running = $state(false)
   let log = $state<string[]>([])
@@ -15,21 +16,19 @@
     await refreshAiContext()
     log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
 
-    const result = await invokeAi({
-      moduleId: 'shell.workflow',
-      originType: 'chain',
+    const job = await submitJob('ai.chain.mock', {
       originId: 'manuscript-context-pass',
-      prompt: 'Run a first-pass manuscript workflow over the included context. Return notable signals, missing context, and the next useful prompt step.'
+      prompt: 'Run a first-pass manuscript workflow over the included context. Return notable signals, missing context, and the next useful prompt step.',
+      contextCandidates: includedAiContextCandidates()
     })
 
     log = [
       ...log,
-      `[${new Date().toLocaleTimeString()}] Run ${result.run.status}: ${result.run.model}`,
-      result.run.error ?? result.run.outputText
+      `[${new Date().toLocaleTimeString()}] Job queued: ${job?.title ?? 'Workflow chain'}`
     ]
 
     running = false
-    addToast('info', 'Workflow complete: run history updated')
+    addToast('info', 'Workflow job queued')
   }
 </script>
 

@@ -1,6 +1,7 @@
-import type { ActivationRule, CommandCatalogEntry, Module } from '@shared/module-contract'
+import type { ActivationRule, CommandCatalogEntry, Module, Workspace } from '@shared/module-contract'
 import { createModuleContext, type DisposableModuleContext } from './context'
 import { createSettingsStore } from '../core/settings'
+import { workspaceService } from '../core/workspaces'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export type ActivationTrigger =
 const registry = new Map<string, ModuleRecord>()
 const shellSettings = createSettingsStore('modules')
 const ENABLED_KEY = 'enabled'
+let currentWorkspace: Workspace | null = null
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,28 @@ function matchesAny(rules: ActivationRule[], trigger: ActivationTrigger): boolea
 
 export const moduleRegistry = {
   // ── Lifecycle ──────────────────────────────────────────────────────────
+
+  setWorkspace(workspace: Workspace): void {
+    currentWorkspace = workspace
+  },
+
+  getWorkspace(): Workspace {
+    if (!currentWorkspace) currentWorkspace = workspaceService.getActive()
+    return currentWorkspace
+  },
+
+  async refreshWorkspace(workspace: Workspace): Promise<void> {
+    const activeIds = Array.from(registry.entries())
+      .filter(([, r]) => r.activated)
+      .map(([id]) => id)
+
+    for (const id of activeIds) {
+      await this.deactivate(id)
+    }
+
+    this.setWorkspace(workspace)
+    await this.activateByWorkspaceType(workspace.type)
+  },
 
   register(module: Module): void {
     registry.set(module.manifest.id, { module, enabled: false, activated: false })
@@ -106,7 +130,7 @@ export const moduleRegistry = {
   async ensureActivated(id: string): Promise<void> {
     const r = registry.get(id)
     if (!r || r.activated || !r.enabled) return
-    const ctx = createModuleContext(id, { id: 'ws-default', type: 'authoring', root: process.env.HOME ?? '/' })
+    const ctx = createModuleContext(id, this.getWorkspace())
     r.ctx = ctx
     await r.module.activate(ctx)
     r.activated = true

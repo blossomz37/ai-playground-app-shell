@@ -17,8 +17,10 @@
   import ToastContainer from './ToastContainer.svelte'
   import ContextMenu from './ContextMenu.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
+  import JobsPanel from './JobsPanel.svelte'
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
-  import { activeModuleId } from '../store'
+  import { activeModuleId, activeWorkspace, workspaces, workspaceId, switchWorkspace, createWorkspace as createWorkspaceAction } from '../store'
+  import { toggleJobsPanel } from '../store/jobs'
   import type { Disposable, LayoutState } from '@shared/module-contract'
 
   let settingsPanel = $state<{ toggle(): void }>()
@@ -32,9 +34,16 @@
   let zenMode = $state(false)
   let layoutLoaded = $state(false)
   let activeModule = $state<string | null>(null)
+  let workspaceMenuOpen = $state(false)
+  let createWorkspaceOpen = $state(false)
+  let workspaceName = $state('')
+  let workspaceType = $state('authoring')
+  let workspaceBusy = $state(false)
+  let workspaceError = $state<string | null>(null)
   let activeModuleUnsubscribe: (() => void) | null = null
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
+  let captureJobsListener: (() => void) | null = null
 
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
@@ -80,6 +89,28 @@
     activeModule = id
     activeModuleId.set(id)
     await window.shell.modules.activate(id)
+  }
+
+  async function onWorkspaceSelect(event: Event) {
+    const id = (event.target as HTMLSelectElement).value
+    await switchWorkspace(id)
+  }
+
+  async function onCreateWorkspace() {
+    if (!workspaceName.trim()) return
+    workspaceBusy = true
+    workspaceError = null
+    try {
+      await createWorkspaceAction({ name: workspaceName, type: workspaceType })
+      workspaceName = ''
+      workspaceType = 'authoring'
+      createWorkspaceOpen = false
+      workspaceMenuOpen = false
+    } catch (err) {
+      workspaceError = err instanceof Error ? err.message : String(err)
+    } finally {
+      workspaceBusy = false
+    }
   }
 
   // ── Resize handles ────────────────────────────────────────────────────────
@@ -139,7 +170,8 @@
       registerCommand('shell.settings', () => settingsPanel?.toggle()),
       registerCommand('shell.layout.toggleSidebar', toggleSidebar),
       registerCommand('shell.layout.toggleInspector', toggleInspector),
-      registerCommand('shell.layout.zenMode', toggleZen)
+      registerCommand('shell.layout.zenMode', toggleZen),
+      registerCommand('shell.jobs.toggle', toggleJobsPanel)
     )
 
     captureModuleListener = (event: Event) => {
@@ -150,6 +182,9 @@
 
     captureSettingsListener = () => settingsPanel?.toggle()
     window.addEventListener('shell:capture-open-settings', captureSettingsListener)
+
+    captureJobsListener = () => toggleJobsPanel()
+    window.addEventListener('shell:capture-open-jobs', captureJobsListener)
 
     if (window.shell.capture?.moduleId) {
       await selectModule(window.shell.capture.moduleId)
@@ -163,6 +198,9 @@
     }
     if (captureSettingsListener) {
       window.removeEventListener('shell:capture-open-settings', captureSettingsListener)
+    }
+    if (captureJobsListener) {
+      window.removeEventListener('shell:capture-open-jobs', captureJobsListener)
     }
     for (const d of commandDisposables) d.dispose()
   })
@@ -178,7 +216,60 @@
   style:--_sidebar-w="{sidebarWidth}px"
   style:--_inspector-w="{inspectorWidth}px"
 >
-  <div class="topbar"></div>
+  <div class="topbar">
+    <div class="workspace-switcher">
+      <button
+        class="workspace-button"
+        type="button"
+        aria-expanded={workspaceMenuOpen}
+        onclick={() => workspaceMenuOpen = !workspaceMenuOpen}
+      >
+        <span class="workspace-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
+        <span class="workspace-type">{$activeWorkspace?.type ?? 'default'}</span>
+      </button>
+
+      {#if workspaceMenuOpen}
+        <div class="workspace-menu">
+          <label class="field-label" for="workspace-select">Workspace</label>
+          <select id="workspace-select" value={$workspaceId} onchange={onWorkspaceSelect}>
+            {#each $workspaces as workspace (workspace.id)}
+              <option value={workspace.id}>{workspace.name}</option>
+            {/each}
+          </select>
+
+          <button
+            class="new-workspace-toggle"
+            type="button"
+            onclick={() => createWorkspaceOpen = !createWorkspaceOpen}
+          >
+            {createWorkspaceOpen ? 'Cancel' : 'New workspace'}
+          </button>
+
+          {#if createWorkspaceOpen}
+            <form class="workspace-form" onsubmit={(event) => { event.preventDefault(); void onCreateWorkspace() }}>
+              <input
+                aria-label="Workspace name"
+                placeholder="Workspace name"
+                bind:value={workspaceName}
+                disabled={workspaceBusy}
+              />
+              <select aria-label="Workspace type" bind:value={workspaceType} disabled={workspaceBusy}>
+                <option value="authoring">authoring</option>
+                <option value="research">research</option>
+                <option value="default">default</option>
+              </select>
+              <button type="submit" disabled={workspaceBusy || !workspaceName.trim()}>
+                {workspaceBusy ? 'Creating...' : 'Create'}
+              </button>
+              {#if workspaceError}
+                <p class="workspace-error">{workspaceError}</p>
+              {/if}
+            </form>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </div>
   {#if !zenMode}
     <ActivityRail moduleId={activeModule} onSelect={selectModule} />
   {/if}
@@ -266,6 +357,7 @@
 <ToastContainer />
 <ContextMenu />
 <SettingsPanel bind:this={settingsPanel} />
+<JobsPanel />
 
 <style>
   .app-shell {
@@ -304,6 +396,115 @@
     background: var(--color-bg-surface);
     -webkit-app-region: drag;
     border-bottom: var(--border-subtle);
+    display: flex;
+    align-items: center;
+    padding-left: 84px;
+    padding-right: var(--space-3);
+  }
+
+  .workspace-switcher {
+    position: relative;
+    -webkit-app-region: no-drag;
+  }
+
+  .workspace-button {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    min-width: 220px;
+    max-width: 360px;
+    height: 28px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--color-fg-primary);
+    background: transparent;
+    border: var(--border-subtle);
+    cursor: pointer;
+  }
+
+  .workspace-button:hover {
+    background: var(--color-bg-overlay);
+  }
+
+  .workspace-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+  }
+
+  .workspace-type {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    flex-shrink: 0;
+  }
+
+  .workspace-menu {
+    position: absolute;
+    top: 32px;
+    left: 0;
+    width: 320px;
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-surface);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+  }
+
+  .field-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-fg-muted);
+    font-weight: 600;
+  }
+
+  .workspace-menu select,
+  .workspace-form input {
+    width: 100%;
+    min-height: 30px;
+    padding: 0 var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-primary);
+  }
+
+  .new-workspace-toggle,
+  .workspace-form button {
+    min-height: 30px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .new-workspace-toggle {
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+    border: var(--border-subtle);
+  }
+
+  .workspace-form {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .workspace-form button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .workspace-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--font-size-xs);
   }
 
   /* In zen mode, make the topbar transparent so the content feels full-bleed */

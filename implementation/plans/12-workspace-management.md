@@ -5,10 +5,12 @@ version: 0.1.0
 created: 2026-05-29
 modified: 2026-05-29
 author: antigravity
-status: placeholder
+status: implemented-by-17
 ---
 
 # 12 — Workspace Management UI
+
+> Implemented as part of `17-workspace-jobs-shell-slice.md` on 2026-05-30 for list/create/switch, active workspace persistence, and topbar workspace UI. Duplicate/archive remain future work.
 
 ## Problem
 

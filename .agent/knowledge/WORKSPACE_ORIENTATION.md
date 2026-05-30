@@ -13,6 +13,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - App package: `app-shell/package.json`
 - Runtime stack: Electron, Svelte 5, TypeScript, SQLite via `better-sqlite3`, TipTap editor
 - Current implementation includes AI orchestration Phase 1 plus the OpenAI live-provider adapter: shared AI contracts, SQLite run/context/template tables, `mock-local`, `openai-responses`, provider selection, and module wiring across AI Chat, Prompt Studio, and Workflow Runner.
+- The shell now has real workspace management and visible jobs: active workspace persistence, topbar workspace switch/create flow, module-context refresh on switch, persistent job history, status-bar job indicator, jobs panel, and Workflow Runner job submission.
 
 `session-handoffs/HANDOFF_05.md` is stale relative to the code. It says notification, settings, context menus, and remaining modules are next, but the workspace now includes modules and plans/screenshots for later slices such as core services, theme modes, prompt studio, secrets, and zone interactivity. Start from `HANDOFF_06.md` or newer.
 
@@ -49,6 +50,8 @@ For UI-visible changes, also capture screenshot evidence using the `SHELL_CAPTUR
 ## Important Project Folders
 
 - `app-shell/src/main/core/` - shell-owned core services.
+- `app-shell/src/main/core/workspaces.ts` - active workspace/list/create/switch service.
+- `app-shell/src/main/core/jobs.ts` - persistent job run tracking and progress events.
 - `app-shell/src/main/ai/` - first-party AI orchestration layer; AI-specific behavior lives here, not shell core.
 - `app-shell/src/main/modules/` - module manifests and activation.
 - `app-shell/src/renderer/src/shell/` - shell chrome and shared UI.

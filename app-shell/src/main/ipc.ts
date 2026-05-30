@@ -1,10 +1,12 @@
-import { ipcMain, nativeTheme, BrowserWindow } from 'electron'
+import { ipcMain, nativeTheme, BrowserWindow, dialog } from 'electron'
 import type { ThemeMode } from '@shared/module-contract'
 import { documents } from './core/documents'
 import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
 import { layoutService } from './core/layout'
 import { secretsService } from './core/secrets'
+import { workspaceService } from './core/workspaces'
+import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
@@ -33,11 +35,31 @@ export function registerIpcHandlers(): void {
     documents.versions(id)
   )
 
-  ipcMain.handle('workspace:get', () => ({
-    id: 'ws-default',
-    type: 'authoring',
-    root: process.env.HOME ?? '/'
-  }))
+  ipcMain.handle('workspace:get', () => workspaceService.getActive())
+
+  ipcMain.handle('workspace:list', () => workspaceService.list())
+
+  ipcMain.handle('workspace:create', async (event, params: { name: string; type?: string; root?: string }) => {
+    let root = params.root
+    if (!root) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Choose workspace folder',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Workspace creation cancelled')
+      }
+      root = result.filePaths[0]
+    }
+    return workspaceService.create({ ...params, root })
+  })
+
+  ipcMain.handle('workspace:switch', async (_e, { id }: { id: string }) => {
+    const workspace = workspaceService.switch(id)
+    await moduleRegistry.refreshWorkspace(workspace)
+    return workspace
+  })
 
   ipcMain.handle('settings:get', (_e, { key }: { key: string }) =>
     shellSettings.get(key)
@@ -82,7 +104,7 @@ export function registerIpcHandlers(): void {
 
   // ── Search ────────────────────────────────────────────────────────────────
   ipcMain.handle('search:query', (_e, { query, limit }: { query: string; limit?: number }) =>
-    searchService.search(query, 'ws-default', limit)
+    searchService.search(query, workspaceService.getActive().id, limit)
   )
 
   // ── AI orchestration ─────────────────────────────────────────────────────
@@ -137,6 +159,21 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('secrets:delete', (_e, { name }: { name: string }) => {
     secretsService.delete(name)
   })
+
+  // ── Jobs ────────────────────────────────────────────────────────────────
+  ipcMain.handle('jobs:list', (_e, params?: { workspaceId?: string; limit?: number }) =>
+    jobs.list(params)
+  )
+
+  ipcMain.handle('jobs:submit', (_e, { type, payload }: { type: string; payload?: unknown }) => {
+    const workspace = workspaceService.getActive()
+    const handle = jobs.submit(type, payload, { workspaceId: workspace.id, moduleId: 'renderer' })
+    return jobs.list({ limit: 1 }).find(job => job.id === handle.id) ?? null
+  })
+
+  ipcMain.handle('jobs:cancel', (_e, { id }: { id: string }) =>
+    jobs.cancel(id)
+  )
 
   // ── Theme ────────────────────────────────────────────────────────────────
   ipcMain.handle('theme:set', (_e, { mode }: { mode: ThemeMode }) => {

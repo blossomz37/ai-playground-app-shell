@@ -2,9 +2,11 @@ import type {
   CommandCatalogEntry,
   Doc,
   DocVersion,
+  JobSnapshot,
   LayoutState,
   ShellApi,
-  ThemeMode
+  ThemeMode,
+  Workspace
 } from '@shared/module-contract'
 import type { AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
 
@@ -25,6 +27,7 @@ const COMMANDS: CommandCatalogEntry[] = [
   { id: 'shell.layout.toggleSidebar', title: 'Toggle Sidebar', keybinding: 'CmdOrCtrl+B', moduleId: 'shell.documents' },
   { id: 'shell.layout.toggleInspector', title: 'Toggle Inspector', keybinding: 'CmdOrCtrl+I', moduleId: 'shell.documents' },
   { id: 'shell.layout.zenMode', title: 'Zen Mode', keybinding: 'CmdOrCtrl+Shift+Z', moduleId: 'shell.documents' },
+  { id: 'shell.jobs.toggle', title: 'Toggle Jobs Panel', moduleId: 'shell.documents' },
   { id: 'promptstudio.new', title: 'New Prompt Template', moduleId: 'shell.promptstudio' },
   { id: 'promptstudio.run', title: 'Run Template', moduleId: 'shell.promptstudio' },
   { id: 'promptstudio.batch', title: 'Batch Run Templates', moduleId: 'shell.promptstudio' }
@@ -75,6 +78,19 @@ function createBrowserShell(): ShellApi {
   let layout = { ...DEFAULT_LAYOUT }
   const settings = new Map<string, unknown>()
   const docs = new Map(DEMO_DOCS.map(doc => [doc.id, { ...doc }]))
+  const now = new Date().toISOString()
+  let activeWorkspace: Workspace = {
+    id: 'ws-browser-preview',
+    name: 'Browser Preview',
+    type: 'authoring',
+    root: '/',
+    createdAt: now,
+    updatedAt: now,
+    lastOpenedAt: now,
+    archivedAt: null
+  }
+  const workspaceRows = new Map<string, Workspace>([[activeWorkspace.id, activeWorkspace]])
+  const jobRows: JobSnapshot[] = []
   const aiRuns: AiRun[] = []
   const aiProviders: AiProvider[] = [
     {
@@ -163,7 +179,27 @@ function createBrowserShell(): ShellApi {
       onChanged: () => {}
     },
     workspace: {
-      get: async () => ({ id: 'ws-browser-preview', type: 'authoring', root: '/' })
+      get: async () => activeWorkspace,
+      list: async () => Array.from(workspaceRows.values()),
+      create: async (params) => {
+        const createdAt = new Date().toISOString()
+        const workspace: Workspace = {
+          id: `ws-browser-${Date.now()}`,
+          name: params.name,
+          type: params.type ?? 'authoring',
+          root: params.root ?? '/',
+          createdAt,
+          updatedAt: createdAt,
+          lastOpenedAt: createdAt,
+          archivedAt: null
+        }
+        workspaceRows.set(workspace.id, workspace)
+        return workspace
+      },
+      switch: async (id) => {
+        activeWorkspace = workspaceRows.get(id) ?? activeWorkspace
+        return activeWorkspace
+      }
     },
     settings: {
       get: async (key) => settings.get(key),
@@ -256,6 +292,31 @@ function createBrowserShell(): ShellApi {
     },
     notifications: {
       onNotify: () => {}
+    },
+    jobs: {
+      list: async () => jobRows,
+      submit: async (type) => {
+        const createdAt = new Date().toISOString()
+        const job: JobSnapshot = {
+          id: `browser-job-${Date.now()}`,
+          workspaceId: activeWorkspace.id,
+          moduleId: 'browser',
+          type,
+          title: type.split('.').join(' '),
+          status: 'completed',
+          progress: 100,
+          message: 'Completed',
+          error: null,
+          createdAt,
+          startedAt: createdAt,
+          completedAt: createdAt,
+          updatedAt: createdAt
+        }
+        jobRows.unshift(job)
+        return job
+      },
+      cancel: async (id) => jobRows.find(job => job.id === id) ?? null,
+      onChanged: () => {}
     },
     theme: {
       set: async (mode: ThemeMode) => {

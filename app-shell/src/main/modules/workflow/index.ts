@@ -32,6 +32,7 @@ export const workflowModule: Module = {
         { id: 'ai.chain.run',       title: 'Run AI Chain' }
       ],
       jobs: [
+        { type: 'ai.chain.mock',   title: 'Run AI Chain' },
         { type: 'export.markdown', title: 'Export to Markdown' },
         { type: 'export.html',     title: 'Export to HTML' }
       ]
@@ -62,7 +63,13 @@ export const workflowModule: Module = {
 
     ctx.jobs.defineRunner('ai.chain.mock', async (payload, handle) => {
       handle.progress(10, 'Packing context')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      if (handle.cancelled) return
+      handle.progress(35, 'Running prompt chain')
       const result = await runChain(payload)
+      if (handle.cancelled) return
+      handle.progress(80, 'Saving run history')
+      await new Promise(resolve => setTimeout(resolve, 300))
       handle.progress(100, `Completed ${result.run.id}`)
     })
 

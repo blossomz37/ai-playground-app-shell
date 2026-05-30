@@ -7,9 +7,12 @@
   Author:      carlo
   ────────────────────────────────────────────── -->
 <script lang="ts">
-  import { isDirty, editorContent, activeDoc, countWords } from '../store'
+  import { isDirty, editorContent, activeDoc, activeWorkspace, countWords } from '../store'
+  import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
 
   let { moduleId }: { moduleId: string | null } = $props()
+
+  let latestJobStatus = $derived($activeJobs[0]?.message || $recentJobs[0]?.status || 'Idle')
 </script>
 
 <footer class="status-bar">
@@ -36,11 +39,16 @@
   </div>
 
   <!-- Center zone: reserved for notifications / progress bar -->
-  <div class="zone zone-center"></div>
+  <div class="zone zone-center">
+    <button class="jobs-item" type="button" onclick={toggleJobsPanel}>
+      <span class:active={$activeJobs.length > 0}></span>
+      {$activeJobs.length > 0 ? `${$activeJobs.length} running` : `Jobs ${latestJobStatus}`}
+    </button>
+  </div>
 
   <!-- Right zone: shell-level info -->
   <div class="zone zone-right">
-    <span class="item muted">authoring</span>
+    <span class="item muted">{$activeWorkspace?.type ?? 'workspace'}</span>
     <span class="sep">·</span>
     <span class="item muted">App Shell v0.1.0</span>
   </div>
@@ -128,4 +136,37 @@
 
   .sep { color: var(--color-fg-muted); opacity: 0.5; flex-shrink: 0; }
   .muted { color: var(--color-fg-muted); }
+
+  .jobs-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+  }
+
+  .jobs-item:hover {
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+  }
+
+  .jobs-item span {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--color-fg-muted);
+  }
+
+  .jobs-item span.active {
+    background: var(--color-accent);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
 </style>

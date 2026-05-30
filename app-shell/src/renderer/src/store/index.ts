@@ -1,11 +1,14 @@
 import { writable, derived, get } from 'svelte/store'
-import type { Doc, DocVersion, ThemeMode } from '@shared/module-contract'
+import type { Doc, DocVersion, ThemeMode, Workspace } from '@shared/module-contract'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
+import { loadJobs } from './jobs'
 
 export type { ThemeMode }
 
 export const workspaceId   = writable<string>('ws-default')
+export const activeWorkspace = writable<Workspace | null>(null)
+export const workspaces = writable<Workspace[]>([])
 export const documents     = writable<Doc[]>([])
 export const activeModuleId = writable<string | null>(null)
 export const activeDocId   = writable<string | null>(null)
@@ -152,9 +155,12 @@ export async function initStore(): Promise<void> {
   await loadThemePreference()
   await loadEditorSettings()
 
-  const wsId = get(workspaceId)
-  const docs = await window.shell.documents.list(wsId)
-  documents.set(docs)
+  const workspace = await window.shell.workspace.get()
+  activeWorkspace.set(workspace)
+  workspaceId.set(workspace.id)
+  workspaces.set(await window.shell.workspace.list())
+  await loadWorkspaceDocuments(workspace.id)
+  await loadJobs(workspace.id)
 
   if (window.shell.capture?.documentId) {
     await selectDoc(window.shell.capture.documentId)
@@ -178,6 +184,36 @@ export async function initStore(): Promise<void> {
     })
     captureDocumentListenerInstalled = true
   }
+}
+
+async function loadWorkspaceDocuments(wsId: string): Promise<void> {
+  const docs = await window.shell.documents.list(wsId)
+  documents.set(docs)
+  activeDocId.set(null)
+  editorContent.set('')
+  isDirty.set(false)
+  versions.set([])
+}
+
+export async function switchWorkspace(id: string): Promise<void> {
+  if (get(workspaceId) === id) return
+  if (get(isDirty)) await saveDoc()
+
+  const workspace = await window.shell.workspace.switch(id)
+  activeWorkspace.set(workspace)
+  workspaceId.set(workspace.id)
+  workspaces.set(await window.shell.workspace.list())
+  await loadWorkspaceDocuments(workspace.id)
+  await loadJobs(workspace.id)
+
+  const moduleId = get(activeModuleId)
+  if (moduleId) await window.shell.modules.activate(moduleId)
+}
+
+export async function createWorkspace(params: { name: string; type?: string; root?: string }): Promise<void> {
+  const workspace = await window.shell.workspace.create(params)
+  workspaces.set(await window.shell.workspace.list())
+  await switchWorkspace(workspace.id)
 }
 
 export async function selectDoc(id: string): Promise<void> {
