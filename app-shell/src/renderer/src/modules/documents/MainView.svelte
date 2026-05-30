@@ -3,6 +3,10 @@
   import { get } from 'svelte/store'
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
+  import { Table } from '@tiptap/extension-table'
+  import TableCell from '@tiptap/extension-table-cell'
+  import TableHeader from '@tiptap/extension-table-header'
+  import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
     activeDoc, editorContent, isDirty, saveDoc,
@@ -15,11 +19,19 @@
   let element = $state<HTMLDivElement>()
   let editor = $state<Editor | null>(null)
   let saveCommand: Disposable | null = null
+  let captureMarkdownListener: ((event: Event) => void) | null = null
 
   onMount(() => {
     editor = new Editor({
       element,
-      extensions: [StarterKit, Markdown],
+      extensions: [
+        StarterKit,
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Markdown.configure({ transformPastedText: true })
+      ],
       content: get(editorContent),
       onUpdate: ({ editor }) => {
         editorContent.set(editor.storage.markdown.getMarkdown())
@@ -32,10 +44,21 @@
     // content to save lives in the open editor / store. Keybinding (CmdOrCtrl+S)
     // and the command palette both dispatch here via executeCommand.
     saveCommand = registerCommand('documents.save', () => saveDoc())
+
+    captureMarkdownListener = (event: Event) => {
+      const markdown = (event as CustomEvent<string>).detail
+      if (!markdown || !editor) return
+      editor.commands.setContent(markdown, { emitUpdate: false })
+      editorContent.set(editor.storage.markdown.getMarkdown())
+    }
+    window.addEventListener('shell:capture-document-markdown', captureMarkdownListener)
   })
 
   onDestroy(() => {
     cancelAutoSave()
+    if (captureMarkdownListener) {
+      window.removeEventListener('shell:capture-document-markdown', captureMarkdownListener)
+    }
     saveCommand?.dispose()
     editor?.destroy()
   })
@@ -200,6 +223,62 @@
     padding: 0;
   }
 
+  .editor-area :global(.ProseMirror .tableWrapper) {
+    overflow-x: auto;
+    margin: 0 0 var(--space-4);
+  }
+
+  .editor-area :global(.ProseMirror table) {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+  }
+
+  .editor-area :global(.ProseMirror th),
+  .editor-area :global(.ProseMirror td) {
+    position: relative;
+    min-width: 90px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  .editor-area :global(.ProseMirror th) {
+    background: var(--color-bg-active);
+    color: var(--color-fg-primary);
+    font-weight: 700;
+  }
+
+  .editor-area :global(.ProseMirror td) {
+    background: color-mix(in srgb, var(--color-bg-surface) 70%, transparent);
+  }
+
+  .editor-area :global(.ProseMirror th p),
+  .editor-area :global(.ProseMirror td p) {
+    margin: 0;
+  }
+
+  .editor-area :global(.ProseMirror .selectedCell::after) {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    pointer-events: none;
+  }
+
+  .editor-area :global(.ProseMirror .column-resize-handle) {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    width: 4px;
+    background: var(--color-accent);
+    pointer-events: none;
+  }
+
   .empty {
     flex: 1;
     display: flex;
@@ -208,4 +287,3 @@
     color: var(--color-fg-muted);
   }
 </style>
-
