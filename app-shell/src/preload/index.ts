@@ -52,6 +52,11 @@ const api: ShellApi = {
     appendMessage: (params) => ipcRenderer.invoke('ai:messages:append', params)
   },
 
+  assets: {
+    importFiles: () => ipcRenderer.invoke('assets:importFiles'),
+    reveal: (path) => ipcRenderer.invoke('assets:reveal', { path })
+  },
+
   layout: {
     get: ()             => ipcRenderer.invoke('layout:get'),
     set: (state)        => ipcRenderer.invoke('layout:set', state),

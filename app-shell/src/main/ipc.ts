@@ -1,5 +1,7 @@
-import { ipcMain, nativeTheme, BrowserWindow, dialog } from 'electron'
-import type { ThemeMode } from '@shared/module-contract'
+import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
+import type { AssetImportCandidate, ThemeMode } from '@shared/module-contract'
+import { statSync } from 'fs'
+import path from 'path'
 import { documents } from './core/documents'
 import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
@@ -151,6 +153,36 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('ai:templates:save', (_e, template: AiPromptTemplate) =>
     aiOrchestrator.saveTemplate(template)
   )
+
+  // ── Assets ───────────────────────────────────────────────────────────────
+  ipcMain.handle('assets:importFiles', async (event): Promise<AssetImportCandidate[]> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(win ?? undefined, {
+      title: 'Import assets',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Assets', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf', 'txt', 'md', 'docx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+
+    if (result.canceled) return []
+    const importedAt = new Date().toISOString()
+    return result.filePaths.map((filePath) => {
+      const stat = statSync(filePath)
+      return {
+        name: path.basename(filePath),
+        filePath,
+        extension: path.extname(filePath).replace(/^\./, '').toLowerCase(),
+        sizeBytes: stat.size,
+        importedAt
+      }
+    })
+  })
+
+  ipcMain.handle('assets:reveal', (_e, { path: filePath }: { path: string }) => {
+    shell.showItemInFolder(filePath)
+  })
 
   // ── Layout ────────────────────────────────────────────────────────────────
   ipcMain.handle('layout:get', () => layoutService.get())

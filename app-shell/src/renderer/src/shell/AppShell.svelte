@@ -21,6 +21,7 @@
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
   import { activeModuleId, activeWorkspace, workspaces, workspaceId, switchWorkspace, createWorkspace as createWorkspaceAction } from '../store'
   import { toggleJobsPanel } from '../store/jobs'
+  import { importAssets } from '../modules/assets/state'
   import type { Disposable, LayoutState } from '@shared/module-contract'
 
   let settingsPanel = $state<{ toggle(): void }>()
@@ -171,7 +172,8 @@
       registerCommand('shell.layout.toggleSidebar', toggleSidebar),
       registerCommand('shell.layout.toggleInspector', toggleInspector),
       registerCommand('shell.layout.zenMode', toggleZen),
-      registerCommand('shell.jobs.toggle', toggleJobsPanel)
+      registerCommand('shell.jobs.toggle', toggleJobsPanel),
+      registerCommand('assets.import', () => importAssets())
     )
 
     captureModuleListener = (event: Event) => {

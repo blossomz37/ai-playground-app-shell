@@ -8,10 +8,11 @@ import {
 } from '@shared/state/web-state'
 import { workspaceId } from '../../store'
 import { addToast } from '../../store/toasts'
+import { getModuleState } from '../module-state-registry'
 
 export type { WebBookmark, WebHistoryItem }
 
-const webState = new WebStateSlice()
+const webState = getModuleState<WebStateSlice>('shell.web', 'web')
 let activeWorkspaceId = ''
 let persistenceReady = false
 

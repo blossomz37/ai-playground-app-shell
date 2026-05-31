@@ -16,6 +16,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Alpha hardening on 2026-05-30 verified fresh mock and live AI acceptance passes against the real app database. Evidence lives in `implementation/screenshots/alpha-hardening-mock-ai-after-2026-05-30.png`, `implementation/screenshots/alpha-hardening-live-ai-after-2026-05-30.png`, and completed `ai_runs`/`ai_context_packs` rows.
 - Phase 2 state architecture advanced on 2026-05-31: Documents plus AI Chat, Journal, Assets, Web, Table View, and Workflow now have framework-agnostic slices under `app-shell/src/shared/state/`, with renderer `state.ts` files acting as Svelte adapters. AI Chat conversations/messages persist through dedicated AI tables; scaffold module UI state persists through workspace-scoped `shell_settings` keys.
 - Web now uses an Electron `<webview>` with `partition="persist:app-shell-web"` instead of the old placeholder. It is still a minimal browser surface, not a full tab/history/session abstraction.
+- Phase 2 finalization added `app-shell/src/renderer/src/modules/module-state-registry.ts`; renderer adapters now resolve module slices by module id instead of constructing them locally. Assets import now uses native file selection, records durable `filePath`, and can reveal imported files in Finder.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 

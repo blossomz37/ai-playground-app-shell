@@ -7,10 +7,11 @@ import {
 } from '@shared/state/assets-state'
 import { workspaceId } from '../../store'
 import { addToast } from '../../store/toasts'
+import { getModuleState } from '../module-state-registry'
 
 export type { AssetItem }
 
-const assetsState = new AssetsStateSlice()
+const assetsState = getModuleState<AssetsStateSlice>('shell.assets', 'assets')
 let activeWorkspaceId = ''
 let persistenceReady = false
 
@@ -33,6 +34,19 @@ export async function copySelectedAssetPath(): Promise<void> {
   if (!path) return
   await navigator.clipboard.writeText(path)
   addToast('info', 'Asset path copied')
+}
+
+export async function revealSelectedAsset(): Promise<void> {
+  const path = assetsState.getSnapshot().selectedAsset?.filePath
+  if (!path) return
+  await window.shell.assets.reveal(path)
+}
+
+export async function importAssets(): Promise<void> {
+  const imported = assetsState.importAssets(await window.shell.assets.importFiles())
+  if (imported.length > 0) {
+    addToast('info', `Imported ${imported.length} asset${imported.length === 1 ? '' : 's'}`)
+  }
 }
 
 export function removeSelectedAsset(): void {

@@ -6,10 +6,11 @@ import {
   type JournalState
 } from '@shared/state/journal-state'
 import { workspaceId } from '../../store'
+import { getModuleState } from '../module-state-registry'
 
 export type { JournalEntry }
 
-const journalState = new JournalStateSlice()
+const journalState = getModuleState<JournalStateSlice>('shell.journal', 'journal')
 let activeWorkspaceId = ''
 let persistenceReady = false
 

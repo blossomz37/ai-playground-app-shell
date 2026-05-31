@@ -300,6 +300,10 @@ function createBrowserShell(): ShellApi {
         return message
       }
     },
+    assets: {
+      importFiles: async () => [],
+      reveal: async () => {}
+    },
     layout: {
       get: async () => ({ ...layout }),
       set: async (state) => {

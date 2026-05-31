@@ -1,4 +1,5 @@
 import { ObservableSlice } from './observable'
+import type { AssetImportCandidate } from '../module-contract'
 
 export interface AssetItem {
   id: string
@@ -58,6 +59,20 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     return removed
   }
 
+  importAssets(candidates: AssetImportCandidate[]): AssetItem[] {
+    if (candidates.length === 0) return []
+
+    const imported = candidates.map(candidate => this.assetFromImport(candidate))
+    const importedPaths = new Set(imported.map(asset => asset.filePath).filter(Boolean))
+    this.assets = [
+      ...imported,
+      ...this.assets.filter(asset => !asset.filePath || !importedPaths.has(asset.filePath))
+    ]
+    this.selectedAssetId = imported[0]?.id ?? this.selectedAssetId
+    this.emit()
+    return imported
+  }
+
   hydrate(snapshot: AssetsPersistenceSnapshot | undefined): void {
     if (!snapshot) {
       this.emit()
@@ -82,5 +97,27 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
 
   private selectedAsset(): AssetItem | null {
     return this.assets.find(asset => asset.id === this.selectedAssetId) ?? this.assets[0] ?? null
+  }
+
+  private assetFromImport(candidate: AssetImportCandidate): AssetItem {
+    const extension = candidate.extension || 'file'
+    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)
+    return {
+      id: `asset-${candidate.importedAt}-${candidate.filePath}`.replace(/[^a-zA-Z0-9_-]/g, '-'),
+      name: candidate.name,
+      type: isImage ? 'image' : 'document',
+      kindLabel: `${extension.toUpperCase()} ${isImage ? 'Image' : 'Document'}`,
+      size: this.formatBytes(candidate.sizeBytes),
+      dimensions: isImage ? 'Imported image' : 'Imported file',
+      added: candidate.importedAt.slice(0, 10),
+      usage: 'Not referenced yet',
+      filePath: candidate.filePath
+    }
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 }

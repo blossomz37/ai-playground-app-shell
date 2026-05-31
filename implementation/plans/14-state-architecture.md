@@ -1,11 +1,11 @@
 ---
 file: 14-state-architecture.md
 description: Migrate module state to framework-agnostic TS slices (contract D2 boundary)
-version: 0.3.0
+version: 1.0.0
 created: 2026-05-29
 modified: 2026-05-31
 author: antigravity
-status: phase-2-advanced
+status: complete
 ---
 
 # 14 — State Architecture (D2 Boundary)
@@ -144,3 +144,34 @@ This session finished the remaining scaffold state-slice migration and added wor
 - The current implementation still uses renderer adapters rather than slices being created directly in `activate(ctx)`. That is the remaining architectural mismatch with the original ideal in this plan.
 - Assets still needs a real import flow that records actual local file paths before Finder/open-file behavior can be fully enabled.
 - Web has a real persistent Electron webview surface, but browser behavior remains minimal: no tab model, no full in-page navigation history integration, and no web-surface abstraction on `ModuleContext`.
+
+## Phase 2 Unit Completed - 2026-05-31 Finalization
+
+This session closed the remaining Phase 2 gaps at the current Electron/Svelte process boundary.
+
+### Completed
+
+- Added `app-shell/src/renderer/src/modules/module-state-registry.ts` as the renderer-side module state registry.
+- Moved slice construction out of module-local renderer adapters and into the registry, keyed by module id and state key.
+- Updated Documents and scaffold module adapters to resolve their slices from the registry instead of constructing local state.
+- Added an Assets import IPC/preload API:
+  - `window.shell.assets.importFiles()` opens a native file picker and returns local file metadata.
+  - `window.shell.assets.reveal(path)` reveals imported files in Finder.
+- Added shell-level renderer command handling for `assets.import`, so the command palette and Assets module use the same import path.
+- Added asset import behavior to `AssetsStateSlice`; imported files record durable `filePath`, size, extension-derived type labels, and selection.
+- Kept Copy Path/Open Finder disabled for fixture assets with no recorded path, and enabled them for imported assets.
+
+### Validation
+
+- `npm run typecheck` passed.
+- `npm run build` passed.
+- Svelte autofixer passed on edited Assets components and `AppShell.svelte`.
+- UI capture:
+  - `implementation/screenshots/phase2-assets-import-after-2026-05-31.png`
+- Static verification:
+  - module adapters no longer construct state slices directly; slice construction is centralized in `module-state-registry.ts`.
+
+### Final Notes
+
+- The original plan language said slices are created in `activate(ctx)`. In this Electron implementation, main-process module activation cannot directly own renderer UI instances. The implemented equivalent is a renderer module-state registry keyed by module id, while main-process `activate(ctx)` still owns command/job/event wiring. This preserves the D2 boundary: module logic is plain TypeScript, Svelte files are adapters/subscribers, and state is no longer owned by Svelte stores.
+- Web remains a minimal browser, not a full Chrome-like product, but the Phase 2 requirement from plan 19 is satisfied: bookmarks/history persist and the module uses a real persistent Electron webview surface instead of a placeholder.

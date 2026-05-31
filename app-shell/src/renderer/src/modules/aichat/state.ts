@@ -2,14 +2,11 @@ import { get, readable } from 'svelte/store'
 import type { AiChatMessage, AiChatMessageRole } from '@shared/ai'
 import { AiChatStateSlice, type AiChatState, type AiConversationView } from '@shared/state/aichat-state'
 import { workspaceId } from '../../store'
+import { getModuleState } from '../module-state-registry'
 
 export type { AiConversationView }
 
-const aiChatState = new AiChatStateSlice({
-  conversations: (wsId) => window.shell.ai.conversations(wsId),
-  createConversation: (params) => window.shell.ai.createConversation(params),
-  appendMessage: (params) => window.shell.ai.appendMessage(params)
-})
+const aiChatState = getModuleState<AiChatStateSlice>('shell.aichat', 'aichat')
 
 function fromAiChatState<T>(selector: (state: AiChatState) => T) {
   return readable(selector(aiChatState.getSnapshot()), (set) =>

@@ -7,8 +7,9 @@ import {
   type TableViewState
 } from '@shared/state/tableview-state'
 import { documents, workspaceId } from '../../store'
+import { getModuleState } from '../module-state-registry'
 
-const tableViewState = new TableViewStateSlice()
+const tableViewState = getModuleState<TableViewStateSlice>('shell.tableview', 'tableview')
 let activeWorkspaceId = ''
 let persistenceReady = false
 

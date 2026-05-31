@@ -1,6 +1,7 @@
 import { writable, readable, get } from 'svelte/store'
 import type { ThemeMode, Workspace } from '@shared/module-contract'
-import { DocumentsStateSlice, type DocumentsState } from '@shared/state/documents-state'
+import type { DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
+import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
 import { loadJobs } from './jobs'
@@ -12,13 +13,7 @@ export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
 export const activeModuleId = writable<string | null>(null)
 
-export const documentsState = new DocumentsStateSlice({
-  list: (wsId) => window.shell.documents.list(wsId),
-  open: (id) => window.shell.documents.open(id),
-  save: (id, content) => window.shell.documents.save(id, content),
-  versions: (id) => window.shell.documents.versions(id),
-  onChanged: (cb) => window.shell.documents.onChanged(cb)
-})
+export const documentsState = getModuleState<DocumentsStateSlice>('shell.documents', 'documents')
 
 function fromDocumentsState<T>(selector: (state: DocumentsState) => T) {
   return readable(selector(documentsState.getSnapshot()), (set) =>

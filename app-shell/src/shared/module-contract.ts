@@ -187,6 +187,14 @@ export interface LayoutState {
   zenMode: boolean
 }
 
+export interface AssetImportCandidate {
+  name: string
+  filePath: string
+  extension: string
+  sizeBytes: number
+  importedAt: string
+}
+
 export interface ModuleContext {
   moduleId: string
 
@@ -296,6 +304,10 @@ export interface ShellApi {
     conversations(workspaceId: string): Promise<AiConversation[]>
     createConversation(params: CreateAiConversationParams): Promise<AiConversation>
     appendMessage(params: AppendAiMessageParams): Promise<AiChatMessage>
+  }
+  assets: {
+    importFiles(): Promise<AssetImportCandidate[]>
+    reveal(path: string): Promise<void>
   }
   layout: {
     get(): Promise<LayoutState>

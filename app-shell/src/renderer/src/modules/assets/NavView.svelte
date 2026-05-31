@@ -1,10 +1,13 @@
 <!-- Assets NavView — image grid gallery -->
 <script lang="ts">
-  import { assets, selectAsset, selectedAssetId } from './state'
+  import { assets, importAssets, selectAsset, selectedAssetId } from './state'
 </script>
 
 <div class="nav-view">
-  <header class="nav-header"><span class="nav-title">Library</span></header>
+  <header class="nav-header">
+    <span class="nav-title">Library</span>
+    <button class="import-btn" title="Import assets" onclick={() => void importAssets()}>+</button>
+  </header>
   <div class="asset-list">
     {#each $assets as asset (asset.id)}
       <button
@@ -25,8 +28,10 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
+  .nav-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
   .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
+  .import-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--color-fg-muted); font-size: 16px; cursor: pointer; transition: background 0.1s, color 0.1s; }
+  .import-btn:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
   .asset-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
   .asset-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); text-align: left; color: var(--color-fg-secondary); transition: background 0.1s; cursor: pointer; }
   .asset-item:hover { background: var(--color-bg-overlay); }

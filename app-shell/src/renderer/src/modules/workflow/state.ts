@@ -6,10 +6,11 @@ import {
   type WorkflowState
 } from '@shared/state/workflow-state'
 import { workspaceId } from '../../store'
+import { getModuleState } from '../module-state-registry'
 
 export type { WorkflowProfile }
 
-const workflowState = new WorkflowStateSlice()
+const workflowState = getModuleState<WorkflowStateSlice>('shell.workflow', 'workflow')
 let activeWorkspaceId = ''
 let persistenceReady = false
 

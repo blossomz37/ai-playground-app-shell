@@ -1,6 +1,6 @@
 <!-- Assets MainView — asset preview/detail -->
 <script lang="ts">
-  import { copySelectedAssetPath, removeSelectedAsset, selectedAsset } from './state'
+  import { copySelectedAssetPath, removeSelectedAsset, revealSelectedAsset, selectedAsset } from './state'
 
   let asset = $derived($selectedAsset)
   let hasFilePath = $derived(Boolean(asset?.filePath))
@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="asset-actions">
-      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'}>Open in Finder</button>
+      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'} onclick={() => void revealSelectedAsset()}>Open in Finder</button>
       <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Copy source file path' : 'No source file path recorded'} onclick={() => void copySelectedAssetPath()}>Copy Path</button>
       <button class="action-btn danger" title="Remove this asset metadata record" onclick={removeSelectedAsset}>Remove</button>
     </div>
