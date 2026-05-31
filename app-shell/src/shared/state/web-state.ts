@@ -19,6 +19,7 @@ export interface WebTab {
   id: string
   title: string
   url: string
+  requestedUrl: string
   loading: boolean
   historyStack: WebHistoryItem[]
   historyIndex: number
@@ -33,6 +34,7 @@ export interface WebState {
   activeTabId: string
   activeTab: WebTab
   currentUrl: string
+  requestedUrl: string
   currentTitle: string
   loading: boolean
   history: WebHistoryItem[]
@@ -82,6 +84,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
       activeTabId: this.activeTabId,
       activeTab,
       currentUrl: activeTab.url,
+      requestedUrl: activeTab.requestedUrl,
       currentTitle: activeTab.title,
       loading: activeTab.loading,
       history: [...this.globalHistory].reverse(),
@@ -101,18 +104,13 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     const normalizedUrl = this.normalizeUrl(url)
     const resolvedTitle = title?.trim() || activeTab.title || this.titleFromUrl(normalizedUrl)
 
-    if (this.sameUrl(activeTab.url, normalizedUrl)) {
-      this.updateCurrentHistoryEntry(activeTab.id, normalizedUrl, resolvedTitle)
-      this.updateActiveTab({
-        url: normalizedUrl,
-        title: resolvedTitle,
-        loading: false,
-        lastVisitedAt: this.now()
-      })
-      return
-    }
-
-    this.navigateActiveTab(normalizedUrl, resolvedTitle)
+    this.updateCurrentHistoryEntry(activeTab.id, normalizedUrl, resolvedTitle)
+    this.updateActiveTab({
+      url: normalizedUrl,
+      title: resolvedTitle,
+      loading: false,
+      lastVisitedAt: this.now()
+    })
   }
 
   setActiveTabLoading(value: boolean): void {
@@ -156,6 +154,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
 
   selectTab(id: string): void {
     if (!this.tabs.some(tab => tab.id === id)) return
+    this.tabs = this.tabs.map(tab => tab.id === id ? { ...tab, requestedUrl: tab.url } : tab)
     this.activeTabId = id
     const activeTab = this.getActiveTab()
     this.selectedBookmarkId = this.findBookmarkId(activeTab.url)
@@ -201,6 +200,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     this.applyTabState(activeTab.id, {
       historyIndex: nextIndex,
       url: entry.url,
+      requestedUrl: entry.url,
       title: entry.title,
       loading: true,
       lastVisitedAt: this.now()
@@ -216,6 +216,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     this.applyTabState(activeTab.id, {
       historyIndex: nextIndex,
       url: entry.url,
+      requestedUrl: entry.url,
       title: entry.title,
       loading: true,
       lastVisitedAt: this.now()
@@ -293,6 +294,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     this.applyTabState(activeTab.id, {
       title,
       url,
+      requestedUrl: url,
       loading: true,
       historyStack,
       historyIndex: historyStack.length - 1,
@@ -311,6 +313,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
       id,
       title,
       url,
+      requestedUrl: url,
       loading: false,
       historyStack: [firstHistory],
       historyIndex: 0,
@@ -332,6 +335,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
       id,
       title,
       url: currentEntry?.url ?? url,
+      requestedUrl: tab.requestedUrl || currentEntry?.url || url,
       loading: false,
       historyStack,
       historyIndex,
@@ -352,6 +356,7 @@ export class WebStateSlice extends ObservableSlice<WebState> {
       id,
       title: snapshot.currentTitle || currentEntry?.title || this.titleFromUrl(currentEntry?.url ?? defaultUrl),
       url: currentEntry?.url ?? snapshot.currentUrl ?? defaultUrl,
+      requestedUrl: currentEntry?.url ?? snapshot.currentUrl ?? defaultUrl,
       loading: false,
       historyStack,
       historyIndex,

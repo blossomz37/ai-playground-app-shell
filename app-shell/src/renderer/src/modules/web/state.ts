@@ -32,6 +32,7 @@ export const currentUrl = {
   subscribe: fromWebState(state => state.currentUrl).subscribe,
   set: (value: string) => webState.setCurrentUrl(value)
 }
+export const requestedUrl = fromWebState(state => state.requestedUrl)
 export const currentTitle = fromWebState(state => state.currentTitle)
 export const webLoading = fromWebState(state => state.loading)
 export const webHistory = fromWebState(state => state.history)

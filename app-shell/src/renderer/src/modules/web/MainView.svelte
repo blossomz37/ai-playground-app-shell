@@ -21,6 +21,7 @@
     navigateTo,
     newTab,
     reloadPage,
+    requestedUrl,
     selectTab,
     setActiveTabLoading,
     syncLoadedPage,
@@ -30,6 +31,7 @@
   } from './state'
 
   let reloadListener: EventListener | null = null
+  let addressInput = $derived($currentUrl)
 
   function reload(): void {
     reloadPage()
@@ -39,7 +41,9 @@
 
   function onDidNavigate(event: Event): void {
     const url = (event as Event & { url?: string }).url
-    if (url) syncLoadedPage(url)
+    if (url) {
+      syncLoadedPage(url)
+    }
   }
 
   function onPageTitleUpdated(event: Event): void {
@@ -108,10 +112,12 @@
     <input
       class="url-input"
       type="url"
-      value={$currentUrl}
+      value={addressInput}
       aria-label="URL"
-      oninput={(event) => currentUrl.set(event.currentTarget.value)}
-      onkeydown={(event) => event.key === 'Enter' && navigateTo($currentUrl)}
+      oninput={(event) => {
+        addressInput = event.currentTarget.value
+      }}
+      onkeydown={(event) => event.key === 'Enter' && navigateTo(addressInput)}
     />
     <button
       class="icon-btn"
@@ -128,7 +134,7 @@
     {#key $activeTabId}
       <webview
         class="web-surface"
-        src={$currentUrl}
+        src={$requestedUrl}
         partition="persist:app-shell-web"
         allowpopups={false}
         ondid-start-loading={() => setActiveTabLoading(true)}
