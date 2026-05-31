@@ -42,6 +42,36 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
+  const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
+
+  async function waitForWebviewRender(): Promise<void> {
+    if (moduleId !== 'shell.web') return
+
+    await win.webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const startedAt = Date.now()
+        const timeout = ${JSON.stringify(webviewTimeout)}
+
+        function inspect() {
+          const webview = document.querySelector('webview.web-surface')
+          if (!webview) {
+            if (Date.now() - startedAt > timeout) return resolve('missing')
+            return setTimeout(inspect, 150)
+          }
+
+          const isLoading = typeof webview.isLoading === 'function' ? webview.isLoading() : false
+          const title = typeof webview.getTitle === 'function' ? webview.getTitle() : ''
+          const url = typeof webview.getURL === 'function' ? webview.getURL() : ''
+          if (!isLoading && (title || url)) return setTimeout(() => resolve('ready'), 600)
+          if (Date.now() - startedAt > timeout) return resolve('timeout')
+          setTimeout(inspect, 200)
+        }
+
+        inspect()
+      })
+    `)
+  }
+
   // Delay so async IPC-loaded data (document tree, active doc) has rendered.
   setTimeout(async () => {
     try {
@@ -110,6 +140,7 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      await waitForWebviewRender()
       const img = await win.webContents.capturePage()
       mkdirSync(dirname(out), { recursive: true })
       writeFileSync(out, img.toPNG())

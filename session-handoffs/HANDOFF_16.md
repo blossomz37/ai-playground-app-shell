@@ -10,13 +10,14 @@ _Session: 2026-05-31 · Slice: Web module navigation stability_
   - app/user navigation updates the requested URL that drives `<webview src>`,
   - webview-observed redirects update displayed URL/title/history without rewriting `src` mid-load.
 - Kept redirect updates in the current history entry instead of treating them as a second app navigation.
+- Hardened `SHELL_CAPTURE_MODULE=shell.web` evidence capture so it waits for the embedded webview to report a loaded URL/title before capturing.
 
 ## Evidence
 
 - Svelte autofixer passed on `app-shell/src/renderer/src/modules/web/MainView.svelte`.
 - `npm run typecheck` passed.
 - `npm run build` passed.
-- Screenshot capture completed without the prior abort messages:
+- Screenshot capture completed without the prior abort messages and now shows rendered page content:
   - `implementation/screenshots/web-navigation-abort-fix-after-2026-05-31.png`
 
 ## Carry Forward
