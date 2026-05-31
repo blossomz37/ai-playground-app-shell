@@ -40,6 +40,7 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
   const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
+  const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
@@ -62,9 +63,33 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
           const isLoading = typeof webview.isLoading === 'function' ? webview.isLoading() : false
           const title = typeof webview.getTitle === 'function' ? webview.getTitle() : ''
           const url = typeof webview.getURL === 'function' ? webview.getURL() : ''
-          if (!isLoading && (title || url)) return setTimeout(() => resolve('ready'), 600)
-          if (Date.now() - startedAt > timeout) return resolve('timeout')
-          setTimeout(inspect, 200)
+          const appStillLoading = Boolean(document.querySelector('.web-surface') && document.querySelector('.spinning'))
+
+          const inspectGuest = typeof webview.executeJavaScript === 'function'
+            ? webview.executeJavaScript(\`
+                (() => ({
+                  readyState: document.readyState,
+                  textLength: document.body?.innerText?.trim().length ?? 0,
+                  viewportHeight: window.innerHeight,
+                  scrollHeight: Math.max(
+                    document.body?.scrollHeight ?? 0,
+                    document.documentElement?.scrollHeight ?? 0
+                  )
+                }))()
+              \`).catch(() => null)
+            : Promise.resolve(null)
+
+          inspectGuest.then((guest) => {
+            const guestReady = guest &&
+              (guest.readyState === 'interactive' || guest.readyState === 'complete') &&
+              guest.textLength > 80 &&
+              guest.scrollHeight >= Math.max(300, guest.viewportHeight * 0.75)
+            if (!isLoading && !appStillLoading && (title || url) && guestReady) {
+              return setTimeout(() => resolve('ready'), 600)
+            }
+            if (Date.now() - startedAt > timeout) return resolve('timeout')
+            setTimeout(inspect, 200)
+          })
         }
 
         inspect()
@@ -107,6 +132,12 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (moduleId) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (webUrl) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('web:capture-navigate', { detail: ${JSON.stringify(webUrl)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

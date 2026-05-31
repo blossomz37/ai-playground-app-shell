@@ -31,6 +31,7 @@
   } from './state'
 
   let reloadListener: EventListener | null = null
+  let captureNavigateListener: EventListener | null = null
   let addressInput = $derived($currentUrl)
 
   function reload(): void {
@@ -58,11 +59,17 @@
 
   onMount(() => {
     reloadListener = () => reload()
+    captureNavigateListener = (event: Event) => {
+      const url = (event as CustomEvent<string>).detail
+      if (url) navigateTo(url)
+    }
     window.addEventListener('web:reload', reloadListener)
+    window.addEventListener('web:capture-navigate', captureNavigateListener)
   })
 
   onDestroy(() => {
     if (reloadListener) window.removeEventListener('web:reload', reloadListener)
+    if (captureNavigateListener) window.removeEventListener('web:capture-navigate', captureNavigateListener)
   })
 </script>
 
@@ -308,15 +315,20 @@
   }
 
   .browser-area {
+    display: flex;
+    flex-direction: column;
     flex: 1;
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
     background: var(--color-bg-base);
   }
 
   .web-surface {
-    display: block;
+    flex: 1 1 auto;
     width: 100%;
     height: 100%;
+    min-height: 0;
     border: 0;
     background: white;
   }

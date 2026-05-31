@@ -48,6 +48,7 @@
     grid-area: main;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-base);
     overflow: hidden;
   }
