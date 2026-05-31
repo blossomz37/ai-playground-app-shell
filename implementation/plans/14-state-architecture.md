@@ -98,12 +98,12 @@ This session established the first concrete state-slice pattern and completed on
   - `ai_conversations` count: `1`
   - `ai_messages` count: `1`
 
-### Still Open
+### Carried Forward After This Unit
 
-- Move the remaining scaffold modules' local Svelte store files to plain-TS slices.
-- Add durable Assets metadata/file-path persistence before enabling Finder, Copy Path, or Remove.
-- Add Web bookmark/history persistence and real Electron webview/session integration before claiming full browsing.
-- Decide whether the renderer adapter is sufficient for the current build, or whether a future slice should expose renderer-side state through a formal module-state registry that mirrors `ModuleContext` more literally.
+- Move the remaining scaffold modules' local Svelte store files to plain-TS slices. Closed in the follow-up unit below.
+- Add durable Assets metadata/file-path persistence before enabling Finder, Copy Path, or Remove. Closed across the follow-up and finalization units below.
+- Add Web bookmark/history persistence and real Electron webview/session integration before claiming full browsing. Closed in the follow-up unit below.
+- Decide whether the renderer adapter is sufficient for the current build, or whether a future slice should expose renderer-side state through a formal module-state registry that mirrors `ModuleContext` more literally. Closed in the finalization unit below.
 
 ## Phase 2 Unit Completed - 2026-05-31 Follow-up
 
@@ -139,11 +139,11 @@ This session finished the remaining scaffold state-slice migration and added wor
 - SQLite evidence after captures:
   - `shell_settings` module-state rows matching `shell.modules.%`: `10`
 
-### Still Open
+### Carried Forward After This Unit
 
-- The current implementation still uses renderer adapters rather than slices being created directly in `activate(ctx)`. That is the remaining architectural mismatch with the original ideal in this plan.
-- Assets still needs a real import flow that records actual local file paths before Finder/open-file behavior can be fully enabled.
-- Web has a real persistent Electron webview surface, but browser behavior remains minimal: no tab model, no full in-page navigation history integration, and no web-surface abstraction on `ModuleContext`.
+- The current implementation still uses renderer adapters rather than slices being created directly in `activate(ctx)`. Closed in the finalization unit with an explicit renderer module-state registry and a `3-module-contract.md` update documenting the Electron process boundary.
+- Assets still needs a real import flow that records actual local file paths before Finder/open-file behavior can be fully enabled. Closed in the finalization unit below.
+- Web has a real persistent Electron webview surface, but browser behavior remains minimal: no tab model, no full in-page history integration, and no web-surface abstraction on `ModuleContext`. This remains future browser-product work, outside the Phase 2 state/persistence slice.
 
 ## Phase 2 Unit Completed - 2026-05-31 Finalization
 
