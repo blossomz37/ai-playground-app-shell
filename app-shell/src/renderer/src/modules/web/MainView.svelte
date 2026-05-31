@@ -1,19 +1,35 @@
-<!-- Web MainView — browser with URL bar and Electron webview -->
+<!-- Web MainView — tabbed browser surface with URL bar and Electron webview -->
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte'
   import {
+    ArrowClockwiseIcon,
+    ArrowLeftIcon,
+    ArrowRightIcon,
+    PlusIcon,
+    StarIcon,
+    XIcon
+  } from 'phosphor-svelte'
+  import {
+    activeTabId,
     canGoBack,
     canGoForward,
+    closeTab,
     currentBookmarked,
-    currentTitle,
     currentUrl,
     goBack,
     goForward,
     navigateTo,
+    newTab,
     reloadPage,
+    selectTab,
+    setActiveTabLoading,
     syncLoadedPage,
     toggleCurrentBookmark,
-    webLoading
+    webLoading,
+    webTabs
   } from './state'
+
+  let reloadListener: EventListener | null = null
 
   function reload(): void {
     reloadPage()
@@ -30,52 +46,272 @@
     const title = (event as Event & { title?: string }).title
     if (title) syncLoadedPage($currentUrl, title)
   }
+
+  function closeTabFromButton(event: MouseEvent, id: string): void {
+    event.stopPropagation()
+    closeTab(id)
+  }
+
+  onMount(() => {
+    reloadListener = () => reload()
+    window.addEventListener('web:reload', reloadListener)
+  })
+
+  onDestroy(() => {
+    if (reloadListener) window.removeEventListener('web:reload', reloadListener)
+  })
 </script>
 
 <div class="main-view">
+  <header class="tab-strip" aria-label="Browser tabs">
+    <div class="tabs">
+      {#each $webTabs as tab (tab.id)}
+        <div
+          class="tab"
+          class:active={$activeTabId === tab.id}
+          title={tab.title}
+        >
+          <button
+            class="tab-open"
+            aria-pressed={$activeTabId === tab.id}
+            onclick={() => selectTab(tab.id)}
+          >
+            <span class="tab-title">{tab.title}</span>
+            <span class="tab-url">{tab.url}</span>
+          </button>
+          <button
+            class="tab-close"
+            title="Close tab"
+            aria-label="Close tab"
+            onclick={(event) => closeTabFromButton(event, tab.id)}
+          >
+            <XIcon size={12} weight="bold" />
+          </button>
+        </div>
+      {/each}
+    </div>
+    <button class="icon-btn new-tab" title="New tab" aria-label="New tab" onclick={() => newTab()}>
+      <PlusIcon size={15} weight="bold" />
+    </button>
+  </header>
+
   <header class="url-bar">
-    <button class="nav-btn" title="Back" onclick={goBack} disabled={!$canGoBack}>←</button>
-    <button class="nav-btn" title="Forward" onclick={goForward} disabled={!$canGoForward}>→</button>
-    <button class="nav-btn" title="Reload" onclick={reload}>{$webLoading ? '⟳' : '↻'}</button>
+    <button class="icon-btn" title="Back" aria-label="Back" onclick={goBack} disabled={!$canGoBack}>
+      <ArrowLeftIcon size={17} weight="bold" />
+    </button>
+    <button class="icon-btn" title="Forward" aria-label="Forward" onclick={goForward} disabled={!$canGoForward}>
+      <ArrowRightIcon size={17} weight="bold" />
+    </button>
+    <button class="icon-btn" title="Reload" aria-label="Reload" onclick={reload} class:spinning={$webLoading}>
+      <ArrowClockwiseIcon size={17} weight="bold" />
+    </button>
     <input
       class="url-input"
       type="url"
       value={$currentUrl}
+      aria-label="URL"
       oninput={(event) => currentUrl.set(event.currentTarget.value)}
       onkeydown={(event) => event.key === 'Enter' && navigateTo($currentUrl)}
     />
-    <button class="nav-btn" title={$currentBookmarked ? 'Remove bookmark' : 'Bookmark'} onclick={toggleCurrentBookmark}>
-      {$currentBookmarked ? '★' : '☆'}
+    <button
+      class="icon-btn"
+      class:bookmarked={$currentBookmarked}
+      title={$currentBookmarked ? 'Remove bookmark' : 'Bookmark'}
+      aria-label={$currentBookmarked ? 'Remove bookmark' : 'Bookmark'}
+      onclick={toggleCurrentBookmark}
+    >
+      <StarIcon size={17} weight={$currentBookmarked ? 'fill' : 'bold'} />
     </button>
   </header>
+
   <div class="browser-area">
-    <webview
-      class="web-surface"
-      src={$currentUrl}
-      partition="persist:app-shell-web"
-      allowpopups={false}
-      ondid-navigate={onDidNavigate}
-      onpage-title-updated={onPageTitleUpdated}
-    ></webview>
+    {#key $activeTabId}
+      <webview
+        class="web-surface"
+        src={$currentUrl}
+        partition="persist:app-shell-web"
+        allowpopups={false}
+        ondid-start-loading={() => setActiveTabLoading(true)}
+        ondid-stop-loading={() => setActiveTabLoading(false)}
+        ondid-navigate={onDidNavigate}
+        onpage-title-updated={onPageTitleUpdated}
+      ></webview>
+    {/key}
   </div>
 </div>
 
 <style>
-  .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .url-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; background: var(--color-bg-surface); }
-  .nav-btn {
-    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-sm); color: var(--color-fg-muted); font-size: 14px; cursor: pointer; transition: background 0.1s, color 0.1s;
+  .main-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
   }
-  .nav-btn:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
-  .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .nav-btn:disabled:hover { background: transparent; color: var(--color-fg-muted); }
+
+  .tab-strip {
+    display: flex;
+    align-items: stretch;
+    min-height: 40px;
+    border-bottom: var(--border-subtle);
+    background: var(--color-bg-base);
+    flex-shrink: 0;
+  }
+
+  .tabs {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .tab {
+    position: relative;
+    width: 184px;
+    min-width: 132px;
+    max-width: 220px;
+    border-right: var(--border-subtle);
+    color: var(--color-fg-secondary);
+    background: transparent;
+  }
+
+  .tab:hover {
+    background: var(--color-bg-overlay);
+  }
+
+  .tab.active {
+    color: var(--color-fg-primary);
+    background: var(--color-bg-surface);
+    box-shadow: inset 0 -2px 0 var(--color-accent);
+  }
+
+  .tab-open {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 5px 28px 5px 10px;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .tab-title,
+  .tab-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .tab-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+  }
+
+  .tab-url {
+    font-size: var(--font-size-xs);
+    color: var(--color-fg-muted);
+  }
+
+  .tab-close {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+  }
+
+  .tab-close:hover {
+    color: var(--color-fg-primary);
+    background: var(--color-bg-overlay);
+  }
+
+  .url-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--border-subtle);
+    flex-shrink: 0;
+    background: var(--color-bg-surface);
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    flex-shrink: 0;
+  }
+
+  .icon-btn:hover {
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+  }
+
+  .icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .icon-btn:disabled:hover {
+    background: transparent;
+    color: var(--color-fg-muted);
+  }
+
+  .icon-btn.bookmarked {
+    color: var(--color-accent);
+  }
+
+  .new-tab {
+    margin: 6px;
+  }
+
+  .spinning {
+    color: var(--color-accent);
+  }
+
   .url-input {
-    flex: 1; padding: var(--space-1) var(--space-3); background: var(--color-bg-overlay); border: var(--border-subtle);
-    border-radius: var(--radius-md); color: var(--color-fg-primary); font-family: var(--font-sans);
-    font-size: var(--font-size-sm); outline: none;
+    flex: 1;
+    min-width: 80px;
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-bg-overlay);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--color-fg-primary);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    outline: none;
   }
-  .url-input:focus { border-color: var(--color-accent); }
-  .browser-area { flex: 1; min-height: 0; background: var(--color-bg-base); }
-  .web-surface { display: block; width: 100%; height: 100%; border: 0; background: white; }
+
+  .url-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .browser-area {
+    flex: 1;
+    min-height: 0;
+    background: var(--color-bg-base);
+  }
+
+  .web-surface {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: white;
+  }
 </style>

@@ -22,6 +22,13 @@
   import { activeModuleId, activeWorkspace, workspaces, workspaceId, switchWorkspace, createWorkspace as createWorkspaceAction } from '../store'
   import { toggleJobsPanel } from '../store/jobs'
   import { importAssets } from '../modules/assets/state'
+  import {
+    closeActiveTab,
+    goBack as webGoBack,
+    goForward as webGoForward,
+    newTab as webNewTab,
+    toggleCurrentBookmark as webToggleCurrentBookmark
+  } from '../modules/web/state'
   import type { Disposable, LayoutState } from '@shared/module-contract'
 
   let settingsPanel = $state<{ toggle(): void }>()
@@ -173,7 +180,13 @@
       registerCommand('shell.layout.toggleInspector', toggleInspector),
       registerCommand('shell.layout.zenMode', toggleZen),
       registerCommand('shell.jobs.toggle', toggleJobsPanel),
-      registerCommand('assets.import', () => importAssets())
+      registerCommand('assets.import', () => importAssets()),
+      registerCommand('web.newTab', () => webNewTab()),
+      registerCommand('web.closeTab', closeActiveTab),
+      registerCommand('web.back', webGoBack),
+      registerCommand('web.forward', webGoForward),
+      registerCommand('web.reload', () => window.dispatchEvent(new Event('web:reload'))),
+      registerCommand('web.bookmark', webToggleCurrentBookmark)
     )
 
     captureModuleListener = (event: Event) => {
