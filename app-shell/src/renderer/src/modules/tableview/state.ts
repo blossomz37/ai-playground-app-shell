@@ -1,38 +1,75 @@
-import { derived, get, writable } from 'svelte/store'
-import { documents } from '../../store'
+import { readable } from 'svelte/store'
+import {
+  TableViewStateSlice,
+  type TableFilterKind,
+  type TableViewPersistenceSnapshot,
+  type TableSortBy,
+  type TableViewState
+} from '@shared/state/tableview-state'
+import { documents, workspaceId } from '../../store'
 
-export const tableFilterKind = writable('all')
-export const tableSortBy = writable('title')
-export const selectedTableDocId = writable<string | null>(null)
+const tableViewState = new TableViewStateSlice()
+let activeWorkspaceId = ''
+let persistenceReady = false
 
-export const filteredTableDocuments = derived(
-  [documents, tableFilterKind, tableSortBy],
-  ([$documents, $filterKind, $sortBy]) => {
-    const filtered = $filterKind === 'all'
-      ? [...$documents]
-      : $documents.filter(doc => doc.kind === $filterKind)
+documents.subscribe((docs) => {
+  tableViewState.setDocuments(docs)
+})
 
-    return filtered.sort((a, b) => {
-      if ($sortBy === 'updatedAt') return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-      if ($sortBy === 'createdAt') return Date.parse(b.createdAt) - Date.parse(a.createdAt)
-      if ($sortBy === 'kind') return a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title)
-      return a.title.localeCompare(b.title)
-    })
+function fromTableViewState<T>(selector: (state: TableViewState) => T) {
+  return readable(selector(tableViewState.getSnapshot()), (set) =>
+    tableViewState.subscribe((state) => set(selector(state)))
+  )
+}
+
+function writableTableField<T>(
+  selector: (state: TableViewState) => T,
+  setValue: (value: T) => void
+) {
+  return {
+    subscribe: fromTableViewState(selector).subscribe,
+    set: setValue
   }
-)
+}
 
-export const selectedTableDoc = derived(
-  [documents, selectedTableDocId],
-  ([$documents, $id]) => $documents.find(doc => doc.id === $id) ?? null
+export const tableFilterKind = writableTableField(
+  state => state.filterKind,
+  value => tableViewState.setFilterKind(value as TableFilterKind)
 )
+export const tableSortBy = writableTableField(
+  state => state.sortBy,
+  value => tableViewState.setSortBy(value as TableSortBy)
+)
+export const selectedTableDocId = fromTableViewState(state => state.selectedDocId)
+export const filteredTableDocuments = fromTableViewState(state => state.filteredDocuments)
+export const selectedTableDoc = fromTableViewState(state => state.selectedDoc)
 
 export function selectTableDoc(id: string): void {
-  selectedTableDocId.set(id)
+  tableViewState.selectDoc(id)
 }
 
 export function ensureVisibleSelection(): void {
-  const rows = get(filteredTableDocuments)
-  const selected = get(selectedTableDocId)
-  if (selected && rows.some(row => row.id === selected)) return
-  selectedTableDocId.set(rows[0]?.id ?? null)
+  tableViewState.ensureVisibleSelection()
 }
+
+function persistenceKey(wsId: string): string {
+  return `modules.tableview.${wsId}.state`
+}
+
+async function loadTablePersistence(wsId: string): Promise<void> {
+  activeWorkspaceId = wsId
+  persistenceReady = false
+  const snapshot = await window.shell.settings.get(persistenceKey(wsId)) as TableViewPersistenceSnapshot | undefined
+  if (activeWorkspaceId !== wsId) return
+  persistenceReady = true
+  tableViewState.hydrate(snapshot)
+}
+
+workspaceId.subscribe((wsId) => {
+  void loadTablePersistence(wsId)
+})
+
+tableViewState.subscribe(() => {
+  if (!persistenceReady || !activeWorkspaceId) return
+  void window.shell.settings.set(persistenceKey(activeWorkspaceId), tableViewState.persistenceSnapshot())
+})

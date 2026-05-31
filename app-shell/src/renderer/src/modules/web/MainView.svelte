@@ -1,4 +1,4 @@
-<!-- Web MainView — browser with URL bar (placeholder for webview) -->
+<!-- Web MainView — browser with URL bar and Electron webview -->
 <script lang="ts">
   import {
     canGoBack,
@@ -10,16 +10,33 @@
     goForward,
     navigateTo,
     reloadPage,
+    syncLoadedPage,
     toggleCurrentBookmark,
     webLoading
   } from './state'
+
+  function reload(): void {
+    reloadPage()
+    const surface = document.querySelector('webview.web-surface') as { reload?: () => void } | null
+    surface?.reload?.()
+  }
+
+  function onDidNavigate(event: Event): void {
+    const url = (event as Event & { url?: string }).url
+    if (url) syncLoadedPage(url)
+  }
+
+  function onPageTitleUpdated(event: Event): void {
+    const title = (event as Event & { title?: string }).title
+    if (title) syncLoadedPage($currentUrl, title)
+  }
 </script>
 
 <div class="main-view">
   <header class="url-bar">
     <button class="nav-btn" title="Back" onclick={goBack} disabled={!$canGoBack}>←</button>
     <button class="nav-btn" title="Forward" onclick={goForward} disabled={!$canGoForward}>→</button>
-    <button class="nav-btn" title="Reload" onclick={reloadPage}>{$webLoading ? '⟳' : '↻'}</button>
+    <button class="nav-btn" title="Reload" onclick={reload}>{$webLoading ? '⟳' : '↻'}</button>
     <input
       class="url-input"
       type="url"
@@ -32,12 +49,14 @@
     </button>
   </header>
   <div class="browser-area">
-    <div class="browser-placeholder">
-      <span class="placeholder-icon">🌐</span>
-      <h2 class="placeholder-title">{$currentTitle}</h2>
-      <p class="placeholder-text">Embedded browsing via Electron webview.<br/>Navigate to a URL above to start.</p>
-      <span class="placeholder-url">{$currentUrl}</span>
-    </div>
+    <webview
+      class="web-surface"
+      src={$currentUrl}
+      partition="persist:app-shell-web"
+      allowpopups={false}
+      ondid-navigate={onDidNavigate}
+      onpage-title-updated={onPageTitleUpdated}
+    ></webview>
   </div>
 </div>
 
@@ -57,10 +76,6 @@
     font-size: var(--font-size-sm); outline: none;
   }
   .url-input:focus { border-color: var(--color-accent); }
-  .browser-area { flex: 1; display: flex; align-items: center; justify-content: center; }
-  .browser-placeholder { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); color: var(--color-fg-muted); text-align: center; }
-  .placeholder-icon { font-size: 48px; }
-  .placeholder-title { font-size: var(--font-size-xl); font-weight: 600; color: var(--color-fg-secondary); }
-  .placeholder-text { font-size: var(--font-size-sm); line-height: 1.6; }
-  .placeholder-url { font-size: var(--font-size-xs); font-family: var(--font-mono); color: var(--color-accent); background: var(--color-accent-dim); padding: 2px 10px; border-radius: var(--radius-sm); }
+  .browser-area { flex: 1; min-height: 0; background: var(--color-bg-base); }
+  .web-surface { display: block; width: 100%; height: 100%; border: 0; background: white; }
 </style>

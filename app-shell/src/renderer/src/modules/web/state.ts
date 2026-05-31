@@ -1,126 +1,86 @@
-import { derived, get, writable } from 'svelte/store'
+import { readable } from 'svelte/store'
+import {
+  WebStateSlice,
+  type WebBookmark,
+  type WebHistoryItem,
+  type WebPersistenceSnapshot,
+  type WebState
+} from '@shared/state/web-state'
+import { workspaceId } from '../../store'
 import { addToast } from '../../store/toasts'
 
-export interface WebBookmark {
-  id: string
-  title: string
-  url: string
-  icon: string
+export type { WebBookmark, WebHistoryItem }
+
+const webState = new WebStateSlice()
+let activeWorkspaceId = ''
+let persistenceReady = false
+
+function fromWebState<T>(selector: (state: WebState) => T) {
+  return readable(selector(webState.getSnapshot()), (set) =>
+    webState.subscribe((state) => set(selector(state)))
+  )
 }
 
-interface WebHistoryItem {
-  id: string
-  title: string
-  url: string
+export const webBookmarks = fromWebState(state => state.bookmarks)
+export const selectedBookmarkId = fromWebState(state => state.selectedBookmarkId)
+export const currentUrl = {
+  subscribe: fromWebState(state => state.currentUrl).subscribe,
+  set: (value: string) => webState.setCurrentUrl(value)
 }
-
-export const webBookmarks = writable<WebBookmark[]>([
-  { id: '1', title: 'Wikipedia', url: 'https://wikipedia.org', icon: '🌐' },
-  { id: '2', title: 'MDN Web Docs', url: 'https://developer.mozilla.org', icon: '📖' },
-  { id: '3', title: 'Research Paper', url: 'https://arxiv.org', icon: '📄' }
-])
-
-export const selectedBookmarkId = writable('1')
-export const currentUrl = writable('https://wikipedia.org')
-export const currentTitle = writable('Wikipedia')
-export const webLoading = writable(false)
-export const webHistory = writable<WebHistoryItem[]>([
-  { id: 'history-1', title: 'Wikipedia', url: 'https://wikipedia.org' }
-])
-
-const historyStack: WebHistoryItem[] = [{ id: 'history-1', title: 'Wikipedia', url: 'https://wikipedia.org' }]
-const historyIndex = writable(0)
-
-export const canGoBack = derived(historyIndex, $index => $index > 0)
-export const canGoForward = derived(historyIndex, $index => $index < historyStack.length - 1)
-export const currentBookmarked = derived(
-  [webBookmarks, currentUrl],
-  ([$bookmarks, $url]) => $bookmarks.some(bookmark => bookmark.url === normalizeUrl($url))
-)
+export const currentTitle = fromWebState(state => state.currentTitle)
+export const webLoading = fromWebState(state => state.loading)
+export const webHistory = fromWebState(state => state.history)
+export const canGoBack = fromWebState(state => state.canGoBack)
+export const canGoForward = fromWebState(state => state.canGoForward)
+export const currentBookmarked = fromWebState(state => state.currentBookmarked)
 
 export function openBookmark(id: string): void {
-  const bookmark = get(webBookmarks).find(item => item.id === id)
-  if (!bookmark) return
-  selectedBookmarkId.set(id)
-  navigateTo(bookmark.url, bookmark.title)
+  webState.openBookmark(id)
 }
 
 export function navigateTo(input: string, explicitTitle?: string): void {
-  const url = normalizeUrl(input)
-  const title = explicitTitle ?? titleFromUrl(url)
-  applyPage({ id: `history-${Date.now()}`, title, url }, true)
+  webState.navigateTo(input, explicitTitle)
+}
+
+export function syncLoadedPage(url: string, title?: string): void {
+  webState.syncLoadedPage(url, title)
 }
 
 export function reloadPage(): void {
-  webLoading.set(true)
-  setTimeout(() => webLoading.set(false), 500)
+  webState.reloadPage()
 }
 
 export function goBack(): void {
-  const index = get(historyIndex)
-  if (index <= 0) return
-  historyIndex.set(index - 1)
-  applyPage(historyStack[index - 1], false)
+  webState.goBack()
 }
 
 export function goForward(): void {
-  const index = get(historyIndex)
-  if (index >= historyStack.length - 1) return
-  historyIndex.set(index + 1)
-  applyPage(historyStack[index + 1], false)
+  webState.goForward()
 }
 
 export function toggleCurrentBookmark(): void {
-  const url = normalizeUrl(get(currentUrl))
-  const existing = get(webBookmarks).find(bookmark => bookmark.url === url)
-  if (existing) {
-    webBookmarks.update(bookmarks => bookmarks.filter(bookmark => bookmark.id !== existing.id))
-    selectedBookmarkId.set('')
-    addToast('info', 'Bookmark removed')
-    return
-  }
-
-  const bookmark: WebBookmark = {
-    id: `bookmark-${Date.now()}`,
-    title: get(currentTitle) || titleFromUrl(url),
-    url,
-    icon: '🌐'
-  }
-  webBookmarks.update(bookmarks => [bookmark, ...bookmarks])
-  selectedBookmarkId.set(bookmark.id)
-  addToast('info', 'Bookmark added')
+  const result = webState.toggleCurrentBookmark()
+  addToast('info', result === 'added' ? 'Bookmark added' : 'Bookmark removed')
 }
 
-function applyPage(item: WebHistoryItem, pushHistory: boolean): void {
-  currentUrl.set(item.url)
-  currentTitle.set(item.title)
-  webLoading.set(true)
-
-  const bookmark = get(webBookmarks).find(entry => entry.url === item.url)
-  selectedBookmarkId.set(bookmark?.id ?? '')
-
-  if (pushHistory) {
-    const index = get(historyIndex)
-    historyStack.splice(index + 1)
-    historyStack.push(item)
-    historyIndex.set(historyStack.length - 1)
-    webHistory.set([...historyStack].reverse())
-  }
-
-  setTimeout(() => webLoading.set(false), 500)
+function persistenceKey(wsId: string): string {
+  return `modules.web.${wsId}.state`
 }
 
-function normalizeUrl(input: string): string {
-  const trimmed = input.trim()
-  if (!trimmed) return 'https://example.com'
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+async function loadWebPersistence(wsId: string): Promise<void> {
+  activeWorkspaceId = wsId
+  persistenceReady = false
+  const snapshot = await window.shell.settings.get(persistenceKey(wsId)) as WebPersistenceSnapshot | undefined
+  if (activeWorkspaceId !== wsId) return
+  persistenceReady = true
+  webState.hydrate(snapshot)
 }
 
-function titleFromUrl(url: string): string {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, '')
-    return host.split('.')[0]?.replace(/^\w/, char => char.toUpperCase()) || url
-  } catch {
-    return url
-  }
-}
+workspaceId.subscribe((wsId) => {
+  void loadWebPersistence(wsId)
+})
+
+webState.subscribe(() => {
+  if (!persistenceReady || !activeWorkspaceId) return
+  void window.shell.settings.set(persistenceKey(activeWorkspaceId), webState.persistenceSnapshot())
+})

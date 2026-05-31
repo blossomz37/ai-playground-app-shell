@@ -1,11 +1,11 @@
 ---
 file: 14-state-architecture.md
 description: Migrate module state to framework-agnostic TS slices (contract D2 boundary)
-version: 0.2.0
+version: 0.3.0
 created: 2026-05-29
 modified: 2026-05-31
 author: antigravity
-status: phase-2-started
+status: phase-2-advanced
 ---
 
 # 14 — State Architecture (D2 Boundary)
@@ -104,3 +104,43 @@ This session established the first concrete state-slice pattern and completed on
 - Add durable Assets metadata/file-path persistence before enabling Finder, Copy Path, or Remove.
 - Add Web bookmark/history persistence and real Electron webview/session integration before claiming full browsing.
 - Decide whether the renderer adapter is sufficient for the current build, or whether a future slice should expose renderer-side state through a formal module-state registry that mirrors `ModuleContext` more literally.
+
+## Phase 2 Unit Completed - 2026-05-31 Follow-up
+
+This session finished the remaining scaffold state-slice migration and added workspace-scoped persistence for the scaffold module state that is user-adjustable in the alpha UI.
+
+### Completed
+
+- Added plain TypeScript slices under `app-shell/src/shared/state/` for:
+  - AI Chat,
+  - Journal,
+  - Assets,
+  - Web,
+  - Table View,
+  - Workflow Runner.
+- Converted each module-local renderer `state.ts` file into a Svelte adapter over its plain-TS slice.
+- Added workspace-scoped `shell_settings` persistence for:
+  - Journal entries/selection,
+  - Assets metadata/selection, including a durable `filePath` field,
+  - Web bookmarks/history/current page,
+  - Table View filter/sort/selection,
+  - Workflow Runner selected profile/options.
+- Added persisted Assets metadata support sufficient to enable metadata removal and path copy only when a file path exists. Finder/copy remain disabled for fixture records with no path.
+- Replaced the Web placeholder with an Electron `<webview>` using `partition="persist:app-shell-web"` and enabled `webviewTag` in the BrowserWindow.
+
+### Validation
+
+- `npm run typecheck` passed.
+- `npm run build` passed.
+- Svelte autofixer passed on edited Assets and Web components.
+- UI captures:
+  - `implementation/screenshots/phase2-state-slices-assets-after-2026-05-31.png`
+  - `implementation/screenshots/phase2-state-slices-web-after-2026-05-31.png`
+- SQLite evidence after captures:
+  - `shell_settings` module-state rows matching `shell.modules.%`: `10`
+
+### Still Open
+
+- The current implementation still uses renderer adapters rather than slices being created directly in `activate(ctx)`. That is the remaining architectural mismatch with the original ideal in this plan.
+- Assets still needs a real import flow that records actual local file paths before Finder/open-file behavior can be fully enabled.
+- Web has a real persistent Electron webview surface, but browser behavior remains minimal: no tab model, no full in-page navigation history integration, and no web-surface abstraction on `ModuleContext`.

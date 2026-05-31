@@ -135,6 +135,7 @@ function createWindow(): void {
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      webviewTag: true,
       sandbox: false
     }
   })

@@ -15,6 +15,7 @@
         <span class="meta-label">Dimensions</span><span class="meta-value">{asset.dimensions}</span>
         <span class="meta-label">Size</span><span class="meta-value">{asset.size}</span>
         <span class="meta-label">Added</span><span class="meta-value">{asset.added}</span>
+        <span class="meta-label">Path</span><span class="meta-value">{asset.filePath ?? 'Not imported'}</span>
       </div>
     </section>
     <section class="section">

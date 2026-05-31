@@ -1,8 +1,9 @@
 <!-- Assets MainView — asset preview/detail -->
 <script lang="ts">
-  import { selectedAsset } from './state'
+  import { copySelectedAssetPath, removeSelectedAsset, selectedAsset } from './state'
 
   let asset = $derived($selectedAsset)
+  let hasFilePath = $derived(Boolean(asset?.filePath))
 </script>
 
 <div class="main-view">
@@ -15,9 +16,9 @@
       </div>
     </div>
     <div class="asset-actions">
-      <button class="action-btn" disabled title="Asset file paths are not persisted yet">Open in Finder</button>
-      <button class="action-btn" disabled title="Asset file paths are not persisted yet">Copy Path</button>
-      <button class="action-btn danger" disabled title="Asset removal needs persisted asset records first">Remove</button>
+      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'}>Open in Finder</button>
+      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Copy source file path' : 'No source file path recorded'} onclick={() => void copySelectedAssetPath()}>Copy Path</button>
+      <button class="action-btn danger" title="Remove this asset metadata record" onclick={removeSelectedAsset}>Remove</button>
     </div>
   {/if}
 </div>
