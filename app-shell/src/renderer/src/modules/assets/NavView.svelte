@@ -16,10 +16,14 @@
         aria-pressed={$selectedAssetId === asset.id}
         onclick={() => selectAsset(asset.id)}
       >
-        <span class="asset-icon">{asset.type === 'image' ? '🖼' : '📄'}</span>
+        {#if asset.thumbnailDataUrl}
+          <img class="asset-thumb" src={asset.thumbnailDataUrl} alt="" />
+        {:else}
+          <span class="asset-icon">{asset.type === 'image' ? '🖼' : '📄'}</span>
+        {/if}
         <div class="asset-info">
           <span class="asset-name">{asset.name}</span>
-          <span class="asset-size">{asset.size}</span>
+          <span class="asset-size">{asset.dimensions} · {asset.size}</span>
         </div>
       </button>
     {/each}
@@ -37,7 +41,16 @@
   .asset-item:hover { background: var(--color-bg-overlay); }
   .asset-item.active { background: var(--color-accent-dim); color: var(--color-accent); }
   .asset-icon { font-size: 16px; flex-shrink: 0; }
+  .asset-thumb {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background: var(--color-bg-overlay);
+    border: var(--border-subtle);
+  }
   .asset-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .asset-name { font-size: var(--font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .asset-size { font-size: var(--font-size-xs); color: var(--color-fg-muted); }
+  .asset-size { font-size: var(--font-size-xs); color: var(--color-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

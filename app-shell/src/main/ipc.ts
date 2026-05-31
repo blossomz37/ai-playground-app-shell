@@ -1,4 +1,4 @@
-import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
+import { ipcMain, nativeTheme, BrowserWindow, dialog, shell, nativeImage } from 'electron'
 import type { AssetImportCandidate, ThemeMode } from '@shared/module-contract'
 import { statSync } from 'fs'
 import path from 'path'
@@ -23,6 +23,31 @@ import type {
 } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
+const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+const thumbnailMaxEdge = 512
+
+function imageMetadataFor(filePath: string, extension: string): AssetImportCandidate['image'] | undefined {
+  if (!imageExtensions.has(extension)) return undefined
+
+  const image = nativeImage.createFromPath(filePath)
+  if (image.isEmpty()) return undefined
+
+  const size = image.getSize()
+  if (size.width <= 0 || size.height <= 0) return undefined
+
+  const scale = Math.min(1, thumbnailMaxEdge / Math.max(size.width, size.height))
+  const thumbnail = image.resize({
+    width: Math.max(1, Math.round(size.width * scale)),
+    height: Math.max(1, Math.round(size.height * scale)),
+    quality: 'good'
+  })
+
+  return {
+    width: size.width,
+    height: size.height,
+    thumbnailDataUrl: thumbnail.isEmpty() ? null : thumbnail.toDataURL()
+  }
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('documents:list', (_e, { workspaceId }: { workspaceId: string }) =>
@@ -170,12 +195,14 @@ export function registerIpcHandlers(): void {
     const importedAt = new Date().toISOString()
     return result.filePaths.map((filePath) => {
       const stat = statSync(filePath)
+      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase()
       return {
         name: path.basename(filePath),
         filePath,
-        extension: path.extname(filePath).replace(/^\./, '').toLowerCase(),
+        extension,
         sizeBytes: stat.size,
-        importedAt
+        importedAt,
+        image: imageMetadataFor(filePath, extension)
       }
     })
   })

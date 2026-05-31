@@ -193,6 +193,11 @@ export interface AssetImportCandidate {
   extension: string
   sizeBytes: number
   importedAt: string
+  image?: {
+    width: number
+    height: number
+    thumbnailDataUrl: string | null
+  }
 }
 
 export interface ModuleContext {

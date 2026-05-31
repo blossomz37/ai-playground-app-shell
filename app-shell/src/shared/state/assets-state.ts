@@ -8,6 +8,9 @@ export interface AssetItem {
   kindLabel: string
   size: string
   dimensions: string
+  width: number | null
+  height: number | null
+  thumbnailDataUrl: string | null
   added: string
   usage: string
   filePath: string | null
@@ -20,10 +23,10 @@ export interface AssetsState {
 }
 
 const initialAssets: AssetItem[] = [
-  { id: '1', name: 'hero-banner.png', type: 'image', kindLabel: 'PNG Image', size: '1.2 MB', dimensions: '1920 x 1080', added: '2026-05-29', usage: 'Referenced in 2 documents', filePath: null },
-  { id: '2', name: 'character-ref.jpg', type: 'image', kindLabel: 'JPEG Image', size: '890 KB', dimensions: '1400 x 1800', added: '2026-05-29', usage: 'Referenced in 1 document', filePath: null },
-  { id: '3', name: 'map-sketch.png', type: 'image', kindLabel: 'PNG Image', size: '2.1 MB', dimensions: '2400 x 1600', added: '2026-05-28', usage: 'Not referenced yet', filePath: null },
-  { id: '4', name: 'notes-scan.pdf', type: 'document', kindLabel: 'PDF Document', size: '450 KB', dimensions: '8 pages', added: '2026-05-27', usage: 'Referenced in research notes', filePath: null }
+  { id: '1', name: 'hero-banner.png', type: 'image', kindLabel: 'PNG Image', size: '1.2 MB', dimensions: '1920 x 1080', width: 1920, height: 1080, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 2 documents', filePath: null },
+  { id: '2', name: 'character-ref.jpg', type: 'image', kindLabel: 'JPEG Image', size: '890 KB', dimensions: '1400 x 1800', width: 1400, height: 1800, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 1 document', filePath: null },
+  { id: '3', name: 'map-sketch.png', type: 'image', kindLabel: 'PNG Image', size: '2.1 MB', dimensions: '2400 x 1600', width: 2400, height: 1600, thumbnailDataUrl: null, added: '2026-05-28', usage: 'Not referenced yet', filePath: null },
+  { id: '4', name: 'notes-scan.pdf', type: 'document', kindLabel: 'PDF Document', size: '450 KB', dimensions: '8 pages', width: null, height: null, thumbnailDataUrl: null, added: '2026-05-27', usage: 'Referenced in research notes', filePath: null }
 ]
 
 export interface AssetsPersistenceSnapshot {
@@ -80,7 +83,13 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     }
 
     this.assets = snapshot.assets.length > 0
-      ? snapshot.assets.map(asset => ({ ...asset, filePath: asset.filePath ?? null }))
+      ? snapshot.assets.map(asset => ({
+        ...asset,
+        width: asset.width ?? null,
+        height: asset.height ?? null,
+        thumbnailDataUrl: asset.thumbnailDataUrl ?? null,
+        filePath: asset.filePath ?? null
+      }))
       : initialAssets
     this.selectedAssetId = this.assets.some(asset => asset.id === snapshot.selectedAssetId)
       ? snapshot.selectedAssetId
@@ -102,13 +111,19 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
   private assetFromImport(candidate: AssetImportCandidate): AssetItem {
     const extension = candidate.extension || 'file'
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)
+    const dimensions = candidate.image
+      ? `${candidate.image.width} x ${candidate.image.height}`
+      : isImage ? 'Image metadata unavailable' : 'Imported file'
     return {
       id: `asset-${candidate.importedAt}-${candidate.filePath}`.replace(/[^a-zA-Z0-9_-]/g, '-'),
       name: candidate.name,
       type: isImage ? 'image' : 'document',
       kindLabel: `${extension.toUpperCase()} ${isImage ? 'Image' : 'Document'}`,
       size: this.formatBytes(candidate.sizeBytes),
-      dimensions: isImage ? 'Imported image' : 'Imported file',
+      dimensions,
+      width: candidate.image?.width ?? null,
+      height: candidate.image?.height ?? null,
+      thumbnailDataUrl: candidate.image?.thumbnailDataUrl ?? null,
       added: candidate.importedAt.slice(0, 10),
       usage: 'Not referenced yet',
       filePath: candidate.filePath
