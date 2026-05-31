@@ -80,6 +80,27 @@ export interface AiRun {
   completedAt: string | null
 }
 
+export type AiChatMessageRole = 'user' | 'assistant'
+
+export interface AiChatMessage {
+  id: string
+  workspaceId: string
+  conversationId: string
+  role: AiChatMessageRole
+  content: string
+  runId: string | null
+  createdAt: string
+}
+
+export interface AiConversation {
+  id: string
+  workspaceId: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  messages: AiChatMessage[]
+}
+
 export interface AiPromptChainStep {
   id: string
   name: string
@@ -137,6 +158,19 @@ export interface InvokeAiParams {
 export interface AiInvokeResult {
   run: AiRun
   contextPack: AiContextPack
+}
+
+export interface CreateAiConversationParams {
+  workspaceId: string
+  title?: string
+}
+
+export interface AppendAiMessageParams {
+  workspaceId: string
+  conversationId: string
+  role: AiChatMessageRole
+  content: string
+  runId?: string | null
 }
 
 export interface ListAiProvidersParams {

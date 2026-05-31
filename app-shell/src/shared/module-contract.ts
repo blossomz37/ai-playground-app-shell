@@ -5,10 +5,14 @@
 import type {
   AiContextCandidate,
   AiInvokeResult,
+  AiConversation,
+  AiChatMessage,
   AiProvider,
   AiPromptTemplate,
   AiRun,
+  AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiConversationParams,
   InvokeAiParams,
   ListAiProvidersParams,
   ListAiRunsParams
@@ -289,6 +293,9 @@ export interface ShellApi {
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
     saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>
+    conversations(workspaceId: string): Promise<AiConversation[]>
+    createConversation(params: CreateAiConversationParams): Promise<AiConversation>
+    appendMessage(params: AppendAiMessageParams): Promise<AiChatMessage>
   }
   layout: {
     get(): Promise<LayoutState>

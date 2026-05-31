@@ -1,9 +1,13 @@
 import type {
   AiContextCandidate,
+  AiChatMessage,
+  AiConversation,
   AiInvokeResult,
   AiProvider,
   AiPromptTemplate,
+  AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiConversationParams,
   InvokeAiParams,
   ListAiProvidersParams,
   ListAiRunsParams
@@ -182,6 +186,21 @@ export const aiOrchestrator = {
   listRuns(params: ListAiRunsParams) {
     aiRepository.ensureDefaults(params.workspaceId)
     return aiRepository.listRuns(params)
+  },
+
+  listConversations(workspaceId: string): AiConversation[] {
+    aiRepository.ensureDefaults(workspaceId)
+    return aiRepository.listConversations(workspaceId)
+  },
+
+  createConversation(params: CreateAiConversationParams): AiConversation {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.createConversation(params)
+  },
+
+  appendMessage(params: AppendAiMessageParams): AiChatMessage {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.appendMessage(params)
   },
 
   listTemplates(workspaceId: string): AiPromptTemplate[] {

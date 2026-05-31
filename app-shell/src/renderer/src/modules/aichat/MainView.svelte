@@ -6,6 +6,8 @@
   import {
     activeConversationId,
     appendAiChatMessage,
+    createAiConversation,
+    loadAiConversations,
     selectedAiConversation
   } from './state'
 
@@ -14,11 +16,15 @@
   let captureMessageListener: ((event: Event) => void) | null = null
 
   onMount(() => {
+    void loadAiConversations()
     void refreshAiContext()
     captureMessageListener = (event: Event) => {
       const content = (event as CustomEvent<string>).detail
       if (content) {
-        appendAiChatMessage(activeConversationId(), { role: 'assistant', content })
+        void (async () => {
+          const conversationId = activeConversationId() || await createAiConversation()
+          await appendAiChatMessage(conversationId, { role: 'assistant', content })
+        })()
       }
     }
     window.addEventListener('shell:capture-ai-message', captureMessageListener)
@@ -33,8 +39,8 @@
   async function send() {
     const text = input.trim()
     if (!text) return
-    const conversationId = activeConversationId()
-    appendAiChatMessage(conversationId, { role: 'user', content: text })
+    const conversationId = activeConversationId() || await createAiConversation()
+    await appendAiChatMessage(conversationId, { role: 'user', content: text })
     input = ''
 
     const result = await invokeAi({
@@ -44,7 +50,11 @@
       prompt: text
     })
 
-    appendAiChatMessage(conversationId, { role: 'assistant', content: result.run.error ?? result.run.outputText })
+    await appendAiChatMessage(conversationId, {
+      role: 'assistant',
+      content: result.run.error ?? result.run.outputText,
+      runId: result.run.id
+    })
   }
 
   function onKeydown(e: KeyboardEvent) {

@@ -8,7 +8,7 @@ import type {
   ThemeMode,
   Workspace
 } from '@shared/module-contract'
-import type { AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
+import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -128,6 +128,7 @@ function createBrowserShell(): ShellApi {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }]
+  const aiConversations: AiConversation[] = []
 
   function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
     const doc = docs.get(activeDocumentId ?? 'demo-chapter-1') ?? DEMO_DOCS[1]
@@ -263,6 +264,40 @@ function createBrowserShell(): ShellApi {
       saveTemplate: async (template) => {
         aiTemplates.unshift(template)
         return template
+      },
+      conversations: async () => aiConversations,
+      createConversation: async (params) => {
+        const createdAt = new Date().toISOString()
+        const conversation: AiConversation = {
+          id: `browser-conversation-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          title: params.title ?? 'New conversation',
+          createdAt,
+          updatedAt: createdAt,
+          messages: []
+        }
+        aiConversations.unshift(conversation)
+        return conversation
+      },
+      appendMessage: async (params) => {
+        const message: AiChatMessage = {
+          id: `browser-message-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          conversationId: params.conversationId,
+          role: params.role,
+          content: params.content,
+          runId: params.runId ?? null,
+          createdAt: new Date().toISOString()
+        }
+        const conversation = aiConversations.find(item => item.id === params.conversationId)
+        if (conversation) {
+          conversation.messages.push(message)
+          conversation.updatedAt = message.createdAt
+          if (conversation.title === 'New conversation' && params.role === 'user') {
+            conversation.title = params.content.trim().slice(0, 48) || conversation.title
+          }
+        }
+        return message
       }
     },
     layout: {

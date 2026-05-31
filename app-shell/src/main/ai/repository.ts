@@ -2,10 +2,14 @@ import { randomUUID } from 'crypto'
 import type {
   AiContextCandidate,
   AiContextPack,
+  AiChatMessage,
+  AiConversation,
   AiProvider,
   AiPromptTemplate,
   AiRun,
   AiRunStatus,
+  AppendAiMessageParams,
+  CreateAiConversationParams,
   InvokeAiParams,
   ListAiRunsParams
 } from '@shared/ai'
@@ -66,6 +70,34 @@ function providerFromRow(row: Record<string, unknown>): AiProvider {
     supportsStreaming: Number(row.supportsStreaming) === 1,
     supportsTools: Number(row.supportsTools) === 1
   }
+}
+
+function messageFromRow(row: Record<string, unknown>): AiChatMessage {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspaceId),
+    conversationId: String(row.conversationId),
+    role: row.role as AiChatMessage['role'],
+    content: String(row.content),
+    runId: row.runId === null ? null : String(row.runId),
+    createdAt: String(row.createdAt)
+  }
+}
+
+function conversationFromRow(row: Record<string, unknown>, messages: AiChatMessage[]): AiConversation {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspaceId),
+    title: String(row.title),
+    createdAt: String(row.createdAt),
+    updatedAt: String(row.updatedAt),
+    messages
+  }
+}
+
+function titleFromMessage(content: string): string {
+  const title = content.trim().replace(/\s+/g, ' ').slice(0, 48)
+  return title || 'New conversation'
 }
 
 export const aiRepository = {
@@ -161,6 +193,102 @@ export const aiRepository = {
       .get(workspaceId, providerId) as Record<string, unknown> | undefined
 
     return row ? providerFromRow(row) : undefined
+  },
+
+  listConversations(workspaceId: string): AiConversation[] {
+    const db = getDb()
+    const rows = db
+      .prepare('SELECT * FROM ai_conversations WHERE workspaceId = ? ORDER BY updatedAt DESC')
+      .all(workspaceId) as Array<Record<string, unknown>>
+
+    const messageRows = db
+      .prepare('SELECT * FROM ai_messages WHERE workspaceId = ? ORDER BY createdAt ASC')
+      .all(workspaceId) as Array<Record<string, unknown>>
+
+    const messagesByConversation = new Map<string, AiChatMessage[]>()
+    for (const row of messageRows) {
+      const message = messageFromRow(row)
+      const messages = messagesByConversation.get(message.conversationId) ?? []
+      messages.push(message)
+      messagesByConversation.set(message.conversationId, messages)
+    }
+
+    return rows.map(row => conversationFromRow(row, messagesByConversation.get(String(row.id)) ?? []))
+  },
+
+  createConversation(params: CreateAiConversationParams): AiConversation {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const conversation: AiConversation = {
+      id: randomUUID(),
+      workspaceId: params.workspaceId,
+      title: params.title ?? 'New conversation',
+      createdAt: now,
+      updatedAt: now,
+      messages: []
+    }
+
+    db.prepare(`
+      INSERT INTO ai_conversations (id, workspaceId, title, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      conversation.id,
+      conversation.workspaceId,
+      conversation.title,
+      conversation.createdAt,
+      conversation.updatedAt
+    )
+
+    return conversation
+  },
+
+  appendMessage(params: AppendAiMessageParams): AiChatMessage {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const message: AiChatMessage = {
+      id: randomUUID(),
+      workspaceId: params.workspaceId,
+      conversationId: params.conversationId,
+      role: params.role,
+      content: params.content,
+      runId: params.runId ?? null,
+      createdAt: now
+    }
+
+    const tx = db.transaction(() => {
+      db.prepare(`
+        INSERT INTO ai_messages (id, workspaceId, conversationId, role, content, runId, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        message.id,
+        message.workspaceId,
+        message.conversationId,
+        message.role,
+        message.content,
+        message.runId,
+        message.createdAt
+      )
+
+      const conversation = db
+        .prepare('SELECT title FROM ai_conversations WHERE id = ? AND workspaceId = ?')
+        .get(params.conversationId, params.workspaceId) as { title: string } | undefined
+
+      const shouldRetitle = params.role === 'user' && conversation?.title === 'New conversation'
+      db.prepare(`
+        UPDATE ai_conversations
+        SET title = CASE WHEN ? THEN ? ELSE title END, updatedAt = ?
+        WHERE id = ? AND workspaceId = ?
+      `).run(
+        shouldRetitle ? 1 : 0,
+        titleFromMessage(params.content),
+        now,
+        params.conversationId,
+        params.workspaceId
+      )
+    })
+
+    tx()
+    return message
   },
 
   createRun(params: InvokeAiParams): AiRun {

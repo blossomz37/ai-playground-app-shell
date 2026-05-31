@@ -1,11 +1,11 @@
 ---
 file: 14-state-architecture.md
 description: Migrate module state to framework-agnostic TS slices (contract D2 boundary)
-version: 0.1.0
+version: 0.2.0
 created: 2026-05-29
-modified: 2026-05-29
+modified: 2026-05-31
 author: antigravity
-status: placeholder
+status: phase-2-started
 ---
 
 # 14 — State Architecture (D2 Boundary)
@@ -58,3 +58,49 @@ Currently, module state lives directly in Svelte `$state` runes and `writable` s
 - `src/renderer/src/modules/documents/*.svelte` — subscribe to slice via `ctx`
 - All other module views — same pattern migration
 - Possibly new `src/core/` or `src/shared/slices/` directory
+
+## Phase 2 Unit Completed - 2026-05-31
+
+This session established the first concrete state-slice pattern and completed one persistence hardening item from plan 19.
+
+### Completed
+
+- Added a framework-agnostic observable slice base in `app-shell/src/shared/state/observable.ts`.
+- Added `DocumentsStateSlice` in `app-shell/src/shared/state/documents-state.ts`.
+- Moved Documents-owned state into the slice:
+  - document list,
+  - selected document id,
+  - active document derivation,
+  - editor markdown content,
+  - dirty state,
+  - version list,
+  - tree derivation,
+  - auto-save debounce.
+- Kept `app-shell/src/renderer/src/store/index.ts` as a Svelte adapter over the plain-TS slice so existing shell and module views can keep consuming Svelte stores while the logic boundary moves out of Svelte.
+- Updated `Documents/MainView.svelte` so editor writes go through the slice adapter instead of directly mutating Svelte stores.
+- Added AI Chat conversation/message persistence through the existing SQLite `ai_conversations` and `ai_messages` tables:
+  - repository methods,
+  - orchestrator methods,
+  - IPC handlers,
+  - preload API,
+  - browser-shell fallback API,
+  - renderer AI Chat state loading/creation/message append.
+
+### Validation
+
+- `npm run typecheck` passed.
+- `npm run build` passed.
+- Svelte autofixer returned no issues for the edited AI Chat components.
+- Svelte autofixer returned no issues for `Documents/MainView.svelte`; it retained pre-existing suggestions around TipTap `bind:this`/effect calls.
+- UI capture:
+  - `implementation/screenshots/ai-chat-persistence-after-2026-05-31.png`
+- SQLite evidence after capture:
+  - `ai_conversations` count: `1`
+  - `ai_messages` count: `1`
+
+### Still Open
+
+- Move the remaining scaffold modules' local Svelte store files to plain-TS slices.
+- Add durable Assets metadata/file-path persistence before enabling Finder, Copy Path, or Remove.
+- Add Web bookmark/history persistence and real Electron webview/session integration before claiming full browsing.
+- Decide whether the renderer adapter is sufficient for the current build, or whether a future slice should expose renderer-side state through a formal module-state registry that mirrors `ModuleContext` more literally.

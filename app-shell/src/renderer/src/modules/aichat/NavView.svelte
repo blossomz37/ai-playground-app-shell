@@ -1,17 +1,23 @@
 <!-- AI Chat NavView — conversation list -->
 <script lang="ts">
+  import { onMount } from 'svelte'
   import {
     aiConversations,
     createAiConversation,
+    loadAiConversations,
     selectAiConversation,
     selectedAiConversationId
   } from './state'
+
+  onMount(() => {
+    void loadAiConversations()
+  })
 </script>
 
 <div class="nav-view">
   <header class="nav-header">
     <span class="nav-title">Conversations</span>
-    <button class="new-btn" title="New conversation" onclick={createAiConversation}>+</button>
+    <button class="new-btn" title="New conversation" onclick={() => void createAiConversation()}>+</button>
   </header>
   <div class="chat-list">
     {#each $aiConversations as chat (chat.id)}

@@ -9,7 +9,7 @@
   import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
-    activeDoc, editorContent, isDirty, saveDoc,
+    activeDoc, editorContent, saveDoc, setEditorContent,
     editorSettings, scheduleAutoSave, cancelAutoSave
   } from '../../store'
   import { registerCommand } from '../../store/commands'
@@ -34,8 +34,7 @@
       ],
       content: get(editorContent),
       onUpdate: ({ editor }) => {
-        editorContent.set(editor.storage.markdown.getMarkdown())
-        isDirty.set(true)
+        setEditorContent(editor.storage.markdown.getMarkdown())
         scheduleAutoSave()
       },
     })
@@ -49,7 +48,7 @@
       const markdown = (event as CustomEvent<string>).detail
       if (!markdown || !editor) return
       editor.commands.setContent(markdown, { emitUpdate: false })
-      editorContent.set(editor.storage.markdown.getMarkdown())
+      setEditorContent(editor.storage.markdown.getMarkdown(), { dirty: false })
     }
     window.addEventListener('shell:capture-document-markdown', captureMarkdownListener)
   })

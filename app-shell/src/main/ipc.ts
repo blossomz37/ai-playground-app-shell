@@ -10,7 +10,15 @@ import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
-import type { AiPromptTemplate, CollectAiContextParams, InvokeAiParams, ListAiProvidersParams, ListAiRunsParams } from '@shared/ai'
+import type {
+  AiPromptTemplate,
+  AppendAiMessageParams,
+  CollectAiContextParams,
+  CreateAiConversationParams,
+  InvokeAiParams,
+  ListAiProvidersParams,
+  ListAiRunsParams
+} from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
 
@@ -122,6 +130,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:runs', (_e, params: ListAiRunsParams) =>
     aiOrchestrator.listRuns(params)
+  )
+
+  ipcMain.handle('ai:conversations', (_e, { workspaceId }: { workspaceId: string }) =>
+    aiOrchestrator.listConversations(workspaceId)
+  )
+
+  ipcMain.handle('ai:conversations:create', (_e, params: CreateAiConversationParams) =>
+    aiOrchestrator.createConversation(params)
+  )
+
+  ipcMain.handle('ai:messages:append', (_e, params: AppendAiMessageParams) =>
+    aiOrchestrator.appendMessage(params)
   )
 
   ipcMain.handle('ai:templates', (_e, { workspaceId }: { workspaceId: string }) =>

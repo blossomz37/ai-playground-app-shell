@@ -1,5 +1,6 @@
-import { writable, derived, get } from 'svelte/store'
-import type { Doc, DocVersion, ThemeMode, Workspace } from '@shared/module-contract'
+import { writable, readable, get } from 'svelte/store'
+import type { ThemeMode, Workspace } from '@shared/module-contract'
+import { DocumentsStateSlice, type DocumentsState } from '@shared/state/documents-state'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
 import { loadJobs } from './jobs'
@@ -9,12 +10,29 @@ export type { ThemeMode }
 export const workspaceId   = writable<string>('ws-default')
 export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
-export const documents     = writable<Doc[]>([])
 export const activeModuleId = writable<string | null>(null)
-export const activeDocId   = writable<string | null>(null)
-export const editorContent = writable<string>('')
-export const isDirty       = writable<boolean>(false)
-export const versions      = writable<DocVersion[]>([])
+
+export const documentsState = new DocumentsStateSlice({
+  list: (wsId) => window.shell.documents.list(wsId),
+  open: (id) => window.shell.documents.open(id),
+  save: (id, content) => window.shell.documents.save(id, content),
+  versions: (id) => window.shell.documents.versions(id),
+  onChanged: (cb) => window.shell.documents.onChanged(cb)
+})
+
+function fromDocumentsState<T>(selector: (state: DocumentsState) => T) {
+  return readable(selector(documentsState.getSnapshot()), (set) =>
+    documentsState.subscribe((state) => set(selector(state)))
+  )
+}
+
+export const documents = fromDocumentsState(state => state.documents)
+export const activeDocId = fromDocumentsState(state => state.activeDocId)
+export const activeDoc = fromDocumentsState(state => state.activeDoc)
+export const editorContent = fromDocumentsState(state => state.editorContent)
+export const isDirty = fromDocumentsState(state => state.isDirty)
+export const versions = fromDocumentsState(state => state.versions)
+export const docTree = fromDocumentsState(state => state.docTree)
 
 export interface EditorSettings {
   fontFamily: string
@@ -87,49 +105,16 @@ if (typeof window !== 'undefined' && window.matchMedia) {
   })
 }
 
-export const activeDoc = derived(
-  [documents, activeDocId],
-  ([$docs, $id]) => $docs.find(d => d.id === $id) ?? null
-)
-
-export const docTree = derived(documents, ($docs) => buildTree($docs))
-
-interface DocNode extends Doc { children: DocNode[] }
-
-function buildTree(docs: Doc[]): DocNode[] {
-  const map = new Map(docs.map(d => [d.id, { ...d, children: [] as DocNode[] }]))
-  const roots: DocNode[] = []
-  for (const d of docs) {
-    if (d.parentId === null) {
-      roots.push(map.get(d.id)!)
-    } else {
-      map.get(d.parentId)?.children.push(map.get(d.id)!)
-    }
-  }
-  return roots
-}
-
-// --- Auto-save debounce ---------------------------------------------------
-
-const AUTO_SAVE_MS = 3000
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 let captureDocumentListenerInstalled = false
 
 /** Schedule a debounced auto-save. Resets on every call. */
 export function scheduleAutoSave(): void {
-  cancelAutoSave()
-  autoSaveTimer = setTimeout(() => {
-    autoSaveTimer = null
-    void saveDoc()
-  }, AUTO_SAVE_MS)
+  documentsState.scheduleAutoSave()
 }
 
 /** Cancel any pending auto-save (called on manual save or doc switch). */
 export function cancelAutoSave(): void {
-  if (autoSaveTimer !== null) {
-    clearTimeout(autoSaveTimer)
-    autoSaveTimer = null
-  }
+  documentsState.cancelAutoSave()
 }
 
 // --- Init / actions -------------------------------------------------------
@@ -154,6 +139,7 @@ export async function initStore(): Promise<void> {
   await loadCommands()
   await loadThemePreference()
   await loadEditorSettings()
+  documentsState.installChangeListener()
 
   const workspace = await window.shell.workspace.get()
   activeWorkspace.set(workspace)
@@ -166,17 +152,6 @@ export async function initStore(): Promise<void> {
     await selectDoc(window.shell.capture.documentId)
   }
 
-  window.shell.documents.onChanged(async (id) => {
-    const updated = await window.shell.documents.open(id)
-    if (updated) {
-      documents.update($docs => $docs.map(d => d.id === id ? updated : d))
-      if (get(activeDocId) === id) {
-        editorContent.set(updated.content)
-        isDirty.set(false)
-      }
-    }
-  })
-
   if (!captureDocumentListenerInstalled) {
     window.addEventListener('shell:capture-select-document', (event) => {
       const id = (event as CustomEvent<string>).detail
@@ -187,12 +162,7 @@ export async function initStore(): Promise<void> {
 }
 
 async function loadWorkspaceDocuments(wsId: string): Promise<void> {
-  const docs = await window.shell.documents.list(wsId)
-  documents.set(docs)
-  activeDocId.set(null)
-  editorContent.set('')
-  isDirty.set(false)
-  versions.set([])
+  await documentsState.loadWorkspace(wsId)
 }
 
 export async function switchWorkspace(id: string): Promise<void> {
@@ -217,28 +187,17 @@ export async function createWorkspace(params: { name: string; type?: string; roo
 }
 
 export async function selectDoc(id: string): Promise<void> {
-  cancelAutoSave()
-  activeDocId.set(id)
-  const doc = await window.shell.documents.open(id)
-  if (doc) {
-    editorContent.set(doc.content)
-    isDirty.set(false)
-    const v = await window.shell.documents.versions(id)
-    versions.set(v)
-  }
+  await documentsState.selectDoc(id)
+}
+
+export function setEditorContent(content: string, options?: { dirty?: boolean }): void {
+  documentsState.setEditorContent(content, options)
 }
 
 export async function saveDoc(): Promise<void> {
-  cancelAutoSave()
-  const id = get(activeDocId)
-  const content = get(editorContent)
-  if (!id) return
-  await window.shell.documents.save(id, content)
-  isDirty.set(false)
-  const v = await window.shell.documents.versions(id)
-  versions.set(v)
+  await documentsState.saveDoc()
 }
 
 export function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(Boolean).length
+  return documentsState.countWords(text)
 }

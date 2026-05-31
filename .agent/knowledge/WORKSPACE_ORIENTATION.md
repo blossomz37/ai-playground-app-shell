@@ -1,6 +1,6 @@
 # Workspace Orientation - App Shell Project
 
-Last oriented: 2026-05-30
+Last oriented: 2026-05-31
 
 ## One-Line Summary
 
@@ -14,6 +14,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Current implementation includes AI orchestration Phase 1 plus the OpenAI live-provider adapter: shared AI contracts, SQLite run/context/template tables, `mock-local`, `openai-responses`, provider selection, and module wiring across AI Chat, Prompt Studio, and Workflow Runner.
 - The shell now has real workspace management and visible jobs: active workspace persistence, topbar workspace switch/create flow, module-context refresh on switch, persistent job history, status-bar job indicator, jobs panel, and Workflow Runner job submission.
 - Alpha hardening on 2026-05-30 verified fresh mock and live AI acceptance passes against the real app database. Evidence lives in `implementation/screenshots/alpha-hardening-mock-ai-after-2026-05-30.png`, `implementation/screenshots/alpha-hardening-live-ai-after-2026-05-30.png`, and completed `ai_runs`/`ai_context_packs` rows.
+- Phase 2 state architecture started on 2026-05-31: Documents state now lives in a framework-agnostic `DocumentsStateSlice` under `app-shell/src/shared/state/`, with `app-shell/src/renderer/src/store/index.ts` acting as the Svelte adapter. AI Chat conversations/messages now persist through the existing `ai_conversations` and `ai_messages` SQLite tables.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 
@@ -53,6 +54,7 @@ For UI-visible changes, also capture screenshot evidence using the `SHELL_CAPTUR
 - `app-shell/src/main/core/workspaces.ts` - active workspace/list/create/switch service.
 - `app-shell/src/main/core/jobs.ts` - persistent job run tracking and progress events.
 - `app-shell/src/main/ai/` - first-party AI orchestration layer; AI-specific behavior lives here, not shell core.
+- `app-shell/src/shared/state/` - framework-agnostic observable state slices; first concrete slice is Documents.
 - `app-shell/src/main/modules/` - module manifests and activation.
 - `app-shell/src/renderer/src/shell/` - shell chrome and shared UI.
 - `app-shell/src/renderer/src/modules/` - module views.
