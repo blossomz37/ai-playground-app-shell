@@ -1,8 +1,19 @@
 <!-- Table View MainView — data table of documents -->
 <script lang="ts">
-  import { documents } from '../../store'
+  import {
+    filteredTableDocuments,
+    selectTableDoc,
+    selectedTableDocId
+  } from './state'
 
   const columns = ['Title', 'Kind', 'Updated', 'Words']
+
+  function selectOnKeydown(event: KeyboardEvent, id: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      selectTableDoc(id)
+    }
+  }
 </script>
 
 <div class="main-view">
@@ -10,14 +21,21 @@
     <table class="data-table">
       <thead>
         <tr>
-          {#each columns as col}
+          {#each columns as col (col)}
             <th>{col}</th>
           {/each}
         </tr>
       </thead>
       <tbody>
-        {#each $documents as doc (doc.id)}
-          <tr>
+        {#each $filteredTableDocuments as doc (doc.id)}
+          <tr
+            class:active={$selectedTableDocId === doc.id}
+            role="button"
+            tabindex="0"
+            aria-pressed={$selectedTableDocId === doc.id}
+            onclick={() => selectTableDoc(doc.id)}
+            onkeydown={(event) => selectOnKeydown(event, doc.id)}
+          >
             <td class="cell-title">{doc.title}</td>
             <td><span class="kind-badge">{doc.kind}</span></td>
             <td class="cell-date">{new Date(doc.updatedAt).toLocaleDateString()}</td>
@@ -42,6 +60,9 @@
   }
   .data-table td { padding: var(--space-2) var(--space-3); color: var(--color-fg-secondary); border-bottom: 1px solid rgba(69, 71, 90, 0.3); }
   .data-table tr:hover td { background: var(--color-bg-overlay); }
+  .data-table tr { cursor: pointer; }
+  .data-table tr.active td { background: var(--color-accent-dim); }
+  .data-table tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
   .cell-title { font-weight: 500; color: var(--color-fg-primary); }
   .cell-date { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
   .cell-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-fg-muted); }

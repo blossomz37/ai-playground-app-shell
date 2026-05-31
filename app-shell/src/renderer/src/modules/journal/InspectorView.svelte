@@ -1,31 +1,31 @@
 <!-- Journal InspectorView — entry metadata -->
 <script lang="ts">
-  const meta = {
-    created: '2026-05-29 08:15',
-    modified: '2026-05-29 15:22',
-    wordCount: 47,
-    mood: '☀️ Productive'
-  }
+  import { countJournalWords, selectedJournalEntry } from './state'
+
+  let entry = $derived($selectedJournalEntry)
 </script>
 
 <div class="inspector-view">
-  <section class="section">
-    <h3 class="section-title">Entry Details</h3>
-    <div class="meta-grid">
-      <span class="meta-label">Created</span><span class="meta-value">{meta.created}</span>
-      <span class="meta-label">Modified</span><span class="meta-value">{meta.modified}</span>
-      <span class="meta-label">Words</span><span class="meta-value">{meta.wordCount}</span>
-      <span class="meta-label">Mood</span><span class="meta-value">{meta.mood}</span>
-    </div>
-  </section>
-  <section class="section">
-    <h3 class="section-title">Tags</h3>
-    <div class="tags">
-      <span class="tag">daily</span>
-      <span class="tag">reflection</span>
-      <span class="tag">project</span>
-    </div>
-  </section>
+  {#if entry}
+    <section class="section">
+      <h3 class="section-title">Entry Details</h3>
+      <div class="meta-grid">
+        <span class="meta-label">Title</span><span class="meta-value">{entry.title}</span>
+        <span class="meta-label">Created</span><span class="meta-value">{entry.created}</span>
+        <span class="meta-label">Modified</span><span class="meta-value">{entry.modified}</span>
+        <span class="meta-label">Words</span><span class="meta-value">{countJournalWords(entry.content)}</span>
+        <span class="meta-label">Mood</span><span class="meta-value">{entry.mood}</span>
+      </div>
+    </section>
+    <section class="section">
+      <h3 class="section-title">Tags</h3>
+      <div class="tags">
+        {#each entry.tags as tag (tag)}
+          <span class="tag">{tag}</span>
+        {/each}
+      </div>
+    </section>
+  {/if}
 </div>
 
 <style>

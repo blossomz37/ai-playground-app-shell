@@ -1,12 +1,6 @@
 <!-- Journal NavView — date-based entry list -->
 <script lang="ts">
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  const entries = [
-    { id: '1', date: 'Today', title: 'Morning thoughts', preview: 'Started the day with...' },
-    { id: '2', date: 'Yesterday', title: 'Project notes', preview: 'Worked on the shell...' },
-    { id: '3', date: 'May 27', title: 'Reading log', preview: 'Finished chapter 12...' },
-  ]
-  let activeEntry = $state('1')
+  import { journalEntries, selectJournalEntry, selectedJournalEntryId } from './state'
 </script>
 
 <div class="nav-view">
@@ -14,11 +8,12 @@
     <span class="nav-title">Journal</span>
   </header>
   <div class="nav-list">
-    {#each entries as entry}
+    {#each $journalEntries as entry (entry.id)}
       <button
         class="entry-item"
-        class:active={activeEntry === entry.id}
-        onclick={() => (activeEntry = entry.id)}
+        class:active={$selectedJournalEntryId === entry.id}
+        aria-pressed={$selectedJournalEntryId === entry.id}
+        onclick={() => selectJournalEntry(entry.id)}
       >
         <span class="entry-date">{entry.date}</span>
         <span class="entry-title">{entry.title}</span>

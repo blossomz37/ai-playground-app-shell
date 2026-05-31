@@ -1,18 +1,18 @@
 <!-- Web NavView — bookmarks and history -->
 <script lang="ts">
-  const bookmarks = [
-    { id: '1', title: 'Wikipedia', url: 'https://wikipedia.org', icon: '🌐' },
-    { id: '2', title: 'MDN Web Docs', url: 'https://developer.mozilla.org', icon: '📖' },
-    { id: '3', title: 'Research Paper', url: 'https://arxiv.org', icon: '📄' },
-  ]
-  let activeBookmark = $state('1')
+  import { openBookmark, selectedBookmarkId, webBookmarks, webHistory } from './state'
 </script>
 
 <div class="nav-view">
   <header class="nav-header"><span class="nav-title">Bookmarks</span></header>
   <div class="bookmark-list">
-    {#each bookmarks as bm}
-      <button class="bm-item" class:active={activeBookmark === bm.id} onclick={() => (activeBookmark = bm.id)}>
+    {#each $webBookmarks as bm (bm.id)}
+      <button
+        class="bm-item"
+        class:active={$selectedBookmarkId === bm.id}
+        aria-pressed={$selectedBookmarkId === bm.id}
+        onclick={() => openBookmark(bm.id)}
+      >
         <span class="bm-icon">{bm.icon}</span>
         <div class="bm-info">
           <span class="bm-title">{bm.title}</span>
@@ -23,7 +23,14 @@
   </div>
   <div class="nav-section">
     <header class="nav-header"><span class="nav-title">History</span></header>
-    <p class="history-hint">No recent history</p>
+    <div class="history-list">
+      {#each $webHistory as item (item.id)}
+        <div class="history-item">
+          <span class="history-title">{item.title}</span>
+          <span class="history-url">{item.url}</span>
+        </div>
+      {/each}
+    </div>
   </div>
 </div>
 
@@ -40,5 +47,8 @@
   .bm-title { font-size: var(--font-size-sm); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bm-url { font-size: var(--font-size-xs); color: var(--color-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-section { flex: 1; display: flex; flex-direction: column; }
-  .history-hint { font-size: var(--font-size-xs); color: var(--color-fg-muted); padding: var(--space-3); }
+  .history-list { padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); overflow-y: auto; }
+  .history-item { display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--color-bg-overlay); }
+  .history-title { font-size: var(--font-size-xs); color: var(--color-fg-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-url { font-size: var(--font-size-xs); color: var(--color-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

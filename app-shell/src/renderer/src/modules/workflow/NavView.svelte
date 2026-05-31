@@ -1,18 +1,18 @@
 <!-- Workflow NavView — prompt chain list -->
 <script lang="ts">
-  const profiles = [
-    { id: '1', name: 'Manuscript Context Pass', format: 'AI', status: 'ready' },
-    { id: '2', name: 'Scene Diagnosis', format: 'AI', status: 'ready' },
-    { id: '3', name: 'Revision Chain', format: 'AI', status: 'draft' },
-  ]
-  let activeProfile = $state('1')
+  import { selectedWorkflowProfileId, selectWorkflowProfile, workflowProfiles } from './state'
 </script>
 
 <div class="nav-view">
   <header class="nav-header"><span class="nav-title">Chains</span></header>
   <div class="profile-list">
-    {#each profiles as profile (profile.id)}
-      <button class="profile-item" class:active={activeProfile === profile.id} onclick={() => (activeProfile = profile.id)}>
+    {#each $workflowProfiles as profile (profile.id)}
+      <button
+        class="profile-item"
+        class:active={$selectedWorkflowProfileId === profile.id}
+        aria-pressed={$selectedWorkflowProfileId === profile.id}
+        onclick={() => selectWorkflowProfile(profile.id)}
+      >
         <span class="profile-format">{profile.format}</span>
         <div class="profile-info">
           <span class="profile-name">{profile.name}</span>

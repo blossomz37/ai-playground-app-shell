@@ -1,11 +1,18 @@
 <!-- Web InspectorView — page info -->
+<script lang="ts">
+  import { currentBookmarked, currentTitle, currentUrl } from './state'
+
+  const protocol = $derived($currentUrl.startsWith('https://') ? 'HTTPS' : $currentUrl.startsWith('http://') ? 'HTTP' : 'Pending')
+</script>
+
 <div class="inspector-view">
   <section class="section">
     <h3 class="section-title">Page Info</h3>
     <div class="meta-grid">
-      <span class="meta-label">Title</span><span class="meta-value">Wikipedia</span>
-      <span class="meta-label">URL</span><span class="meta-value url">wikipedia.org</span>
-      <span class="meta-label">Protocol</span><span class="meta-value">HTTPS</span>
+      <span class="meta-label">Title</span><span class="meta-value">{$currentTitle}</span>
+      <span class="meta-label">URL</span><span class="meta-value url">{$currentUrl}</span>
+      <span class="meta-label">Protocol</span><span class="meta-value">{protocol}</span>
+      <span class="meta-label">Bookmark</span><span class="meta-value">{$currentBookmarked ? 'Saved' : 'Not saved'}</span>
       <span class="meta-label">Session</span><span class="meta-value">Persistent</span>
     </div>
   </section>

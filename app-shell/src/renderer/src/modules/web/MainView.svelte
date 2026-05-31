@@ -1,33 +1,42 @@
 <!-- Web MainView — browser with URL bar (placeholder for webview) -->
 <script lang="ts">
-  let url = $state('https://wikipedia.org')
-  let loading = $state(false)
-
-  function navigate() {
-    loading = true
-    setTimeout(() => { loading = false }, 800)
-  }
+  import {
+    canGoBack,
+    canGoForward,
+    currentBookmarked,
+    currentTitle,
+    currentUrl,
+    goBack,
+    goForward,
+    navigateTo,
+    reloadPage,
+    toggleCurrentBookmark,
+    webLoading
+  } from './state'
 </script>
 
 <div class="main-view">
   <header class="url-bar">
-    <button class="nav-btn" title="Back">←</button>
-    <button class="nav-btn" title="Forward">→</button>
-    <button class="nav-btn" title="Reload" onclick={navigate}>{loading ? '⟳' : '↻'}</button>
+    <button class="nav-btn" title="Back" onclick={goBack} disabled={!$canGoBack}>←</button>
+    <button class="nav-btn" title="Forward" onclick={goForward} disabled={!$canGoForward}>→</button>
+    <button class="nav-btn" title="Reload" onclick={reloadPage}>{$webLoading ? '⟳' : '↻'}</button>
     <input
       class="url-input"
       type="url"
-      bind:value={url}
-      onkeydown={(e) => e.key === 'Enter' && navigate()}
+      value={$currentUrl}
+      oninput={(event) => currentUrl.set(event.currentTarget.value)}
+      onkeydown={(event) => event.key === 'Enter' && navigateTo($currentUrl)}
     />
-    <button class="nav-btn" title="Bookmark">☆</button>
+    <button class="nav-btn" title={$currentBookmarked ? 'Remove bookmark' : 'Bookmark'} onclick={toggleCurrentBookmark}>
+      {$currentBookmarked ? '★' : '☆'}
+    </button>
   </header>
   <div class="browser-area">
     <div class="browser-placeholder">
       <span class="placeholder-icon">🌐</span>
-      <h2 class="placeholder-title">Web Browser</h2>
+      <h2 class="placeholder-title">{$currentTitle}</h2>
       <p class="placeholder-text">Embedded browsing via Electron webview.<br/>Navigate to a URL above to start.</p>
-      <span class="placeholder-url">{url}</span>
+      <span class="placeholder-url">{$currentUrl}</span>
     </div>
   </div>
 </div>
@@ -40,6 +49,8 @@
     border-radius: var(--radius-sm); color: var(--color-fg-muted); font-size: 14px; cursor: pointer; transition: background 0.1s, color 0.1s;
   }
   .nav-btn:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
+  .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .nav-btn:disabled:hover { background: transparent; color: var(--color-fg-muted); }
   .url-input {
     flex: 1; padding: var(--space-1) var(--space-3); background: var(--color-bg-overlay); border: var(--border-subtle);
     border-radius: var(--radius-md); color: var(--color-fg-primary); font-family: var(--font-sans);

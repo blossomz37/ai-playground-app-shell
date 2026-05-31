@@ -1,7 +1,7 @@
 <!-- Table View NavView — filter/sort controls -->
 <script lang="ts">
-  let sortBy = $state('title')
-  let filterKind = $state('all')
+  import { documents } from '../../store'
+  import { filteredTableDocuments, tableFilterKind, tableSortBy } from './state'
 </script>
 
 <div class="nav-view">
@@ -9,7 +9,7 @@
   <div class="controls">
     <div class="field">
       <label class="field-label" for="table-filter-kind">Kind</label>
-      <select id="table-filter-kind" class="field-select" bind:value={filterKind}>
+      <select id="table-filter-kind" class="field-select" bind:value={$tableFilterKind}>
         <option value="all">All Types</option>
         <option value="chapter">Chapters</option>
         <option value="scene">Scenes</option>
@@ -19,7 +19,7 @@
     </div>
     <div class="field">
       <label class="field-label" for="table-sort-by">Sort By</label>
-      <select id="table-sort-by" class="field-select" bind:value={sortBy}>
+      <select id="table-sort-by" class="field-select" bind:value={$tableSortBy}>
         <option value="title">Title</option>
         <option value="updatedAt">Last Modified</option>
         <option value="createdAt">Created</option>
@@ -27,7 +27,7 @@
       </select>
     </div>
     <div class="stats">
-      <span class="stat">12 documents</span>
+      <span class="stat">{$filteredTableDocuments.length} of {$documents.length} documents</span>
     </div>
   </div>
 </div>

@@ -1,22 +1,26 @@
 <!-- Journal MainView — today's entry editor -->
 <script lang="ts">
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  let content = $state('## Morning Thoughts\n\nStarted the day reflecting on progress with the app shell project. The module system is coming together nicely.\n\n## Tasks\n\n- [x] Review module contract\n- [ ] Design journal schema\n- [ ] Build entry templates')
+  import { selectedJournalEntry, updateSelectedJournalContent } from './state'
+
+  let entry = $derived($selectedJournalEntry)
 </script>
 
 <div class="main-view">
-  <header class="entry-header">
-    <h1 class="entry-date">{today}</h1>
-    <span class="entry-badge">Today</span>
-  </header>
-  <div class="entry-content">
-    <textarea
-      class="entry-editor"
-      bind:value={content}
-      spellcheck="true"
-      placeholder="Write your thoughts..."
-    ></textarea>
-  </div>
+  {#if entry}
+    <header class="entry-header">
+      <h1 class="entry-date">{entry.fullDate}</h1>
+      <span class="entry-badge">{entry.date}</span>
+    </header>
+    <div class="entry-content">
+      <textarea
+        class="entry-editor"
+        value={entry.content}
+        spellcheck="true"
+        placeholder="Write your thoughts..."
+        oninput={(event) => updateSelectedJournalContent(event.currentTarget.value)}
+      ></textarea>
+    </div>
+  {/if}
 </div>
 
 <style>

@@ -2,12 +2,12 @@
   import { activeDoc, versions, editorContent, countWords } from '../../store'
   import { slide } from 'svelte/transition'
 
-  let collapsed = $state(new Set<string>())
+  let collapsed = $state<string[]>([])
 
   function toggleSection(id: string) {
-    const next = new Set(collapsed)
-    next.has(id) ? next.delete(id) : next.add(id)
-    collapsed = next
+    collapsed = collapsed.includes(id)
+      ? collapsed.filter(item => item !== id)
+      : [...collapsed, id]
   }
 
   function fmt(iso: string): string {
@@ -25,12 +25,13 @@
       <button
         class="section-header"
         onclick={() => toggleSection('document')}
-        aria-expanded={!collapsed.has('document')}
+        aria-expanded={!collapsed.includes('document')}
+        aria-label={`${collapsed.includes('document') ? 'Expand' : 'Collapse'} Document section`}
       >
-        <span class="chevron" class:collapsed={collapsed.has('document')}>▼</span>
+        <span class="chevron">{collapsed.includes('document') ? '▶' : '▼'}</span>
         <h3 class="section-title">Document</h3>
       </button>
-      {#if !collapsed.has('document')}
+      {#if !collapsed.includes('document')}
         <div class="section-body" transition:slide={{ duration: 200 }}>
           <div class="field">
             <span class="label">Title</span>
@@ -65,18 +66,19 @@
       <button
         class="section-header"
         onclick={() => toggleSection('history')}
-        aria-expanded={!collapsed.has('history')}
+        aria-expanded={!collapsed.includes('history')}
+        aria-label={`${collapsed.includes('history') ? 'Expand' : 'Collapse'} History section`}
       >
-        <span class="chevron" class:collapsed={collapsed.has('history')}>▼</span>
+        <span class="chevron">{collapsed.includes('history') ? '▶' : '▼'}</span>
         <h3 class="section-title">History</h3>
       </button>
-      {#if !collapsed.has('history')}
+      {#if !collapsed.includes('history')}
         <div class="section-body" transition:slide={{ duration: 200 }}>
           {#if $versions.length === 0}
             <p class="empty-text">No versions yet — save to create one.</p>
           {:else}
             <ul class="version-list">
-              {#each $versions as v}
+              {#each $versions as v (v.id)}
                 <li class="version-item">
                   <span class="v-date">{fmt(v.createdAt)}</span>
                   {#if v.label}<span class="v-label">{v.label}</span>{/if}
@@ -128,10 +130,6 @@
     flex-shrink: 0;
     width: 12px;
     text-align: center;
-  }
-
-  .chevron.collapsed {
-    transform: rotate(-90deg);
   }
 
   .section-title {

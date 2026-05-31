@@ -11,6 +11,12 @@
     selectedAiModel,
     selectedAiProviderId
   } from '../../store/ai'
+  import {
+    selectedWorkflowProfile,
+    workflowCreateProposal,
+    workflowIncludeActiveDocument,
+    workflowIncludeDescendants
+  } from './state'
 
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let modelOptions = $derived(modelOptionsForProvider(activeProvider))
@@ -53,14 +59,14 @@
     <div class="meta-grid">
       <span class="meta-label">Status</span><span class="meta-value" class:status-live={requiredSecretReady && $selectedAiProviderId !== 'mock-local'} class:status-mock={$selectedAiProviderId === 'mock-local'} class:status-error={!requiredSecretReady}>{$selectedAiProviderId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}</span>
       <span class="meta-label">Context</span><span class="meta-value">Selected candidates</span>
-      <span class="meta-label">Last Run</span><span class="meta-value">Never</span>
+      <span class="meta-label">Chain</span><span class="meta-value">{$selectedWorkflowProfile.status}</span>
     </div>
   </section>
   <section class="section">
     <h3 class="section-title">Options</h3>
-    <label class="option"><input type="checkbox" checked /> Include active document</label>
-    <label class="option"><input type="checkbox" checked /> Include descendants</label>
-    <label class="option"><input type="checkbox" /> Create proposal</label>
+    <label class="option"><input type="checkbox" bind:checked={$workflowIncludeActiveDocument} /> Include active document</label>
+    <label class="option"><input type="checkbox" bind:checked={$workflowIncludeDescendants} /> Include descendants</label>
+    <label class="option"><input type="checkbox" bind:checked={$workflowCreateProposal} /> Create proposal</label>
   </section>
 </div>
 

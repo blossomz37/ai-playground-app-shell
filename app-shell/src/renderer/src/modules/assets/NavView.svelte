@@ -1,19 +1,18 @@
 <!-- Assets NavView — image grid gallery -->
 <script lang="ts">
-  const assets = [
-    { id: '1', name: 'hero-banner.png', type: 'image', size: '1.2 MB' },
-    { id: '2', name: 'character-ref.jpg', type: 'image', size: '890 KB' },
-    { id: '3', name: 'map-sketch.png', type: 'image', size: '2.1 MB' },
-    { id: '4', name: 'notes-scan.pdf', type: 'document', size: '450 KB' },
-  ]
-  let activeAsset = $state('1')
+  import { assets, selectAsset, selectedAssetId } from './state'
 </script>
 
 <div class="nav-view">
   <header class="nav-header"><span class="nav-title">Library</span></header>
   <div class="asset-list">
-    {#each assets as asset}
-      <button class="asset-item" class:active={activeAsset === asset.id} onclick={() => (activeAsset = asset.id)}>
+    {#each $assets as asset (asset.id)}
+      <button
+        class="asset-item"
+        class:active={$selectedAssetId === asset.id}
+        aria-pressed={$selectedAssetId === asset.id}
+        onclick={() => selectAsset(asset.id)}
+      >
         <span class="asset-icon">{asset.type === 'image' ? '🖼' : '📄'}</span>
         <div class="asset-info">
           <span class="asset-name">{asset.name}</span>

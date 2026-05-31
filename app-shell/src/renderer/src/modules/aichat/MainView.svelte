@@ -3,14 +3,14 @@
   import { onDestroy, onMount } from 'svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { aiBusy, invokeAi, refreshAiContext } from '../../store/ai'
-
-  interface Message { role: 'user' | 'assistant'; content: string }
-
-  let messages = $state<Message[]>([
-    { role: 'assistant', content: 'Hello! I\'m your AI writing assistant. How can I help with your manuscript today?' },
-  ])
+  import {
+    activeConversationId,
+    appendAiChatMessage,
+    selectedAiConversation
+  } from './state'
 
   let input = $state('')
+  let chat = $derived($selectedAiConversation)
   let captureMessageListener: ((event: Event) => void) | null = null
 
   onMount(() => {
@@ -18,7 +18,7 @@
     captureMessageListener = (event: Event) => {
       const content = (event as CustomEvent<string>).detail
       if (content) {
-        messages = [...messages, { role: 'assistant', content }]
+        appendAiChatMessage(activeConversationId(), { role: 'assistant', content })
       }
     }
     window.addEventListener('shell:capture-ai-message', captureMessageListener)
@@ -33,17 +33,18 @@
   async function send() {
     const text = input.trim()
     if (!text) return
-    messages = [...messages, { role: 'user', content: text }]
+    const conversationId = activeConversationId()
+    appendAiChatMessage(conversationId, { role: 'user', content: text })
     input = ''
 
     const result = await invokeAi({
       moduleId: 'shell.aichat',
       originType: 'chat',
-      originId: 'default-conversation',
+      originId: conversationId,
       prompt: text
     })
 
-    messages = [...messages, { role: 'assistant', content: result.run.error ?? result.run.outputText }]
+    appendAiChatMessage(conversationId, { role: 'assistant', content: result.run.error ?? result.run.outputText })
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -56,18 +57,20 @@
 
 <div class="main-view">
   <div class="messages">
-    {#each messages as msg, index (`${msg.role}-${index}-${msg.content.slice(0, 24)}`)}
-      <div class="message" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'}>
-        <span class="msg-avatar">{msg.role === 'user' ? '👤' : '🤖'}</span>
-        <div class="msg-content">
-          {#if msg.role === 'assistant'}
-            <MarkdownContent content={msg.content} />
-          {:else}
-            {msg.content}
-          {/if}
+    {#if chat}
+      {#each chat.messages as msg, index (`${chat.id}-${msg.role}-${index}-${msg.content.slice(0, 24)}`)}
+        <div class="message" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'}>
+          <span class="msg-avatar">{msg.role === 'user' ? '👤' : '🤖'}</span>
+          <div class="msg-content">
+            {#if msg.role === 'assistant'}
+              <MarkdownContent content={msg.content} />
+            {:else}
+              {msg.content}
+            {/if}
+          </div>
         </div>
-      </div>
-    {/each}
+      {/each}
+    {/if}
   </div>
   <div class="input-area">
     <textarea

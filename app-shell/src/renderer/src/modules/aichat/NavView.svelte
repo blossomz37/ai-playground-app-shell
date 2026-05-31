@@ -1,25 +1,30 @@
 <!-- AI Chat NavView — conversation list -->
 <script lang="ts">
-  const conversations = [
-    { id: '1', title: 'Character development', date: 'Today', messages: 12 },
-    { id: '2', title: 'Plot structure review', date: 'Yesterday', messages: 8 },
-    { id: '3', title: 'World-building notes', date: 'May 27', messages: 15 },
-  ]
-  let activeChatId = $state('1')
+  import {
+    aiConversations,
+    createAiConversation,
+    selectAiConversation,
+    selectedAiConversationId
+  } from './state'
 </script>
 
 <div class="nav-view">
   <header class="nav-header">
     <span class="nav-title">Conversations</span>
-    <button class="new-btn" title="New conversation">+</button>
+    <button class="new-btn" title="New conversation" onclick={createAiConversation}>+</button>
   </header>
   <div class="chat-list">
-    {#each conversations as chat}
-      <button class="chat-item" class:active={activeChatId === chat.id} onclick={() => (activeChatId = chat.id)}>
+    {#each $aiConversations as chat (chat.id)}
+      <button
+        class="chat-item"
+        class:active={$selectedAiConversationId === chat.id}
+        aria-pressed={$selectedAiConversationId === chat.id}
+        onclick={() => selectAiConversation(chat.id)}
+      >
         <span class="chat-icon">💬</span>
         <div class="chat-info">
           <span class="chat-title">{chat.title}</span>
-          <span class="chat-meta">{chat.date} · {chat.messages} messages</span>
+          <span class="chat-meta">{chat.date} · {chat.messages.length} messages</span>
         </div>
       </button>
     {/each}

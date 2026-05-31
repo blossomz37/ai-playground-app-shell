@@ -4,6 +4,7 @@
   import { addToast } from '../../store/toasts'
   import { refreshAiContext, includedAiContextCandidates } from '../../store/ai'
   import { submitJob } from '../../store/jobs'
+  import { selectedWorkflowProfile } from './state'
 
   let running = $state(false)
   let log = $state<string[]>([])
@@ -11,14 +12,14 @@
   async function runWorkflow() {
     running = true
     log = [`[${new Date().toLocaleTimeString()}] Starting prompt chain run...`]
-    addToast('info', 'Workflow started: Manuscript Context Pass')
+    addToast('info', `Workflow started: ${$selectedWorkflowProfile.name}`)
 
     await refreshAiContext()
     log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
 
     const job = await submitJob('ai.chain.mock', {
-      originId: 'manuscript-context-pass',
-      prompt: 'Run a first-pass manuscript workflow over the included context. Return notable signals, missing context, and the next useful prompt step.',
+      originId: $selectedWorkflowProfile.id,
+      prompt: $selectedWorkflowProfile.prompt,
       contextCandidates: includedAiContextCandidates()
     })
 
@@ -34,7 +35,7 @@
 
 <div class="main-view">
   <header class="runner-header">
-    <h1 class="runner-title">Manuscript Context Pass</h1>
+    <h1 class="runner-title">{$selectedWorkflowProfile.name}</h1>
     <button class="run-btn" class:running onclick={runWorkflow} disabled={running}>
       {running ? 'Running...' : 'Run Chain'}
     </button>

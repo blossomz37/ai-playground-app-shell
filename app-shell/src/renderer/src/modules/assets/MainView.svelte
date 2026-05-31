@@ -1,17 +1,25 @@
 <!-- Assets MainView — asset preview/detail -->
+<script lang="ts">
+  import { selectedAsset } from './state'
+
+  let asset = $derived($selectedAsset)
+</script>
+
 <div class="main-view">
-  <div class="preview-area">
-    <div class="placeholder-img">
-      <span class="placeholder-icon">🖼</span>
-      <span class="placeholder-text">hero-banner.png</span>
-      <span class="placeholder-meta">1920 × 1080 · PNG · 1.2 MB</span>
+  {#if asset}
+    <div class="preview-area">
+      <div class="placeholder-img">
+        <span class="placeholder-icon">{asset.type === 'image' ? '🖼' : '📄'}</span>
+        <span class="placeholder-text">{asset.name}</span>
+        <span class="placeholder-meta">{asset.dimensions} · {asset.kindLabel} · {asset.size}</span>
+      </div>
     </div>
-  </div>
-  <div class="asset-actions">
-    <button class="action-btn">Open in Finder</button>
-    <button class="action-btn">Copy Path</button>
-    <button class="action-btn danger">Remove</button>
-  </div>
+    <div class="asset-actions">
+      <button class="action-btn" disabled title="Asset file paths are not persisted yet">Open in Finder</button>
+      <button class="action-btn" disabled title="Asset file paths are not persisted yet">Copy Path</button>
+      <button class="action-btn danger" disabled title="Asset removal needs persisted asset records first">Remove</button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -32,4 +40,12 @@
   }
   .action-btn:hover { background: var(--color-bg-active); color: var(--color-fg-primary); }
   .action-btn.danger:hover { color: var(--color-danger); }
+  .action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .action-btn:disabled:hover {
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-secondary);
+  }
 </style>

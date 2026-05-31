@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { aiTemplates, loadAiTemplates } from '../../store/ai'
+  import { addToast } from '../../store/toasts'
 
   let activeTemplateId = $state<string | null>(null)
 
@@ -8,12 +9,17 @@
     await loadAiTemplates()
     activeTemplateId = $aiTemplates[0]?.id ?? null
   })
+
+  async function createTemplate(): Promise<void> {
+    await window.shell.commands.execute('promptstudio.new')
+    addToast('info', 'New prompt template requested')
+  }
 </script>
 
 <div class="nav-view">
   <header>
     <h2>Templates</h2>
-    <button class="btn-icon" title="New Template" onclick={() => window.shell.commands.execute('promptstudio.new')}>
+    <button class="btn-icon" title="New Template" onclick={createTemplate}>
       <span class="icon">➕</span>
     </button>
   </header>
