@@ -110,10 +110,12 @@ interface InspectorSection { id: string; title: string; component: SvelteCompone
 Inside `activate(ctx)` the module does its live wiring:
 - registers command **handlers** (`ctx.commands.register`) for the command ids it declared,
 - registers **job runners** (`ctx.jobs.defineRunner`) for its declared job types,
-- creates its **state slice** — a plain-TS owner of the module's state — and exposes a subscribe interface its views read through `ctx`,
+- creates main-process state/services for command, job, and event behavior; renderer-resident UI state is registered by module id in the renderer module-state registry,
 - subscribes to events / document changes it cares about.
 
-**The internal/external boundary (D2).** The state slice and all module logic are plain framework-agnostic TypeScript. The Svelte views are thin subscribers that reach that logic **only** through `ctx` and the slice's subscribe interface — never by importing logic into a component. Held that way, the logic runs in-process today and can move behind the local API for a LAN/iPad client later (Q10) by relocating it, not rewriting it.
+**Renderer state registry (implemented 2026-05-31).** Electron splits the module across main and renderer processes, so renderer UI state cannot literally be constructed inside the main-process `activate(ctx)`. The implemented equivalent is `app-shell/src/renderer/src/modules/module-state-registry.ts`: each module's renderer slice is registered by module id and state key, and module-local renderer `state.ts` files are Svelte adapters over those plain TypeScript slices. Main-process `activate(ctx)` still owns command/job/event wiring; renderer components never own module logic directly.
+
+**The internal/external boundary (D2).** The state slice and all module logic are plain framework-agnostic TypeScript. The Svelte views are thin subscribers that reach that logic through the module's renderer state adapter and slice subscribe interface — never by owning logic inside a component. Held that way, the logic runs outside Svelte today and can move behind the local API for a LAN/iPad client later (Q10) by relocating it, not rewriting it.
 
 ---
 
@@ -186,7 +188,8 @@ enabled  ───────────► on/off state persisted as shell-le
    │
    │  first actual use (open its view / run its command)
    ▼
-activated ──────────► activate(ctx): handlers, runners, state slice, subscriptions live.
+activated ──────────► activate(ctx): handlers, runners, subscriptions live;
+   │                  renderer state resolves through module-state-registry.
    │
    │  user toggles OFF / shell shutdown
    ▼
@@ -209,7 +212,7 @@ The contract's job is to dissolve draftwell's 2,470-line `App.tsx` and its 100-p
 | TipTap rich editor | `views.main` (Svelte) |
 | `RoomSidePanel` content for Write — version history, doc meta | `views.inspector` as `InspectorSection[]`: `{history}`, `{metadata}` |
 | Word count, save state in header/rail-status | `contributes.zones.statusBar` + `views.statusBar` items |
-| ~40 `useState` hooks: current doc, dirty flag, tree expansion, selection | the **core-side state slice** created in `activate()`; views subscribe via `ctx` |
+| ~40 `useState` hooks: current doc, dirty flag, tree expansion, selection | a **plain TypeScript state slice** registered by module id; views subscribe through the renderer adapter |
 | Save / new chapter / new scene / rename / move / archive / delete | declared `contributes.commands` (ids + titles + default keybindings) → handlers registered in `activate()` via `ctx.commands.register` |
 | chapter / folder / scene kinds | `contributes.documentTypes` |
 | open / save / version history persistence | **not the module's** — `ctx.documents.*` (shell-owned pipeline, DB-as-truth) |
@@ -225,7 +228,7 @@ Every Write-room responsibility lands in a named slot. **The contract passes.**
 - **Externalizing logic for LAN/iPad (Q10).** The clean `ctx` + state-slice boundary (§4) is what makes this a relocation, not a rewrite. Not built in v1.
 - **Runtime / from-disk module loading.** Bundled at build time for now (Q8); the contract is kept clean enough that disk-loaded modules could be added without reshaping it.
 - **Status-bar zone (Flag B).** The `statusBar` contribution point is defined here; the zone's own visual/layout design is a separate slice.
-- **Managed persistent web-surface (for the Web module).** A shell-level hook over an Electron session/partition (Chrome-like persistent cookies/logins) is *not* on `ModuleContext` yet — it's added when the Web module is built and a second consumer warrants it (`0-shell-platform-spec.md` §12 Q13).
+- **Managed persistent web-surface (for the Web module).** The current Web module uses an Electron `<webview>` with persistent partition `persist:app-shell-web`. A shell-level `ModuleContext` web-surface API is still deferred until a second consumer warrants it (`0-shell-platform-spec.md` §12 Q13).
 
 ## 9. What this unblocks
 
