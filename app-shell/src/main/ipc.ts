@@ -1,4 +1,4 @@
-import { ipcMain, nativeTheme, BrowserWindow, dialog, shell, nativeImage } from 'electron'
+import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
 import type { AssetImportCandidate, ThemeMode } from '@shared/module-contract'
 import { statSync } from 'fs'
 import path from 'path'
@@ -10,6 +10,7 @@ import { secretsService } from './core/secrets'
 import { workspaceService } from './core/workspaces'
 import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
+import { metadataForImportedAsset } from './assets/metadata'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
 import type {
@@ -23,31 +24,6 @@ import type {
 } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
-const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
-const thumbnailMaxEdge = 512
-
-function imageMetadataFor(filePath: string, extension: string): AssetImportCandidate['image'] | undefined {
-  if (!imageExtensions.has(extension)) return undefined
-
-  const image = nativeImage.createFromPath(filePath)
-  if (image.isEmpty()) return undefined
-
-  const size = image.getSize()
-  if (size.width <= 0 || size.height <= 0) return undefined
-
-  const scale = Math.min(1, thumbnailMaxEdge / Math.max(size.width, size.height))
-  const thumbnail = image.resize({
-    width: Math.max(1, Math.round(size.width * scale)),
-    height: Math.max(1, Math.round(size.height * scale)),
-    quality: 'good'
-  })
-
-  return {
-    width: size.width,
-    height: size.height,
-    thumbnailDataUrl: thumbnail.isEmpty() ? null : thumbnail.toDataURL()
-  }
-}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('documents:list', (_e, { workspaceId }: { workspaceId: string }) =>
@@ -193,18 +169,19 @@ export function registerIpcHandlers(): void {
 
     if (result.canceled) return []
     const importedAt = new Date().toISOString()
-    return result.filePaths.map((filePath) => {
+    return Promise.all(result.filePaths.map(async (filePath) => {
       const stat = statSync(filePath)
       const extension = path.extname(filePath).replace(/^\./, '').toLowerCase()
+      const metadata = await metadataForImportedAsset(filePath, extension)
       return {
         name: path.basename(filePath),
         filePath,
         extension,
         sizeBytes: stat.size,
         importedAt,
-        image: imageMetadataFor(filePath, extension)
+        ...metadata
       }
-    })
+    }))
   })
 
   ipcMain.handle('assets:reveal', (_e, { path: filePath }: { path: string }) => {

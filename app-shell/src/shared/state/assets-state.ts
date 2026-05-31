@@ -10,6 +10,9 @@ export interface AssetItem {
   dimensions: string
   width: number | null
   height: number | null
+  pageCount: number | null
+  title: string | null
+  author: string | null
   thumbnailDataUrl: string | null
   added: string
   usage: string
@@ -23,10 +26,10 @@ export interface AssetsState {
 }
 
 const initialAssets: AssetItem[] = [
-  { id: '1', name: 'hero-banner.png', type: 'image', kindLabel: 'PNG Image', size: '1.2 MB', dimensions: '1920 x 1080', width: 1920, height: 1080, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 2 documents', filePath: null },
-  { id: '2', name: 'character-ref.jpg', type: 'image', kindLabel: 'JPEG Image', size: '890 KB', dimensions: '1400 x 1800', width: 1400, height: 1800, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 1 document', filePath: null },
-  { id: '3', name: 'map-sketch.png', type: 'image', kindLabel: 'PNG Image', size: '2.1 MB', dimensions: '2400 x 1600', width: 2400, height: 1600, thumbnailDataUrl: null, added: '2026-05-28', usage: 'Not referenced yet', filePath: null },
-  { id: '4', name: 'notes-scan.pdf', type: 'document', kindLabel: 'PDF Document', size: '450 KB', dimensions: '8 pages', width: null, height: null, thumbnailDataUrl: null, added: '2026-05-27', usage: 'Referenced in research notes', filePath: null }
+  { id: '1', name: 'hero-banner.png', type: 'image', kindLabel: 'PNG Image', size: '1.2 MB', dimensions: '1920 x 1080', width: 1920, height: 1080, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 2 documents', filePath: null },
+  { id: '2', name: 'character-ref.jpg', type: 'image', kindLabel: 'JPEG Image', size: '890 KB', dimensions: '1400 x 1800', width: 1400, height: 1800, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 1 document', filePath: null },
+  { id: '3', name: 'map-sketch.png', type: 'image', kindLabel: 'PNG Image', size: '2.1 MB', dimensions: '2400 x 1600', width: 2400, height: 1600, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-28', usage: 'Not referenced yet', filePath: null },
+  { id: '4', name: 'notes-scan.pdf', type: 'document', kindLabel: 'PDF Document', size: '450 KB', dimensions: '8 pages', width: null, height: null, pageCount: 8, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-27', usage: 'Referenced in research notes', filePath: null }
 ]
 
 export interface AssetsPersistenceSnapshot {
@@ -87,6 +90,9 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
         ...asset,
         width: asset.width ?? null,
         height: asset.height ?? null,
+        pageCount: asset.pageCount ?? null,
+        title: asset.title ?? null,
+        author: asset.author ?? null,
         thumbnailDataUrl: asset.thumbnailDataUrl ?? null,
         filePath: asset.filePath ?? null
       }))
@@ -111,9 +117,11 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
   private assetFromImport(candidate: AssetImportCandidate): AssetItem {
     const extension = candidate.extension || 'file'
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)
+    const isPdf = extension === 'pdf'
     const dimensions = candidate.image
       ? `${candidate.image.width} x ${candidate.image.height}`
-      : isImage ? 'Image metadata unavailable' : 'Imported file'
+      : candidate.pdf ? this.formatPageCount(candidate.pdf.pageCount)
+      : isImage ? 'Image metadata unavailable' : isPdf ? 'PDF metadata unavailable' : 'Imported file'
     return {
       id: `asset-${candidate.importedAt}-${candidate.filePath}`.replace(/[^a-zA-Z0-9_-]/g, '-'),
       name: candidate.name,
@@ -123,7 +131,10 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
       dimensions,
       width: candidate.image?.width ?? null,
       height: candidate.image?.height ?? null,
-      thumbnailDataUrl: candidate.image?.thumbnailDataUrl ?? null,
+      pageCount: candidate.pdf?.pageCount ?? null,
+      title: candidate.pdf?.title ?? null,
+      author: candidate.pdf?.author ?? null,
+      thumbnailDataUrl: candidate.image?.thumbnailDataUrl ?? candidate.pdf?.thumbnailDataUrl ?? null,
       added: candidate.importedAt.slice(0, 10),
       usage: 'Not referenced yet',
       filePath: candidate.filePath
@@ -134,5 +145,10 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  private formatPageCount(pageCount: number | null): string {
+    if (pageCount === null) return 'PDF metadata unavailable'
+    return `${pageCount} page${pageCount === 1 ? '' : 's'}`
   }
 }

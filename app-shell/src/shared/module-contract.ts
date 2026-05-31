@@ -198,6 +198,12 @@ export interface AssetImportCandidate {
     height: number
     thumbnailDataUrl: string | null
   }
+  pdf?: {
+    pageCount: number | null
+    title: string | null
+    author: string | null
+    thumbnailDataUrl: string | null
+  }
 }
 
 export interface ModuleContext {

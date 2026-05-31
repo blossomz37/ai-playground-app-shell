@@ -13,6 +13,15 @@
         <span class="meta-label">Name</span><span class="meta-value">{asset.name}</span>
         <span class="meta-label">Type</span><span class="meta-value">{asset.kindLabel}</span>
         <span class="meta-label">Dimensions</span><span class="meta-value">{asset.dimensions}</span>
+        {#if asset.pageCount !== null}
+          <span class="meta-label">Pages</span><span class="meta-value">{asset.pageCount}</span>
+        {/if}
+        {#if asset.title}
+          <span class="meta-label">Title</span><span class="meta-value">{asset.title}</span>
+        {/if}
+        {#if asset.author}
+          <span class="meta-label">Author</span><span class="meta-value">{asset.author}</span>
+        {/if}
         <span class="meta-label">Size</span><span class="meta-value">{asset.size}</span>
         <span class="meta-label">Added</span><span class="meta-value">{asset.added}</span>
         <span class="meta-label">Path</span><span class="meta-value">{asset.filePath ?? 'Not imported'}</span>
