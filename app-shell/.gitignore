@@ -1,4 +1,5 @@
 node_modules/
+.electron-dev/
 out/
 dist/
 *.tsbuildinfo

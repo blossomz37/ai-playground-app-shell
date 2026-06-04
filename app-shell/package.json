@@ -5,7 +5,7 @@
   "description": "Reusable desktop shell — Electron + Svelte + SQLite",
   "main": "./out/main/index.js",
   "scripts": {
-    "start": "electron-vite dev",
+    "start": "node scripts/start-dev.mjs",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
