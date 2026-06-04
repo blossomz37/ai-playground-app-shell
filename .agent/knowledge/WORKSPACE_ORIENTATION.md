@@ -1,6 +1,6 @@
 # Workspace Orientation - App Shell Project
 
-Last oriented: 2026-05-31
+Last oriented: 2026-06-04
 
 ## One-Line Summary
 
@@ -15,8 +15,11 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - The shell now has real workspace management and visible jobs: active workspace persistence, topbar workspace switch/create flow, module-context refresh on switch, persistent job history, status-bar job indicator, jobs panel, and Workflow Runner job submission.
 - Alpha hardening on 2026-05-30 verified fresh mock and live AI acceptance passes against the real app database. Evidence lives in `implementation/screenshots/alpha-hardening-mock-ai-after-2026-05-30.png`, `implementation/screenshots/alpha-hardening-live-ai-after-2026-05-30.png`, and completed `ai_runs`/`ai_context_packs` rows.
 - Phase 2 state architecture advanced on 2026-05-31: Documents plus AI Chat, Journal, Assets, Web, Table View, and Workflow now have framework-agnostic slices under `app-shell/src/shared/state/`, with renderer `state.ts` files acting as Svelte adapters. AI Chat conversations/messages persist through dedicated AI tables; scaffold module UI state persists through workspace-scoped `shell_settings` keys.
-- Web now uses an Electron `<webview>` with `partition="persist:app-shell-web"` instead of the old placeholder. It is still a minimal browser surface, not a full tab/history/session abstraction.
-- Phase 2 finalization added `app-shell/src/renderer/src/modules/module-state-registry.ts`; renderer adapters now resolve module slices by module id instead of constructing them locally. Assets import now uses native file selection, records durable `filePath`, and can reveal imported files in Finder.
+- Web now uses an Electron `<webview>` with `partition="persist:app-shell-web"` plus module-owned tabs, bookmarks, and visible history. A shared shell-level `ModuleContext.web` contract remains deferred until another module needs the web surface.
+- Phase 2 finalization added `app-shell/src/renderer/src/modules/module-state-registry.ts`; renderer adapters now resolve module slices by module id instead of constructing them locally. Assets import now uses native file selection, records durable `filePath`, can reveal imported files in Finder, stores image dimensions/thumbnails, and stores PDF page/title/author/thumbnail metadata.
+- Plan 21 landed on 2026-06-04: the shell has a persistent shell-owned context strip, full-width status bar, shared titlebar/context/body/status column tracks, and fresh-layout inspector default closed while preserving existing saved layout state.
+- App identity work landed on 2026-06-04: runtime/product/window name is `App Shell`, icon assets live in `app-shell/resources/`, and macOS dev runs generate `app-shell/.electron-dev/App Shell.app` through `app-shell/scripts/start-dev.mjs`.
+- Next planned implementation slice: `implementation/plans/22-jewel-box-css-pass.md`. Treat it as a CSS/theme pass over the Plan 21 layout; do not reopen layout structure or module contracts.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 

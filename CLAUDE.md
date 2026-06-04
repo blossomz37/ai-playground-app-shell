@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`.
+**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-04, Plan 21's structural layout pass has landed; the next planned slice is Plan 22, the Jewel Box CSS/theme pass.
 
 **Committed stack:** Electron desktop shell + Svelte 5 UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* renderer components where practical (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
 
@@ -40,9 +40,9 @@ Defined in `0-shell-platform-spec.md`. Every architectural decision should trace
 
 Every module must declare: `id`, `name`, `version`, `required shell version`, `activation rules`, contributed commands/views/settings schema/document types/jobs, and permissions required.
 
-## Core Services (to be built)
+## Core Services
 
-File system, search/index, event bus, command registry, layout manager, settings manager, job runner, notification/toast, theme/token, permission/capability.
+Live code already includes the event bus, command registry/palette, layout persistence, settings store, job runner, notification/toast surface, workspace management, document persistence, asset import helpers, and theme/token CSS surface. Search/index and permission/capability policy remain future hardening areas.
 
 ## What Belongs in Modules, Not the Shell
 
@@ -71,6 +71,10 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**OpenAI live provider adapter**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/16-openai-live-provider.md`): Added `openai-responses` provider support through the Responses API using `OPENAI_API_KEY` from encrypted Secrets, while preserving `mock-local`, shared context packs, and persisted run history.
 - ~~**Workspace switching/creation + Jobs visibility**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/17-workspace-jobs-shell-slice.md`): Added a shell workspace service, topbar switcher/create flow, persisted active workspace, module-context refresh on switch, persistent jobs table, renderer jobs panel, status-bar job indicator, and Workflow Runner submission through the shared jobs service.
 - ~~**Alpha hardening + current status cleanup**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/18-alpha-hardening-current-status-cleanup.md`): Ran fresh mock and live AI acceptance passes, fixed capture-only provider/model status evidence, confirmed persisted completed AI rows/context packs, and reconciled stale roadmap/status docs for the next agent.
+- ~~**Phase 2 state/web/assets hardening**~~ — ✅ **DONE** (2026-05-31; `implementation/plans/14-state-architecture.md`, `implementation/plans/19-ui-clickthrough-hardening.md`, `implementation/plans/20-web-module-browser-tabs.md`, `implementation/plans/20-assets-pdf-audio-hardening-research.md`): Moved module state into framework-agnostic shared slices with Svelte adapters, added persistent Web tabs/history/bookmarks on Electron `<webview>`, and hardened Assets import metadata for real file paths, image dimensions/thumbnails, and PDF page/title/author/thumbnail metadata.
+- ~~**Layout Design Pass**~~ — ✅ **DONE** (2026-06-04; `implementation/plans/21-layout-design-pass.md`): Added the shell-owned context strip, moved the status bar to full shell width, aligned titlebar/context/body/status tracks as a layout contract, made the inspector closed by default for fresh layouts while preserving saved layout state, and lightly polished Documents for the new hierarchy without implementing the Jewel Box theme.
+- ~~**App icon and macOS dev display name**~~ — ✅ **DONE** (2026-06-04): Added app icon assets from `.ideas/icons`, wired runtime/product/window naming to `App Shell`, and made the macOS dev launcher generate `app-shell/.electron-dev/App Shell.app` so Dock identity no longer depends on Electron's default bundle name.
+- **Jewel Box CSS Pass** — NEXT (`implementation/plans/22-jewel-box-css-pass.md`): Theme the Plan 21 shell hierarchy and Documents module with durable jewel tokens and restrained surface/accent styling. This is a CSS/theme pass only; do not reopen Plan 21 structural layout decisions.
 
 ## Workspace Layout
 
@@ -78,7 +82,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_10.md         ← latest = highest number; read it first
+│   └── HANDOFF_20.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
@@ -103,4 +107,4 @@ app-shell-project/
 
 **Handoffs:** session handoffs live in `session-handoffs/`, numbered `HANDOFF_NN.md` — one per session, accumulating (never overwrite). Read the highest-numbered first. Each handoff is a **lean, slice-focused** brief whose only job is to get the next agent up to speed fast: status of the slice just completed or in progress, decisions made this session, what's being carried forward, and the recommended next action. Include only what's relevant to *that* slice — keep it minimal so new-session load stays light. (Distinct from this file: CLAUDE.md is durable workspace/project orientation; a handoff is session-to-session status. `HANDOFF_01.md` is the founding handoff and is naturally heavier — later ones should be leaner.)
 
-**Reading order for a fresh session:** latest `session-handoffs/HANDOFF_NN.md` → this file → `0-shell-platform-spec.md` §12 → `reference/` as needed.
+**Reading order for a fresh session:** `AGENTS.md` → this file → `.agent/knowledge/WORKSPACE_ORIENTATION.md` → latest `session-handoffs/HANDOFF_NN.md` → `0-shell-platform-spec.md` §12 → `3-module-contract.md` → `reference/` as needed.
