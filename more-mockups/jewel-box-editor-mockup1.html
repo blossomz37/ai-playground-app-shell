@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lapidary — Jewel Box Editor Shell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Jewel Box Spectrum */
+    --ruby:#9F1239; --amber:#B45309; --citrine:#CA8A04; --emerald:#047857;
+    --sapphire:#1D4ED8; --amethyst:#6D28D9; --tourmaline:#BE185D; --mint:#A7F3D0;
+
+    /* ===== DARK THEME (default) — charcoal ground + jewel glow ===== */
+    --ground:#0b0f1a;
+    --window-grad:linear-gradient(180deg, rgba(34,48,82,.55), rgba(11,15,26,.65));
+    --titlebar-grad:linear-gradient(180deg,#16203a,#10182a);
+    --context-bg:#0e1626;
+    --left-bg:#0f1727;
+    --center-grad:linear-gradient(180deg,#121b2e,#0e1524);
+    --right-bg:#0f1525;
+    --status-grad:linear-gradient(180deg,#0e1626,#0a0f1c);
+    --panehead:rgba(255,255,255,.015);
+
+    --line:rgba(167,243,208,.09);
+    --line-strong:rgba(167,243,208,.16);
+
+    --ink:#E5E7EB;
+    --ink-soft:#9fb0c9;
+    --ink-faint:#64748b;
+    --accent:var(--mint);            /* readable accent text */
+
+    --hover:rgba(167,243,208,.06);
+    --btn-bg:rgba(167,243,208,.05);
+    --scroll:rgba(167,243,208,.14);
+    --dot:rgba(167,243,208,.05);
+    --glow-blue:rgba(29,78,216,.18);
+    --glow-purple:rgba(109,40,217,.18);
+    --glow-green:rgba(4,120,87,.07);
+
+    --toolbar-bg:rgba(29,78,216,.06);
+    --pill-bg:rgba(4,120,87,.14);
+    --active-bg:rgba(4,120,87,.16);
+    --meter-track:rgba(255,255,255,.06);
+    --blue-fg:#bfdbfe;               /* tool.act / sapphire chip text */
+    --purple-fg:#ddd6fe;             /* inspector / amethyst text */
+    --rose-fg:#fbcfe8;               /* tourmaline chip text */
+    --gold-fg:#fde68a;               /* citrine chip text */
+
+    --facet:polygon(50% 0%, 96% 24%, 86% 100%, 14% 100%, 4% 24%);
+    --r:13px;
+    --shadow:0 24px 60px -28px rgba(0,0,0,.85);
+  }
+
+  /* ===== LIGHT THEME — gems on a jeweler's tray ===== */
+  body.light{
+    --ground:#dde2ec;
+    --window-grad:linear-gradient(180deg,#ffffff,#eef1f6);
+    --titlebar-grad:linear-gradient(180deg,#f4f6fb,#e9edf4);
+    --context-bg:#eef1f7;
+    --left-bg:#f1f3f8;
+    --center-grad:linear-gradient(180deg,#eef1f7,#e7ebf3);
+    --right-bg:#f1f3f8;
+    --status-grad:linear-gradient(180deg,#e9edf4,#e1e6ef);
+    --panehead:rgba(17,24,39,.025);
+
+    --line:rgba(17,24,39,.10);
+    --line-strong:rgba(17,24,39,.16);
+
+    --ink:#1b2333;
+    --ink-soft:#44516a;
+    --ink-faint:#8492a7;
+    --accent:#047857;
+
+    --hover:rgba(17,24,39,.055);
+    --btn-bg:rgba(17,24,39,.04);
+    --scroll:rgba(17,24,39,.18);
+    --dot:rgba(17,24,39,.05);
+    --glow-blue:rgba(29,78,216,.10);
+    --glow-purple:rgba(109,40,217,.09);
+    --glow-green:rgba(4,120,87,.05);
+
+    --toolbar-bg:rgba(29,78,216,.06);
+    --pill-bg:rgba(4,120,87,.12);
+    --active-bg:rgba(4,120,87,.14);
+    --meter-track:rgba(17,24,39,.08);
+    --blue-fg:#1e40af;
+    --purple-fg:#5b21b6;
+    --rose-fg:#9d174d;
+    --gold-fg:#854d0e;
+
+    --shadow:0 24px 55px -30px rgba(30,41,59,.45);
+  }
+
+  /* smooth structural cross-fade between themes */
+  .window,.titlebar,.context,.left,.center,.right,.statusbar,
+  .pane-head,.toolbar{transition:background .28s ease,border-color .28s ease}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'IBM Plex Sans',sans-serif;
+    color:var(--ink);
+    background-color:var(--ground);
+    background-attachment:fixed;
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:26px;
+    transition:background-color .3s ease,color .3s ease;
+    /* faint dot grid + jewel glow */
+    background-image:
+      radial-gradient(var(--dot) 1px, transparent 1px),
+      radial-gradient(1200px 700px at 12% -10%, var(--glow-blue), transparent 55%),
+      radial-gradient(1000px 800px at 100% 110%, var(--glow-purple), transparent 55%),
+      radial-gradient(900px 600px at 50% 50%, var(--glow-green), transparent 60%);
+    background-size:22px 22px, 100% 100%, 100% 100%, 100% 100%;
+  }
+
+  /* ===== App window ===== */
+  .window{
+    width:min(1180px,100%);
+    height:min(760px,92vh);
+    background:var(--window-grad);
+    border:1px solid var(--line-strong);
+    border-radius:18px;
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+    backdrop-filter:blur(10px);
+    display:grid;
+    grid-template-rows:auto auto 1fr auto;
+    overflow:hidden;
+  }
+
+  /* gem chip used to color-code regions (reuses the faceted clip-path) */
+  .gem{width:11px;height:11px;clip-path:var(--facet);flex:none;
+    filter:drop-shadow(0 0 6px currentColor);background:currentColor}
+
+  /* ===== Row 1: title bar ===== */
+  .titlebar{
+    display:grid;grid-template-columns:200px 1fr 220px;align-items:center;
+    height:46px;padding:0 14px;
+    background:var(--titlebar-grad);
+    border-bottom:1px solid var(--line);
+  }
+  .traffic{display:flex;gap:9px;align-items:center}
+  .light{width:13px;height:13px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  .light.r{background:var(--ruby)} .light.y{background:var(--citrine)} .light.g{background:var(--emerald)}
+  .appname{justify-self:center;display:flex;align-items:center;gap:10px;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:600;letter-spacing:.3px;font-size:16px}
+  .appname .logo{width:18px;height:18px;clip-path:var(--facet);
+    background:conic-gradient(from 200deg,var(--sapphire),var(--amethyst),var(--tourmaline),var(--citrine),var(--emerald),var(--sapphire));
+    filter:drop-shadow(0 0 8px rgba(109,40,217,.6))}
+  .appname small{font-family:'IBM Plex Mono',monospace;font-weight:400;
+    font-size:10.5px;color:var(--ink-faint);letter-spacing:.5px;margin-top:2px}
+  .uictrls{justify-self:end;display:flex;gap:8px}
+  .uictrls button{
+    background:var(--btn-bg);border:1px solid var(--line);color:var(--ink-soft);
+    height:28px;padding:0 11px;border-radius:8px;font-size:12px;cursor:pointer;
+    font-family:inherit;display:flex;align-items:center;gap:6px;transition:.18s}
+  .uictrls button:hover{border-color:var(--line-strong);color:var(--ink);background:var(--hover)}
+
+  /* ===== Row 2: context strip ===== */
+  .context{
+    display:grid;grid-template-columns:200px 1fr 220px;align-items:center;
+    height:38px;padding:0 14px;background:var(--context-bg);border-bottom:1px solid var(--line);
+    font-size:12.5px}
+  .mode{display:flex;align-items:center;gap:8px;color:var(--ink-soft)}
+  .mode .pill{display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;
+    background:var(--pill-bg);border:1px solid rgba(4,120,87,.4);color:var(--accent);
+    font-weight:600;font-size:11.5px}
+  .breadcrumb{justify-self:center;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--ink-faint);display:flex;gap:8px;align-items:center}
+  .breadcrumb b{color:var(--ink-soft);font-weight:500}
+  .breadcrumb .sep{color:rgba(29,78,216,.7)}
+  .inspbtn{justify-self:end;display:flex;align-items:center;gap:7px;cursor:pointer;
+    padding:5px 11px;border-radius:8px;border:1px solid var(--line);color:var(--ink-soft);
+    background:rgba(109,40,217,.1);font-size:12px;transition:.18s}
+  .inspbtn:hover{border-color:rgba(109,40,217,.5);color:var(--ink)}
+  .inspbtn.on{background:rgba(109,40,217,.22);border-color:rgba(109,40,217,.6);color:var(--purple-fg)}
+
+  /* ===== Row 3: working area (three panes) ===== */
+  .body{display:grid;grid-template-columns:var(--left,250px) 1fr var(--right,288px);
+    min-height:0;transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
+  .body.left-collapsed{--left:0px}
+  .body.right-collapsed{--right:0px}
+
+  .pane{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .pane-head{display:flex;align-items:center;gap:9px;padding:11px 14px;
+    border-bottom:1px solid var(--line);background:var(--panehead)}
+  .pane-head .label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+  .pane-head .spacer{margin-left:auto}
+  .pane-head .mini{color:var(--ink-faint);cursor:pointer;font-size:13px;line-height:1;
+    padding:3px;border-radius:5px;transition:.15s}
+  .pane-head .mini:hover{color:var(--ink);background:var(--hover)}
+
+  /* left = file tree (emerald keyed) */
+  .left{background:var(--left-bg);border-right:1px solid var(--line)}
+  .left .gem{color:var(--emerald)}
+  .tree{padding:8px 6px;overflow-y:auto;flex:1;font-size:13px}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:7px;cursor:pointer;
+    color:var(--ink-soft);transition:.12s;white-space:nowrap}
+  .row:hover{background:var(--hover);color:var(--ink)}
+  .row.active{background:var(--active-bg);color:var(--accent);
+    box-shadow:inset 2px 0 0 var(--emerald)}
+  .row.dir{color:var(--ink);font-weight:600}
+  .row .ic{width:15px;text-align:center;opacity:.85;font-size:12px}
+  .row.indent{padding-left:26px} .row.indent2{padding-left:42px}
+  .tree .grp{font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--ink-faint);
+    padding:12px 11px 5px;font-family:'IBM Plex Mono',monospace}
+
+  /* center = editor (sapphire keyed) */
+  .center{background:var(--center-grad)}
+  .center .gem{color:var(--sapphire)}
+  .toolbar{display:flex;align-items:center;gap:4px;padding:8px 12px;
+    border-bottom:1px solid var(--line);background:var(--toolbar-bg)}
+  .tool{width:30px;height:30px;display:grid;place-items:center;border-radius:7px;
+    color:var(--ink-soft);cursor:pointer;font-size:13px;transition:.14s;
+    border:1px solid transparent}
+  .tool:hover{background:var(--hover);color:var(--ink)}
+  .tool.act{background:rgba(29,78,216,.2);color:var(--blue-fg);border-color:rgba(29,78,216,.45)}
+  .tool.fr{font-family:'IBM Plex Sans',sans-serif;font-size:15px}
+  .tdiv{width:1px;height:18px;background:var(--line-strong);margin:0 6px}
+  .tool.wide{width:auto;padding:0 11px;gap:6px;font-size:12px;font-family:'IBM Plex Mono',monospace}
+
+  .canvas-wrap{flex:1;overflow-y:auto;padding:40px 20px 60px;display:flex;justify-content:center}
+  .page{width:min(620px,100%);background:#f6f4ef;color:#1a1714;border-radius:6px;
+    box-shadow:0 30px 70px -30px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.2);
+    padding:54px 58px;min-height:100%}
+  .page h1{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:30px;line-height:1.15;
+    margin-bottom:6px;color:#1a1714}
+  .page .chapline{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:2px;
+    text-transform:uppercase;color:#9a7b1e;margin-bottom:26px}
+  .page p{font-family:'IBM Plex Sans',sans-serif;font-size:16.5px;line-height:1.72;margin-bottom:17px;
+    text-align:justify;color:#2b2620}
+  .page p:first-of-type::first-letter{font-size:50px;float:left;line-height:.82;padding:6px 9px 0 0;
+    font-weight:600;color:var(--ruby)}
+  .page .sel{background:rgba(202,138,4,.32);box-shadow:0 0 0 1px rgba(202,138,4,.5);border-radius:2px}
+  .page hr{border:none;text-align:center;margin:26px 0;color:#b08a2a}
+  .page hr::after{content:"❖";font-size:13px}
+
+  /* right = inspector (amethyst keyed) */
+  .right{background:var(--right-bg);border-left:1px solid var(--line)}
+  .right .gem{color:var(--amethyst)}
+  .tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+  .tab{padding:7px 11px;font-size:11.5px;color:var(--ink-faint);cursor:pointer;
+    border-radius:7px 7px 0 0;transition:.14s}
+  .tab:hover{color:var(--ink-soft)}
+  .tab.act{color:var(--purple-fg);background:rgba(109,40,217,.16);
+    box-shadow:inset 0 -2px 0 var(--amethyst)}
+  .insp{padding:16px 15px;overflow-y:auto;flex:1;font-size:13px}
+  .insp .sec{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:1.3px;
+    text-transform:uppercase;color:var(--ink-faint);margin:18px 0 9px}
+  .insp .sec:first-child{margin-top:2px}
+  .field{display:flex;justify-content:space-between;gap:10px;padding:7px 0;
+    border-bottom:1px dashed var(--line);color:var(--ink-soft)}
+  .field b{color:var(--ink);font-weight:500;text-align:right}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;margin:0 5px 5px 0}
+  .chip.s{background:rgba(29,78,216,.16);color:var(--blue-fg);border:1px solid rgba(29,78,216,.4)}
+  .chip.a{background:rgba(190,24,93,.16);color:var(--rose-fg);border:1px solid rgba(190,24,93,.4)}
+  .chip.c{background:rgba(202,138,4,.16);color:var(--gold-fg);border:1px solid rgba(202,138,4,.4)}
+  .meter{height:6px;border-radius:99px;background:var(--meter-track);overflow:hidden;margin:8px 0 4px}
+  .meter i{display:block;height:100%;border-radius:99px;
+    background:linear-gradient(90deg,var(--emerald),var(--citrine))}
+
+  /* ===== Row 4: status bar ===== */
+  .statusbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+    height:34px;padding:0 14px;background:var(--status-grad);
+    border-top:1px solid var(--line);font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--ink-faint)}
+  .statusbar .seg{display:flex;align-items:center;gap:7px}
+  .statusbar .center-seg{justify-self:center;display:flex;gap:18px}
+  .statusbar .right-seg{justify-self:end;display:flex;gap:14px;align-items:center}
+  .statusbar b{color:var(--ink-soft);font-weight:500}
+  .statusbar .ico{cursor:pointer;transition:.15s}
+  .statusbar .ico:hover{color:var(--accent)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--emerald);
+    box-shadow:0 0 8px var(--emerald);animation:pulse 2.4s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .saved{color:var(--accent)}
+
+  .scrim::-webkit-scrollbar{width:9px;height:9px}
+  *::-webkit-scrollbar{width:9px}
+  *::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:9px}
+  *::-webkit-scrollbar-track{background:transparent}
+
+  .caption{margin-top:14px;text-align:center;font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--ink-faint);letter-spacing:.4px;max-width:760px}
+  .caption span{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- ROW 1 — TITLE BAR -->
+  <div class="titlebar">
+    <div class="traffic">
+      <span class="light r"></span><span class="light y"></span><span class="light g"></span>
+    </div>
+    <div class="appname">
+      <span class="logo"></span>
+      Lapidary <small>v0.4 · manuscript</small>
+    </div>
+    <div class="uictrls">
+      <button id="themeBtn" onclick="toggleTheme()" title="Toggle light / dark">☀ Light</button>
+      <button title="Focus mode">◑ Focus</button>
+      <button title="Command palette">⌘K</button>
+      <button title="Account">◍</button>
+    </div>
+  </div>
+
+  <!-- ROW 2 — CONTEXT STRIP -->
+  <div class="context">
+    <div class="mode"><span class="pill"><span class="gem" style="color:var(--emerald)"></span> Drafting Room</div>
+    <div class="breadcrumb">
+      <b>The Salt Year</b><span class="sep">/</span>Part II<span class="sep">/</span><b>Ch. 9 — Low Tide</b>
+    </div>
+    <div class="inspbtn on" id="inspToggle" onclick="toggleRight()">
+      <span class="gem" style="color:var(--amethyst)"></span> Inspector
+    </div>
+  </div>
+
+  <!-- ROW 3 — WORKING AREA -->
+  <div class="body" id="body">
+
+    <!-- LEFT PANE — FILE TREE (emerald) -->
+    <aside class="pane left" id="leftPane">
+      <div class="pane-head">
+        <span class="gem"></span>
+        <span class="label">The Salt Year</span>
+        <span class="spacer"></span>
+        <span class="mini" title="New file">＋</span>
+        <span class="mini" title="Collapse" onclick="toggleLeft()">‹</span>
+      </div>
+      <div class="tree scrim">
+        <div class="row dir"><span class="ic">▾</span> Front Matter</div>
+        <div class="row indent"><span class="ic">📄</span> Title &amp; Copyright</div>
+        <div class="row indent"><span class="ic">📄</span> Epigraph</div>
+        <div class="grp">Manuscript</div>
+        <div class="row dir"><span class="ic">▾</span> Part I — Spring</div>
+        <div class="row indent"><span class="ic">📄</span> Ch. 1 — The Causeway</div>
+        <div class="row indent"><span class="ic">📄</span> Ch. 2 — Brine</div>
+        <div class="row dir"><span class="ic">▾</span> Part II — Summer</div>
+        <div class="row indent"><span class="ic">📄</span> Ch. 8 — The Weir</div>
+        <div class="row indent active"><span class="ic">📝</span> Ch. 9 — Low Tide</div>
+        <div class="row indent"><span class="ic">📄</span> Ch. 10 — Mudlark</div>
+        <div class="row dir"><span class="ic">▸</span> Part III — Autumn</div>
+        <div class="grp">Notes</div>
+        <div class="row"><span class="ic">🗺</span> Map — Estuary</div>
+        <div class="row"><span class="ic">👤</span> Character Bible</div>
+        <div class="row"><span class="ic">🔖</span> Continuity Log</div>
+      </div>
+    </aside>
+
+    <!-- CENTER PANE — EDITOR (sapphire) -->
+    <main class="pane center">
+      <div class="toolbar">
+        <span class="tool fr act" title="Heading">H</span>
+        <span class="tool fr" title="Bold"><b>B</b></span>
+        <span class="tool fr" title="Italic"><i>I</i></span>
+        <span class="tool" title="Quote">❝</span>
+        <span class="tdiv"></span>
+        <span class="tool" title="Comment">💬</span>
+        <span class="tool" title="Scene break">❖</span>
+        <span class="tool" title="Link">🔗</span>
+        <span class="tdiv"></span>
+        <span class="tool wide" title="Style profile" style="color:var(--accent)">◆ lapidary</span>
+        <span style="margin-left:auto"></span>
+        <span class="tool wide" title="Reading time">~6 min</span>
+        <span class="tool" title="Typewriter scroll">⌶</span>
+      </div>
+      <div class="canvas-wrap scrim">
+        <article class="page">
+          <div class="chapline">Chapter Nine</div>
+          <h1>Low Tide</h1>
+          <p>The water went out before dawn and took the boats with it, leaving them canted in the mud like things that had been dropped and forgotten. Mara watched from the sea wall while the gulls argued over whatever the tide had abandoned, and she thought, not for the first time, that the estuary kept better accounts than her father ever had.</p>
+          <p>He had gone down to the weir at first light, the way he always did, as if the fish might have changed their habits overnight. <span class="sel">She let him go without a word, which was its own kind of cruelty,</span> and the silence followed him out across the flats until the fog took the shape of him entirely.</p>
+          <hr>
+          <p>By the time the sun cleared the headland, the channel had filled again, brown and unhurried, and the town turned its back on the water as it did every day, pretending the sea was a neighbour and not a landlord.</p>
+        </article>
+      </div>
+    </main>
+
+    <!-- RIGHT PANE — INSPECTOR (amethyst) -->
+    <aside class="pane right" id="rightPane">
+      <div class="pane-head">
+        <span class="gem"></span>
+        <span class="label">Inspector</span>
+        <span class="spacer"></span>
+        <span class="mini" title="Close" onclick="toggleRight()">›</span>
+      </div>
+      <div class="tabs">
+        <span class="tab act">Scene</span>
+        <span class="tab">Notes</span>
+        <span class="tab">Style</span>
+      </div>
+      <div class="insp scrim">
+        <div class="sec">Scene Status</div>
+        <div class="field">POV <b>Mara (3rd, deep)</b></div>
+        <div class="field">Setting <b>Sea wall · dawn</b></div>
+        <div class="field">Time <b>Day 41 · low tide</b></div>
+        <div class="field">Status <b style="color:var(--citrine)">◑ Revising</b></div>
+
+        <div class="sec">On Stage</div>
+        <span class="chip a">Mara</span>
+        <span class="chip s">Father (offpage)</span>
+        <span class="chip c">The estuary</span>
+
+        <div class="sec">Beat Goal</div>
+        <div style="color:var(--ink-soft);line-height:1.55">Establish the daughter's withheld grief through landscape; plant the weir as Act II hinge.</div>
+
+        <div class="sec">Chapter Target — 1,200 wds</div>
+        <div class="meter"><i style="width:71%"></i></div>
+        <div class="field" style="border:none;padding-top:2px">
+          <span>853 / 1,200</span><b style="color:var(--accent)">71%</b>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ROW 4 — STATUS BAR -->
+  <div class="statusbar">
+    <div class="seg"><span class="ico" title="Settings">⚙</span> <b>Settings</b></div>
+    <div class="center-seg">
+      <span><b>853</b> words</span>
+      <span><b>4,219</b> chars</span>
+      <span><b>3</b> comments</span>
+      <span>Grade <b>7.2</b></span>
+    </div>
+    <div class="right-seg">
+      <span class="saved">✓ Saved 12s ago</span>
+      <span><span class="dot"></span> Sync · <b>online</b></span>
+    </div>
+  </div>
+
+</div>
+
+<div class="caption">
+  <span>Jewel Box Spectrum</span> on charcoal — emerald-keyed file tree · sapphire editor · amethyst inspector ·
+  facets &amp; gem accents from <span>rainbow_palettes.html</span>. Try the <span>‹</span> / <span>Inspector</span> toggles.
+</div>
+
+<script>
+  const body = document.getElementById('body');
+  function toggleTheme(){
+    const light = document.body.classList.toggle('light');
+    document.getElementById('themeBtn').textContent = light ? '☾ Dark' : '☀ Light';
+  }
+  function toggleLeft(){ body.classList.toggle('left-collapsed'); }
+  function toggleRight(){
+    body.classList.toggle('right-collapsed');
+    document.getElementById('inspToggle').classList.toggle('on', !body.classList.contains('right-collapsed'));
+  }
+</script>
+</body>
+</html>

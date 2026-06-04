@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jewel Box Spectrum Workspace Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060b14;
+      --bg-2: #0b1220;
+      --panel: rgba(15, 23, 42, 0.78);
+      --panel-strong: rgba(8, 13, 24, 0.94);
+      --panel-soft: rgba(30, 41, 59, 0.44);
+      --line: rgba(148, 163, 184, 0.18);
+      --line-strong: rgba(148, 163, 184, 0.32);
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --faint: #64748b;
+      --ruby: #9f1239;
+      --ruby-bright: #fb4c7f;
+      --amber: #b45309;
+      --citrine: #ca8a04;
+      --emerald: #047857;
+      --emerald-bright: #22c55e;
+      --sapphire: #1d4ed8;
+      --amethyst: #6d28d9;
+      --tourmaline: #be185d;
+      --radius: 14px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+      --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-serif: Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      min-width: 1080px;
+      background:
+        radial-gradient(circle at 13% 7%, rgba(190, 24, 93, 0.25), transparent 26%),
+        radial-gradient(circle at 83% 11%, rgba(109, 40, 217, 0.24), transparent 24%),
+        radial-gradient(circle at 72% 92%, rgba(4, 120, 87, 0.18), transparent 28%),
+        linear-gradient(140deg, #030712 0%, #07111f 42%, #0b1020 100%);
+      color: var(--text);
+      font-family: var(--font-ui);
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      background: none;
+    }
+
+    .app-shell {
+      width: min(1760px, calc(100vw - 18px));
+      height: calc(100vh - 18px);
+      margin: 9px auto;
+      display: grid;
+      grid-template-rows: 58px 74px minmax(0, 1fr) 68px;
+      grid-template-columns: 420px minmax(560px, 1fr) 360px;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid rgba(125, 211, 252, 0.22);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.94)),
+        radial-gradient(circle at top left, rgba(251, 76, 127, 0.14), transparent 42%);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+      overflow: hidden;
+      transition: grid-template-columns 240ms ease;
+    }
+
+    .app-shell.left-collapsed { grid-template-columns: 78px minmax(720px, 1fr) 360px; }
+    .app-shell.right-collapsed { grid-template-columns: 420px minmax(720px, 1fr) 78px; }
+    .app-shell.left-collapsed.right-collapsed { grid-template-columns: 78px minmax(860px, 1fr) 78px; }
+
+    .panel {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.78)),
+        radial-gradient(circle at 15% 0%, rgba(255,255,255,0.06), transparent 28%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,0.07), transparent 38%, rgba(255,255,255,0.02));
+      opacity: 0.72;
+    }
+
+    .titlebar {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 420px 1fr 360px;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(3, 7, 18, 0.88)),
+        radial-gradient(circle at 13% 0%, rgba(251, 76, 127, 0.18), transparent 34%);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .window-tools {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 9px;
+      padding-right: 12px;
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 99px;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.35), 0 0 18px rgba(255,255,255,0.08);
+    }
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #28c840; }
+
+    .brand, .document-title, .control-cluster {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .document-title {
+      justify-content: center;
+      color: #f8fafc;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+
+    .control-cluster {
+      justify-content: flex-end;
+    }
+
+    .gem {
+      width: 28px;
+      aspect-ratio: 1;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      clip-path: polygon(50% 0%, 91% 20%, 100% 51%, 50% 100%, 0 51%, 9% 20%);
+      background:
+        linear-gradient(140deg, rgba(255,255,255,0.94), rgba(255,255,255,0.18) 24%, transparent 25%),
+        linear-gradient(135deg, var(--ruby-bright), var(--ruby) 44%, #3b0616 100%);
+      box-shadow: 0 0 18px rgba(251, 76, 127, 0.55), inset 0 -7px 12px rgba(0,0,0,0.42);
+    }
+
+    .gem::after {
+      content: "◆";
+      color: rgba(255,255,255,0.78);
+      font-size: 12px;
+      transform: translateY(-1px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+    }
+
+    .gem.small { width: 18px; }
+    .gem.tiny { width: 13px; }
+    .gem.amethyst { background: linear-gradient(140deg, rgba(255,255,255,0.88), rgba(255,255,255,0.14) 24%, transparent 25%), linear-gradient(135deg, #c084fc, var(--amethyst) 55%, #2e1065); box-shadow: 0 0 18px rgba(109, 40, 217, 0.56), inset 0 -7px 12px rgba(0,0,0,0.42); }
+    .gem.emerald { background: linear-gradient(140deg, rgba(255,255,255,0.88), rgba(255,255,255,0.14) 24%, transparent 25%), linear-gradient(135deg, #34d399, var(--emerald) 58%, #042f2e); box-shadow: 0 0 18px rgba(34, 197, 94, 0.35), inset 0 -7px 12px rgba(0,0,0,0.42); }
+    .gem.gold { background: linear-gradient(140deg, rgba(255,255,255,0.88), rgba(255,255,255,0.14) 24%, transparent 25%), linear-gradient(135deg, #facc15, var(--citrine) 55%, #451a03); box-shadow: 0 0 18px rgba(250, 204, 21, 0.35), inset 0 -7px 12px rgba(0,0,0,0.42); }
+    .gem.sapphire { background: linear-gradient(140deg, rgba(255,255,255,0.88), rgba(255,255,255,0.14) 24%, transparent 25%), linear-gradient(135deg, #38bdf8, var(--sapphire) 55%, #172554); box-shadow: 0 0 18px rgba(29, 78, 216, 0.45), inset 0 -7px 12px rgba(0,0,0,0.42); }
+    .gem.slate { background: linear-gradient(140deg, rgba(255,255,255,0.75), rgba(255,255,255,0.12) 24%, transparent 25%), linear-gradient(135deg, #cbd5e1, #64748b 52%, #1e293b); box-shadow: 0 0 12px rgba(148, 163, 184, 0.24), inset 0 -7px 12px rgba(0,0,0,0.42); }
+
+    .ghost-button,
+    .select-chip,
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.76), rgba(2, 6, 23, 0.62));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      color: #f8fafc;
+    }
+
+    .ghost-button:hover,
+    .select-chip:hover,
+    .icon-button:hover {
+      border-color: rgba(248, 113, 113, 0.42);
+      box-shadow: 0 0 24px rgba(190, 24, 93, 0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .top-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 420px minmax(560px, 1fr) 360px;
+      gap: 10px;
+    }
+
+    .bar-panel {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .eyebrow {
+      color: #c4b5fd;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .crumb-end { color: #fb7185; font-weight: 700; }
+    .chev { color: var(--faint); }
+
+    .left-sidebar {
+      grid-row: 3 / 4;
+      grid-column: 1 / 2;
+      display: grid;
+      grid-template-rows: 48px minmax(0, 1fr);
+    }
+
+    .main-workspace {
+      grid-row: 3 / 4;
+      grid-column: 2 / 3;
+      display: grid;
+      grid-template-rows: 92px minmax(0, 1fr) 48px;
+    }
+
+    .right-inspector {
+      grid-row: 3 / 4;
+      grid-column: 3 / 4;
+      display: grid;
+      grid-template-rows: 48px 72px minmax(0, 1fr);
+    }
+
+    .bottom-row {
+      grid-row: 4 / 5;
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 420px minmax(560px, 1fr) 360px;
+      gap: 10px;
+    }
+
+    .section-header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      height: 48px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.52);
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #dbeafe;
+    }
+
+    .section-actions { display: flex; gap: 8px; }
+
+    .icon-button {
+      width: 32px;
+      min-height: 32px;
+      padding: 0;
+      color: #cbd5e1;
+    }
+
+    .tree {
+      position: relative;
+      z-index: 1;
+      overflow: auto;
+      padding: 16px 14px 20px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
+    }
+
+    .tree-item {
+      display: grid;
+      grid-template-columns: 22px 22px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 10px;
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 15px;
+    }
+
+    .tree-item.indent { margin-left: 28px; }
+    .tree-item.slim { min-height: 34px; }
+    .tree-item.selected {
+      background: linear-gradient(90deg, rgba(159, 18, 57, 0.5), rgba(190, 24, 93, 0.27));
+      border: 1px solid rgba(251, 113, 133, 0.3);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 26px rgba(190, 24, 93, 0.12);
+      color: #fff;
+    }
+
+    .tree-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-icon { opacity: 0.9; }
+    .disclosure { color: #cbd5e1; font-size: 17px; }
+
+    .app-shell.left-collapsed .left-sidebar .tree-label,
+    .app-shell.left-collapsed .left-sidebar .section-header span,
+    .app-shell.left-collapsed .left-sidebar .section-actions,
+    .app-shell.left-collapsed .bottom-row > .settings .status-text,
+    .app-shell.left-collapsed .bottom-row > .settings .status-arrow,
+    .app-shell.left-collapsed .top-row > .panel:first-child .eyebrow,
+    .app-shell.left-collapsed .top-row > .panel:first-child .select-chip span:not(.gem) {
+      display: none;
+    }
+
+    .app-shell.left-collapsed .tree-item {
+      grid-template-columns: 1fr;
+      place-items: center;
+      padding: 0;
+    }
+
+    .app-shell.left-collapsed .tree-item .disclosure,
+    .app-shell.left-collapsed .tree-item .gem.tiny {
+      display: none;
+    }
+
+    .app-shell.left-collapsed .tree-item.indent { margin-left: 0; }
+
+    .toolbar {
+      position: relative;
+      z-index: 1;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .toolbar-label {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #dbeafe;
+    }
+
+    .toolbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px 12px;
+      overflow: hidden;
+    }
+
+    .tool-button,
+    .tool-select {
+      height: 36px;
+      min-width: 38px;
+      padding: 0 11px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 9px;
+      background: rgba(2, 6, 23, 0.38);
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .tool-button.active { color: #fde047; border-color: rgba(250, 204, 21, 0.36); box-shadow: 0 0 20px rgba(250, 204, 21, 0.1); }
+    .tool-select { min-width: 140px; justify-content: space-between; }
+    .divider { width: 1px; height: 28px; background: var(--line); margin: 0 2px; }
+
+    .editor {
+      position: relative;
+      z-index: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 46% 0%, rgba(29, 78, 216, 0.11), transparent 36%),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.23), rgba(2, 6, 23, 0.45));
+    }
+
+    .line-numbers {
+      padding-top: 26px;
+      border-right: 1px solid rgba(148, 163, 184, 0.11);
+      color: #64748b;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .line-numbers span {
+      display: block;
+      height: 31px;
+      padding-right: 14px;
+      font-size: 14px;
+      line-height: 31px;
+    }
+
+    .document {
+      overflow: auto;
+      padding: 28px 54px 80px 28px;
+    }
+
+    .document h1 {
+      margin: 0 0 22px;
+      color: #fb7185;
+      font-family: var(--font-serif);
+      font-size: clamp(30px, 2.2vw, 42px);
+      line-height: 1.08;
+      text-shadow: 0 0 24px rgba(251, 113, 133, 0.22);
+    }
+
+    .document p {
+      margin: 0 0 26px;
+      max-width: 880px;
+      color: #e7e5e4;
+      font-family: var(--font-serif);
+      font-size: clamp(18px, 1.27vw, 23px);
+      line-height: 1.64;
+    }
+
+    .document em { color: #f1f5f9; }
+
+    .editor-meta {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(2, 6, 23, 0.45);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 30px;
+      padding: 0 11px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.72);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.ruby { color: #fda4af; border-color: rgba(251, 113, 133, 0.25); background: rgba(159, 18, 57, 0.2); }
+    .tag.gold { color: #facc15; border-color: rgba(250, 204, 21, 0.25); background: rgba(180, 83, 9, 0.16); }
+    .tag.green { color: #86efac; border-color: rgba(34, 197, 94, 0.24); background: rgba(4, 120, 87, 0.18); }
+    .word-count { margin-left: auto; color: #cbd5e1; font-size: 14px; }
+
+    .tabs {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--line);
+      background: rgba(2, 6, 23, 0.2);
+    }
+
+    .tab {
+      height: 72px;
+      display: grid;
+      place-items: center;
+      border-right: 1px solid rgba(148, 163, 184, 0.11);
+      color: #cbd5e1;
+      font-size: 21px;
+      position: relative;
+    }
+
+    .tab.active { color: #fda4af; }
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 0;
+      height: 3px;
+      border-radius: 99px 99px 0 0;
+      background: linear-gradient(90deg, var(--ruby-bright), var(--tourmaline));
+      box-shadow: 0 0 16px rgba(251, 76, 127, 0.5);
+    }
+
+    .inspector-content {
+      position: relative;
+      z-index: 1;
+      overflow: auto;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .info-card {
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(2, 6, 23, 0.33);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .info-card.ruby {
+      border-color: rgba(251, 76, 127, 0.38);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(251, 76, 127, 0.18), transparent 32%),
+        linear-gradient(180deg, rgba(159, 18, 57, 0.24), rgba(2, 6, 23, 0.28));
+    }
+
+    .info-card.gold {
+      border-color: rgba(202, 138, 4, 0.46);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(250, 204, 21, 0.15), transparent 32%),
+        linear-gradient(180deg, rgba(180, 83, 9, 0.19), rgba(2, 6, 23, 0.28));
+    }
+
+    .info-card.green {
+      border-color: rgba(34, 197, 94, 0.36);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.14), transparent 32%),
+        linear-gradient(180deg, rgba(4, 120, 87, 0.19), rgba(2, 6, 23, 0.28));
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: minmax(92px, .78fr) minmax(130px, 1fr);
+      gap: 9px 14px;
+      font-size: 13.5px;
+      color: #e5e7eb;
+    }
+
+    .kv .k { color: #cbd5e1; }
+    .kv .v { color: #f8fafc; overflow-wrap: anywhere; }
+
+    .option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 11px 0;
+      color: #e5e7eb;
+      font-size: 14px;
+    }
+
+    .switch {
+      width: 38px;
+      height: 20px;
+      border-radius: 99px;
+      background: rgba(148, 163, 184, 0.36);
+      position: relative;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.42);
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 2px;
+      left: 2px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.45);
+      transition: transform 180ms ease;
+    }
+
+    .switch.on { background: linear-gradient(90deg, var(--emerald), #65a30d); box-shadow: 0 0 16px rgba(34, 197, 94, 0.25); }
+    .switch.on::after { transform: translateX(18px); }
+
+    .app-shell.right-collapsed .right-inspector .tabs,
+    .app-shell.right-collapsed .right-inspector .inspector-content,
+    .app-shell.right-collapsed .right-inspector .section-header span,
+    .app-shell.right-collapsed .bottom-row > .connection .status-text,
+    .app-shell.right-collapsed .top-row > .panel:last-child .select-chip span:not(.gem) {
+      display: none;
+    }
+
+    .app-shell.right-collapsed .right-inspector { grid-template-rows: 48px 1fr; }
+
+    .status-card {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .settings {
+      border-color: rgba(251, 76, 127, 0.24);
+      background:
+        linear-gradient(90deg, rgba(159, 18, 57, 0.18), rgba(2, 6, 23, 0.32)),
+        rgba(15, 23, 42, 0.72);
+    }
+
+    .stats {
+      border-color: rgba(202, 138, 4, 0.26);
+      background:
+        linear-gradient(90deg, rgba(180, 83, 9, 0.18), rgba(2, 6, 23, 0.32)),
+        rgba(15, 23, 42, 0.72);
+      min-width: 0;
+    }
+
+    .connection {
+      border-color: rgba(34, 197, 94, 0.22);
+      background:
+        linear-gradient(90deg, rgba(4, 120, 87, 0.24), rgba(2, 6, 23, 0.32)),
+        rgba(15, 23, 42, 0.72);
+    }
+
+    .status-title {
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .settings .status-title { color: #fda4af; }
+    .stats .status-title { color: #facc15; }
+    .connection .status-title { color: #86efac; }
+
+    .status-text {
+      color: #dbeafe;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-arrow { margin-left: auto; color: #cbd5e1; font-size: 22px; }
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 14px rgba(34, 197, 94, 0.85); flex: 0 0 auto; }
+    .bars { display: inline-flex; align-items: end; gap: 3px; height: 18px; margin-left: auto; }
+    .bars span { width: 4px; background: #86efac; border-radius: 99px; box-shadow: 0 0 8px rgba(34, 197, 94, 0.32); }
+    .bars span:nth-child(1) { height: 6px; opacity: .55; }
+    .bars span:nth-child(2) { height: 10px; opacity: .75; }
+    .bars span:nth-child(3) { height: 15px; }
+
+    .swatches {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      margin-left: 6px;
+    }
+
+    .swatches i {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    .ruby-color { background: var(--ruby); color: var(--ruby); }
+    .amber-color { background: var(--amber); color: var(--amber); }
+    .citrine-color { background: var(--citrine); color: var(--citrine); }
+    .emerald-color { background: var(--emerald); color: var(--emerald); }
+    .sapphire-color { background: var(--sapphire); color: var(--sapphire); }
+    .amethyst-color { background: var(--amethyst); color: var(--amethyst); }
+    .tourmaline-color { background: var(--tourmaline); color: var(--tourmaline); }
+
+    @media (max-height: 780px) {
+      .app-shell { grid-template-rows: 52px 64px minmax(0, 1fr) 58px; gap: 8px; }
+      .document { padding-top: 18px; }
+      .document p { margin-bottom: 18px; line-height: 1.48; }
+      .main-workspace { grid-template-rows: 82px minmax(0, 1fr) 44px; }
+      .toolbar-label { height: 30px; }
+      .toolbar-controls { padding-bottom: 8px; }
+    }
+
+    @media (max-width: 1180px) {
+      body { min-width: 0; overflow: auto; }
+      .app-shell {
+        width: calc(100vw - 16px);
+        height: auto;
+        min-height: calc(100vh - 16px);
+        grid-template-rows: auto auto auto auto auto;
+        grid-template-columns: 1fr;
+      }
+      .titlebar,
+      .top-row,
+      .bottom-row {
+        grid-column: 1 / -1;
+        grid-template-columns: 1fr;
+      }
+      .titlebar {
+        grid-template-columns: 1fr;
+        justify-items: start;
+        padding: 12px;
+        gap: 12px;
+      }
+      .document-title, .control-cluster { justify-content: flex-start; }
+      .left-sidebar, .main-workspace, .right-inspector { grid-column: 1 / -1; grid-row: auto; min-height: 420px; }
+      .main-workspace { min-height: 720px; }
+      .right-inspector { min-height: 520px; }
+      .bottom-row { grid-row: auto; }
+      .app-shell.left-collapsed,
+      .app-shell.right-collapsed,
+      .app-shell.left-collapsed.right-collapsed { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell" id="appShell" aria-label="Jewel Box Spectrum desktop writing app mockup">
+    <header class="titlebar" aria-label="Application title bar">
+      <div class="window-tools">
+        <div class="traffic" aria-hidden="true">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <div class="brand">
+          <span class="gem" aria-hidden="true"></span>
+          <span class="brand-title">Jewel Box Spectrum</span>
+        </div>
+      </div>
+
+      <div class="document-title">
+        <span>Whispers in the Hollow</span>
+        <span class="chev" aria-hidden="true">⌄</span>
+      </div>
+
+      <div class="control-cluster">
+        <button class="ghost-button" type="button" aria-label="Open UI controls">
+          <span class="gem small amethyst" aria-hidden="true"></span>
+          <span>UI Controls</span>
+          <span class="chev" aria-hidden="true">⌄</span>
+        </button>
+        <button class="icon-button" type="button" aria-label="Favorite">☆</button>
+        <button class="icon-button" type="button" aria-label="More options">⋮</button>
+      </div>
+    </header>
+
+    <section class="top-row" aria-label="Top workspace controls">
+      <div class="panel bar-panel">
+        <span class="eyebrow">Mode/Room</span>
+        <button class="select-chip" type="button">
+          <span class="gem small" aria-hidden="true"></span>
+          <span>Write Mode</span>
+          <span class="chev" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+
+      <div class="panel bar-panel breadcrumb" aria-label="Breadcrumb">
+        <span class="eyebrow">Breadcrumb</span>
+        <span class="chev">›</span>
+        <span>Projects</span>
+        <span class="chev">›</span>
+        <span>Whispers in the Hollow</span>
+        <span class="chev">›</span>
+        <span>Manuscript</span>
+        <span class="chev">›</span>
+        <span class="crumb-end">Chapter 1: The Arrival</span>
+      </div>
+
+      <div class="panel bar-panel">
+        <button class="select-chip" type="button" style="width:100%; justify-content:space-between;">
+          <span style="display:flex; align-items:center; gap:10px;"><span class="gem small amethyst" aria-hidden="true"></span><span>Inspector</span></span>
+          <span class="chev" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+    </section>
+
+    <aside class="panel left-sidebar" aria-label="Folder tree sidebar">
+      <div class="section-header">
+        <span>Folder Name</span>
+        <div class="section-actions">
+          <button class="icon-button" type="button" aria-label="Add item">＋</button>
+          <button class="icon-button" type="button" id="toggleLeft" aria-label="Collapse left sidebar">⇤</button>
+        </div>
+      </div>
+
+      <nav class="tree" aria-label="File tree">
+        <div class="tree-item">
+          <span class="disclosure">⌄</span><span class="gem tiny" aria-hidden="true"></span><span class="tree-label">Whispers in the Hollow</span><span></span>
+        </div>
+        <div class="tree-item">
+          <span class="disclosure">⌄</span><span class="tree-icon">📁</span><span class="tree-label">Manuscript</span><span></span>
+        </div>
+        <div class="tree-item indent selected">
+          <span></span><span class="tree-icon">◰</span><span class="tree-label">Chapter 1: The Arrival</span><span class="gem tiny" aria-hidden="true"></span>
+        </div>
+        <div class="tree-item indent slim"><span></span><span class="tree-icon">◰</span><span class="tree-label">Chapter 2: The Discovery</span><span></span></div>
+        <div class="tree-item indent slim"><span></span><span class="tree-icon">◰</span><span class="tree-label">Chapter 3: The Descent</span><span></span></div>
+        <div class="tree-item indent slim"><span></span><span class="tree-icon">◰</span><span class="tree-label">Chapter 4: The Echo</span><span></span></div>
+        <div class="tree-item indent slim"><span></span><span class="tree-icon">◰</span><span class="tree-label">Chapter 5: The Choice</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny emerald" aria-hidden="true"></span><span class="tree-label">Characters</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny sapphire" aria-hidden="true"></span><span class="tree-label">Places</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny amethyst" aria-hidden="true"></span><span class="tree-label">Research</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny gold" aria-hidden="true"></span><span class="tree-label">Worldbuilding</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny" aria-hidden="true"></span><span class="tree-label">Notes</span><span></span></div>
+        <div class="tree-item"><span class="disclosure">›</span><span class="gem tiny slate" aria-hidden="true"></span><span class="tree-label">Templates</span><span></span></div>
+        <div class="tree-item"><span></span><span class="tree-icon">♻</span><span class="tree-label">Trash</span><span></span></div>
+      </nav>
+    </aside>
+
+    <section class="panel main-workspace" aria-label="Main editor workspace">
+      <div class="toolbar">
+        <div class="toolbar-label">Editing Toolbar</div>
+        <div class="toolbar-controls" aria-label="Text editing controls">
+          <button class="tool-button" type="button">↶</button>
+          <button class="tool-button" type="button">↷</button>
+          <button class="tool-select" type="button"><span>Heading 1</span><span class="chev">⌄</span></button>
+          <button class="tool-button" type="button"><strong>B</strong></button>
+          <button class="tool-button" type="button"><em>I</em></button>
+          <button class="tool-button" type="button"><u>U</u></button>
+          <button class="tool-button" type="button"><s>S</s></button>
+          <button class="tool-button active" type="button">✎</button>
+          <div class="divider"></div>
+          <button class="tool-button" type="button">☰</button>
+          <button class="tool-button" type="button">•☰</button>
+          <button class="tool-button" type="button">1☰</button>
+          <button class="tool-button" type="button">❝</button>
+          <button class="tool-button" type="button">🔗</button>
+          <button class="tool-button" type="button">▧</button>
+          <button class="tool-button" type="button">⋯</button>
+        </div>
+      </div>
+
+      <article class="editor" aria-label="Document editor">
+        <div class="line-numbers" aria-hidden="true">
+          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span>
+        </div>
+        <div class="document">
+          <h1>Chapter 1: The Arrival</h1>
+          <p>The wind carried the scent of wet earth and pine, and somewhere beyond the trees, a river moved, patient and eternal.</p>
+          <p>Elara tightened the straps of her pack and stepped off the road, following the faint path her father had sketched in the margin of an old map. He had called this place <em>a threshold</em>, a seam between what is known and what remembers.</p>
+          <p>She had come seeking answers, though she was not sure she was ready for the questions that might find her instead. The village behind her was smoke and stone now, a story she hoped never to revisit.</p>
+          <p>Ahead, the trees parted just enough to reveal a valley cradled in morning mist. And there, half-buried in vines and time, stood the ruins. She exhaled. The journey had begun.</p>
+        </div>
+      </article>
+
+      <footer class="editor-meta" aria-label="Editor metadata">
+        <span class="tag ruby">✦ POV: Third Limited ˅</span>
+        <span class="tag gold">◆ Tense: Past ˅</span>
+        <span class="tag green">◆ Status: Draft ˅</span>
+        <span class="word-count">1,268 words</span>
+      </footer>
+    </section>
+
+    <aside class="panel right-inspector" aria-label="Inspector sidebar">
+      <div class="section-header">
+        <span>Tab Name</span>
+        <button class="icon-button" type="button" id="toggleRight" aria-label="Collapse inspector">⇥</button>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Inspector tabs">
+        <button class="tab active" type="button" role="tab" aria-selected="true">ⓘ</button>
+        <button class="tab" type="button" role="tab">☷</button>
+        <button class="tab" type="button" role="tab">↗</button>
+        <button class="tab" type="button" role="tab">◌</button>
+      </div>
+
+      <div class="inspector-content">
+        <section class="info-card ruby">
+          <div class="card-title"><span>Document Info</span><span class="gem tiny" aria-hidden="true"></span></div>
+          <div class="kv">
+            <span class="k">Title</span><span class="v">Chapter 1: The Arrival</span>
+            <span class="k">File Name</span><span class="v">chapter-01-arrival.md</span>
+            <span class="k">Location</span><span class="v">Manuscript / Chapter 1</span>
+            <span class="k">Created</span><span class="v">May 12, 2024</span>
+            <span class="k">Modified</span><span class="v">Today, 3:22 PM</span>
+          </div>
+        </section>
+
+        <section class="info-card gold">
+          <div class="card-title"><span>Statistics</span><span class="gem tiny gold" aria-hidden="true"></span></div>
+          <div class="kv">
+            <span class="k">Word Count</span><span class="v">1,268</span>
+            <span class="k">Characters</span><span class="v">7,102</span>
+            <span class="k">Paragraphs</span><span class="v">14</span>
+            <span class="k">Sentences</span><span class="v">72</span>
+            <span class="k">Readability</span><span class="v">Grade 8</span>
+          </div>
+        </section>
+
+        <section class="info-card green">
+          <div class="card-title"><span>Options</span><span class="gem tiny emerald" aria-hidden="true"></span></div>
+          <div class="option-row"><span>Show Line Numbers</span><span class="switch on" aria-hidden="true"></span></div>
+          <div class="option-row"><span>Focus Mode</span><span class="switch" aria-hidden="true"></span></div>
+          <div class="option-row"><span>Typewriter Scroll</span><span class="switch on" aria-hidden="true"></span></div>
+          <div class="option-row"><span>Auto-Save</span><span class="switch on" aria-hidden="true"></span></div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="bottom-row" aria-label="Bottom status bar">
+      <div class="panel status-card settings">
+        <span class="gem small" aria-hidden="true"></span>
+        <span class="status-title">Settings</span>
+        <span class="status-text">Workspace preferences</span>
+        <span class="status-arrow">›</span>
+      </div>
+
+      <div class="panel status-card stats">
+        <span class="gem small gold" aria-hidden="true"></span>
+        <span class="status-title">Word Count &amp; Stats</span>
+        <span class="status-text">1,268 words • 7,102 characters • 14 paragraphs • 72 sentences • Readability: Grade 8</span>
+        <span class="swatches" aria-hidden="true">
+          <i class="ruby-color"></i><i class="amber-color"></i><i class="citrine-color"></i><i class="emerald-color"></i><i class="sapphire-color"></i><i class="amethyst-color"></i><i class="tourmaline-color"></i>
+        </span>
+      </div>
+
+      <div class="panel status-card connection">
+        <span class="gem small emerald" aria-hidden="true"></span>
+        <span class="status-title">Connection / Activity Status</span>
+        <span class="online-dot" aria-hidden="true"></span>
+        <span class="status-text">Connected</span>
+        <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const shell = document.getElementById('appShell');
+    const leftButton = document.getElementById('toggleLeft');
+    const rightButton = document.getElementById('toggleRight');
+
+    leftButton.addEventListener('click', () => {
+      shell.classList.toggle('left-collapsed');
+      leftButton.textContent = shell.classList.contains('left-collapsed') ? '⇥' : '⇤';
+      leftButton.setAttribute('aria-label', shell.classList.contains('left-collapsed') ? 'Expand left sidebar' : 'Collapse left sidebar');
+    });
+
+    rightButton.addEventListener('click', () => {
+      shell.classList.toggle('right-collapsed');
+      rightButton.textContent = shell.classList.contains('right-collapsed') ? '⇤' : '⇥';
+      rightButton.setAttribute('aria-label', shell.classList.contains('right-collapsed') ? 'Expand inspector' : 'Collapse inspector');
+    });
+  </script>
+</body>
+</html>

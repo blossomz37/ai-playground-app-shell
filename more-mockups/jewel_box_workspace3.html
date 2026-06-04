@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jewel Box Novelist</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable class-based dark mode
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Space Mono', 'monospace'],
+                        serif: ['Lora', 'serif'],
+                    },
+                    colors: {
+                        jewel: {
+                            ruby: '#9F1239',
+                            amber: '#B45309',
+                            citrine: '#CA8A04',
+                            emerald: '#047857',
+                            sapphire: '#1D4ED8',
+                            amethyst: '#6D28D9',
+                            tourmaline: '#BE185D',
+                            base: '#111827', 
+                            surface: '#1F2937', 
+                            surfaceDark: '#0B0F19', 
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Responsive Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; border: 2px solid #F9FAFB; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        .dark ::-webkit-scrollbar-thumb { background: #374151; border: 2px solid #111827; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+        .jewel-facet {
+            clip-path: polygon(50% 0%, 96% 24%, 86% 100%, 14% 100%, 4% 24%);
+        }
+        
+        .jewel-tab-active {
+            position: relative;
+        }
+        .jewel-tab-active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #6D28D9;
+            box-shadow: 0 -2px 10px rgba(109, 40, 217, 0.5);
+        }
+
+        .resizer-x {
+            width: 4px;
+            background-color: transparent;
+            cursor: col-resize;
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+        .resizer-x:hover, .resizer-x:active {
+            background-color: #6D28D9;
+        }
+
+        /* Prose Formatting (Light & Dark) */
+        .markdown-prose p { margin-bottom: 1.2em; color: #374151; transition: color 0.3s; }
+        .markdown-prose h1, .markdown-prose h2, .markdown-prose h3 { font-family: 'Inter', sans-serif; font-weight: 700; color: #111827; margin-top: 1.5em; margin-bottom: 0.5em; transition: color 0.3s; }
+        .markdown-prose h1 { font-size: 2.25rem; border-bottom: 1px solid #E5E7EB; padding-bottom: 0.25em; transition: border-color 0.3s; }
+        .markdown-prose h2 { font-size: 1.5rem; }
+        .markdown-prose em { color: #6B7280; transition: color 0.3s; }
+        .markdown-prose strong { color: #111827; font-weight: 600; transition: color 0.3s; }
+        .markdown-prose .md-syntax { color: #9CA3AF; font-family: 'Space Mono', monospace; font-size: 0.9em; user-select: none; transition: color 0.3s; }
+
+        /* Dark Mode Overrides for Prose */
+        .dark .markdown-prose p { color: #D1D5DB; }
+        .dark .markdown-prose h1, .dark .markdown-prose h2, .dark .markdown-prose h3 { color: #F3F4F6; }
+        .dark .markdown-prose h1 { border-bottom-color: #374151; }
+        .dark .markdown-prose em { color: #9CA3AF; }
+        .dark .markdown-prose strong { color: #F9FAFB; }
+        .dark .markdown-prose .md-syntax { color: #4B5563; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-jewel-surfaceDark text-gray-800 dark:text-gray-300 font-sans h-screen w-screen overflow-hidden flex flex-col selection:bg-jewel-amethyst selection:text-white transition-colors duration-200">
+
+    <!-- ROW 1: GLOBAL HEADER -->
+    <header class="h-10 bg-white dark:bg-jewel-base border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 shrink-0 shadow-sm relative z-20 transition-colors duration-200">
+        <!-- Window Controls -->
+        <div class="flex items-center gap-2 w-1/3">
+            <div class="w-3 h-3 rounded-full bg-jewel-ruby shadow-[0_0_8px_rgba(159,18,57,0.3)] dark:shadow-[0_0_8px_rgba(159,18,57,0.6)] cursor-pointer hover:brightness-110"></div>
+            <div class="w-3 h-3 rounded-full bg-jewel-amber shadow-[0_0_8px_rgba(180,83,9,0.3)] dark:shadow-[0_0_8px_rgba(180,83,9,0.6)] cursor-pointer hover:brightness-110"></div>
+            <div class="w-3 h-3 rounded-full bg-jewel-emerald shadow-[0_0_8px_rgba(4,120,87,0.3)] dark:shadow-[0_0_8px_rgba(4,120,87,0.6)] cursor-pointer hover:brightness-110"></div>
+        </div>
+        
+        <!-- App Name -->
+        <div class="w-1/3 flex justify-center items-center">
+            <div class="font-bold text-sm tracking-widest text-gray-900 dark:text-gray-100 flex items-center gap-2 transition-colors duration-200">
+                <i class="ph-fill ph-feather text-jewel-amethyst text-lg"></i>
+                JEWEL<span class="text-jewel-amethyst font-light">SCRIBE</span>
+            </div>
+        </div>
+        
+        <!-- UI Controls (Global) -->
+        <div class="flex items-center justify-end gap-3 w-1/3 text-gray-500 dark:text-gray-400">
+            <!-- Theme Toggle -->
+            <button class="hover:text-gray-900 dark:hover:text-gray-100 transition-colors p-1" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="ph ph-sun hidden dark:block text-lg"></i>
+                <i class="ph ph-moon block dark:hidden text-lg"></i>
+            </button>
+            <div class="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+            <button class="hover:text-gray-900 dark:hover:text-gray-100 transition-colors p-1"><i class="ph ph-magnifying-glass text-lg"></i></button>
+            <button class="hover:text-gray-900 dark:hover:text-gray-100 transition-colors p-1"><i class="ph ph-graph text-lg" title="Graph View"></i></button>
+            <div class="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+            <button class="flex items-center gap-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+                <img src="https://placehold.co/100x100/6D28D9/FFFFFF?text=A" alt="Author" class="w-6 h-6 rounded-full border border-jewel-amethyst">
+            </button>
+        </div>
+    </header>
+
+    <!-- ROW 2: CONTEXTUAL SUB-NAV -->
+    <nav class="h-9 bg-gray-100/50 dark:bg-jewel-surface border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-2 shrink-0 transition-colors duration-200">
+        <!-- Mode/Room -->
+        <div class="w-[250px] px-2 flex items-center gap-2 border-r border-gray-200 dark:border-gray-800 h-full transition-colors duration-200">
+            <button class="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-transparent text-xs font-medium px-2 py-1 rounded text-gray-700 dark:text-gray-200 flex items-center gap-1 transition-colors shadow-sm dark:shadow-none">
+                <i class="ph-fill ph-pencil-simple text-jewel-ruby"></i>
+                Focus Mode
+                <i class="ph ph-caret-down text-gray-400 ml-1"></i>
+            </button>
+        </div>
+        
+        <!-- Breadcrumb -->
+        <div class="flex-1 px-4 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-sans transition-colors duration-200">
+            <span class="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer transition-colors font-medium">The Shattered Crown</span>
+            <i class="ph ph-caret-right text-gray-400 dark:text-gray-600"></i>
+            <span class="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer transition-colors font-medium">01_Manuscript</span>
+            <i class="ph ph-caret-right text-gray-400 dark:text-gray-600"></i>
+            <span class="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer transition-colors font-medium">Act I</span>
+            <i class="ph ph-caret-right text-gray-400 dark:text-gray-600"></i>
+            <span class="text-jewel-amethyst font-semibold flex items-center gap-1">
+                <i class="ph-fill ph-file-text text-jewel-amethyst"></i> Chapter_01.md
+            </span>
+        </div>
+        
+        <!-- Inspector Toggle -->
+        <div class="w-[280px] flex justify-end px-2 border-l border-gray-200 dark:border-gray-800 h-full items-center transition-colors duration-200">
+            <button id="toggleRightBtn" class="text-xs flex items-center gap-1.5 bg-jewel-sapphire/10 dark:bg-jewel-sapphire/20 text-jewel-sapphire border border-jewel-sapphire/30 dark:border-jewel-sapphire/50 px-3 py-1 rounded-sm transition-colors" onclick="togglePanel('rightPanel', 'toggleRightBtn')">
+                <i class="ph ph-sidebar-simple"></i>
+                Metadata
+            </button>
+        </div>
+    </nav>
+
+    <!-- ROW 3: MAIN WORKSPACE (Flex Row) -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- COLUMN 1: LEFT SIDEBAR (Vault/Files) -->
+        <aside id="leftPanel" class="w-[250px] flex flex-col bg-gray-50 dark:bg-jewel-base border-r border-gray-200 dark:border-gray-800 shrink-0 transition-all duration-300">
+            <!-- Vault Name Header -->
+            <div class="h-10 flex items-center px-4 border-b border-gray-200 dark:border-gray-800/50 bg-gray-100 dark:bg-jewel-surface/30 transition-colors duration-200">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <i class="ph-fill ph-books text-jewel-amber text-sm"></i>
+                    UNIVERSE VAULT
+                </span>
+            </div>
+            
+            <!-- File Tree Content -->
+            <div class="flex-1 overflow-y-auto p-2 text-[13px] text-gray-700 dark:text-gray-300 flex flex-col gap-0.5 transition-colors duration-200">
+                
+                <!-- Folders -->
+                <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer font-medium">
+                    <i class="ph ph-caret-down text-gray-400 dark:text-gray-500 text-xs"></i>
+                    <i class="ph-fill ph-folder-open text-jewel-amber"></i>
+                    <span>01_Manuscript</span>
+                </div>
+                
+                <!-- Indented Files -->
+                <div class="pl-6 flex flex-col gap-0.5 border-l border-gray-300 dark:border-gray-800 ml-3 mb-2 transition-colors duration-200">
+                    <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-600 dark:text-gray-400">
+                        <i class="ph ph-caret-down text-gray-400 dark:text-gray-500 text-xs"></i>
+                        <i class="ph-fill ph-folder-open text-jewel-sapphire opacity-80 dark:opacity-70"></i>
+                        <span>Act I</span>
+                    </div>
+                    
+                    <!-- Deeply indented active file -->
+                    <div class="pl-4 flex flex-col gap-0.5">
+                        <div class="flex items-center gap-1.5 px-2 py-1.5 bg-jewel-amethyst/10 text-jewel-amethyst font-semibold rounded cursor-pointer relative">
+                            <!-- Active indicator -->
+                            <div class="absolute left-[-17px] top-1/2 -translate-y-1/2 w-0.5 h-full bg-jewel-amethyst"></div>
+                            <i class="ph-fill ph-file-text text-jewel-amethyst"></i>
+                            <span>Chapter_01.md</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-600 dark:text-gray-400">
+                            <i class="ph-fill ph-file-text text-gray-400 dark:text-gray-500"></i>
+                            <span>Chapter_02.md</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-600 dark:text-gray-400">
+                            <i class="ph-fill ph-file-text text-gray-400 dark:text-gray-500"></i>
+                            <span>Chapter_03.md</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other Folders -->
+                <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-700 dark:text-gray-300">
+                    <i class="ph ph-caret-right text-gray-400 dark:text-gray-500 text-xs"></i>
+                    <i class="ph-fill ph-folder text-jewel-amber opacity-90 dark:opacity-80"></i>
+                    <span>02_Characters</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-700 dark:text-gray-300">
+                    <i class="ph ph-caret-right text-gray-400 dark:text-gray-500 text-xs"></i>
+                    <i class="ph-fill ph-folder text-jewel-amber opacity-90 dark:opacity-80"></i>
+                    <span>03_World_Building</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-700 dark:text-gray-300">
+                    <i class="ph ph-caret-right text-gray-400 dark:text-gray-500 text-xs"></i>
+                    <i class="ph-fill ph-folder text-jewel-amber opacity-90 dark:opacity-80"></i>
+                    <span>04_Research</span>
+                </div>
+                
+                <!-- Root Files -->
+                <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-800/50 flex flex-col gap-0.5 transition-colors duration-200">
+                    <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-jewel-emerald">
+                        <i class="ph-fill ph-kanban text-jewel-emerald"></i>
+                        <span>Plot_Board.canvas</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded cursor-pointer text-gray-600 dark:text-gray-400">
+                        <i class="ph-fill ph-image text-jewel-sapphire opacity-80 dark:opacity-70"></i>
+                        <span>Map_of_Eldoria.png</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Left Panel Footer (Settings) -->
+            <div class="h-10 border-t border-gray-200 dark:border-gray-800 flex items-center px-3 bg-gray-50 dark:bg-jewel-base transition-colors duration-200">
+                <button class="w-full flex items-center justify-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800 py-1.5 rounded transition-colors">
+                    <i class="ph ph-gear"></i> Vault Settings
+                </button>
+            </div>
+        </aside>
+
+        <!-- Vertical Resizer 1 -->
+        <div class="resizer-x"></div>
+
+        <!-- COLUMN 2: CENTRAL WORKSPACE (Prose Editor) -->
+        <section class="flex-1 flex flex-col min-w-[300px] bg-white dark:bg-[#0d131f] relative transition-colors duration-200">
+            
+            <!-- Editing Toolbar -->
+            <div class="h-12 bg-gray-50 dark:bg-jewel-base border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-4 shrink-0 shadow-sm transition-colors duration-200">
+                <!-- Jewel Tabs -->
+                <div class="flex h-full">
+                    <button class="px-4 h-full flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100 jewel-tab-active bg-white dark:bg-[#0d131f] transition-colors duration-200">
+                        <i class="ph-fill ph-file-text text-jewel-amethyst"></i> Chapter_01.md
+                        <i class="ph ph-x text-xs hover:text-jewel-ruby hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-0.5 transition-colors"></i>
+                    </button>
+                    <button class="px-4 h-full flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800/50 transition-colors border-r border-gray-200 dark:border-gray-800/50">
+                        <i class="ph-fill ph-user text-jewel-tourmaline opacity-80 dark:opacity-70"></i> Elara_Voss.md
+                    </button>
+                </div>
+                
+                <div class="flex-1"></div> <!-- Spacer -->
+                
+                <!-- Writing Formatting Actions -->
+                <div class="flex items-center gap-1 bg-white dark:bg-gray-900 rounded p-1 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 rounded transition-colors" title="Heading"><i class="ph ph-text-h"></i></button>
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 rounded transition-colors" title="Bold"><i class="ph ph-text-b"></i></button>
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 rounded transition-colors" title="Italic"><i class="ph ph-text-italic"></i></button>
+                    <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 transition-colors duration-200"></div>
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-jewel-sapphire hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors" title="Insert Link"><i class="ph ph-link"></i></button>
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-jewel-emerald hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors" title="Insert Image"><i class="ph ph-image"></i></button>
+                    <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 transition-colors duration-200"></div>
+                    <button class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 rounded transition-colors" title="Reading View"><i class="ph ph-book-open"></i></button>
+                </div>
+            </div>
+            
+            <!-- Primary Content Area (Prose) -->
+            <div class="flex-1 overflow-auto p-8 relative">
+                <!-- Decorative background elements -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-jewel-amethyst rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-5 dark:opacity-10 pointer-events-none transition-opacity"></div>
+                <div class="absolute bottom-0 left-0 w-80 h-80 bg-jewel-sapphire rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[150px] opacity-5 dark:opacity-[0.07] pointer-events-none transition-opacity"></div>
+                
+                <!-- Prose Container -->
+                <div class="max-w-2xl mx-auto font-serif text-[1.1rem] leading-[1.8] markdown-prose pb-32 relative z-10">
+                    
+                    <h1><span class="md-syntax"># </span>Chapter 1: The Ash Falls</h1>
+                    
+                    <p>The sky above Eldoria had bled from its twilight purple into the bruised, heavy gray of an impending storm. <span class="text-jewel-sapphire cursor-pointer hover:underline bg-jewel-sapphire/5 dark:bg-jewel-sapphire/10 px-1 rounded transition-colors">[[Elara Voss]]</span> tightened the frayed wool scarf around her neck, the chill biting through the threadbare coat she'd inherited from her brother. It wasn't just cold; it was the damp, metallic cold that preceded the Ash.</p>
+                    
+                    <p>She paused near the entrance of the <span class="text-jewel-amber cursor-pointer hover:underline bg-jewel-amber/5 dark:bg-jewel-amber/10 px-1 rounded transition-colors">[[Sunken Market]]</span>, leaning against a rusted iron lamppost that hadn't held a flame in a decade. Below her, the market was a labyrinth of canvas tents and mud, lit only by the sputtering amber glow of chem-lanterns. The merchants were packing up early, their voices hushed, eyes repeatedly darting toward the western peaks.</p>
+                    
+                    <p><span class="md-syntax">**</span><strong>"They say it's moving faster this time,"</strong><span class="md-syntax">**</span> a voice muttered from the shadows behind her.</p>
+                    
+                    <p>Elara didn't flinch. She recognized the rasp of Silas's breathing long before he spoke. She turned slowly, her hand instinctively grazing the hilt of the curved dagger concealed beneath her coat. <span class="md-syntax">*</span><em>"Faster than what, Silas? The stories?"</em><span class="md-syntax">*</span></p>
+
+                    <blockquote class="border-l-4 border-jewel-amethyst pl-4 my-6 italic text-gray-600 dark:text-gray-400 bg-jewel-amethyst/5 py-2 pr-4 rounded-r-md transition-colors">
+                        <span class="md-syntax block mb-1">></span>
+                        "Faster than the warnings. The Vanguard fell two days ago. We're next."
+                    </blockquote>
+                    
+                    <p>A single flake of white drifted down, catching the ambient light before settling onto the sleeve of her coat. It didn't melt. She brushed it off, leaving a smear of chalky gray across the dark fabric. The Ash had arrived, and with it, the silent walkers.</p>
+                    
+                    <div class="flex items-center my-8 text-gray-300 dark:text-gray-600 justify-center gap-4 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></span>
+                        <span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></span>
+                        <span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></span>
+                    </div>
+
+                    <p>Elara looked back at the city she had spent her life trying to escape. Suddenly, the urge to run was replaced by a strange, cold anchor in her chest. She drew the dagger, the <span class="text-jewel-tourmaline cursor-pointer hover:underline bg-jewel-tourmaline/5 dark:bg-jewel-tourmaline/10 px-1 rounded transition-colors">[[Aetherite]]</span> blade humming softly as it tasted the corrupted air.</p>
+                    
+                    <p class="text-gray-400 dark:text-gray-500 animate-pulse relative transition-colors">
+                        <span class="absolute -left-3 top-1 text-jewel-amethyst font-sans">|</span>
+                        She took a breath...
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Center Footer (Writing Stats) -->
+            <div class="h-10 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-jewel-base flex items-center justify-between px-4 shrink-0 transition-colors duration-200">
+                <div class="flex items-center gap-4 text-[11px] font-sans text-gray-500 uppercase tracking-wider">
+                    <span class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer text-jewel-emerald"><i class="ph-fill ph-check-circle"></i> Saved</span>
+                    <span class="text-gray-300 dark:text-gray-700">|</span>
+                    <span class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"><i class="ph ph-text-t"></i> 438 Words</span>
+                    <span class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"><i class="ph ph-clock"></i> 2 Min Read</span>
+                </div>
+                
+                <!-- Word Goal Progress Bar -->
+                <div class="flex items-center gap-3 w-48" title="Daily Goal: 438 / 1,000 words">
+                    <div class="text-[10px] text-gray-500 font-mono">43%</div>
+                    <div class="h-1.5 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden transition-colors">
+                        <div class="h-full bg-jewel-amethyst w-[43%] shadow-[0_0_8px_rgba(109,40,217,0.4)] dark:shadow-[0_0_8px_rgba(109,40,217,0.8)]"></div>
+                    </div>
+                    <i class="ph-fill ph-flag-checkered text-gray-400 dark:text-gray-500"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Vertical Resizer 2 -->
+        <div class="resizer-x"></div>
+
+        <!-- COLUMN 3: RIGHT SIDEBAR (Metadata & Links) -->
+        <aside id="rightPanel" class="w-[280px] bg-gray-50 dark:bg-jewel-base border-l border-gray-200 dark:border-gray-800 flex flex-col shrink-0 transition-all duration-300 overflow-hidden" style="width: 280px;">
+            <!-- Tab Name Header -->
+            <div class="h-10 flex items-center justify-between px-3 border-b border-gray-200 dark:border-gray-800/50 bg-gray-100 dark:bg-jewel-surface/30 transition-colors duration-200">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded flex items-center justify-center bg-jewel-sapphire/10 dark:bg-jewel-sapphire/20 text-jewel-sapphire border border-jewel-sapphire/30">
+                        <i class="ph ph-info"></i>
+                    </div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">METADATA</span>
+                </div>
+                <button class="text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 transition-colors" onclick="togglePanel('rightPanel', 'toggleRightBtn')">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            
+            <!-- Metadata Content -->
+            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6 text-sm font-sans">
+                
+                <!-- Properties Group -->
+                <div class="flex flex-col gap-2">
+                    <h4 class="text-[10px] uppercase font-bold text-gray-500 tracking-widest border-b border-gray-200 dark:border-gray-800 pb-1 mb-1 transition-colors">Properties</h4>
+                    
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-start gap-2">
+                            <i class="ph ph-calendar-blank text-gray-400 dark:text-gray-500 mt-0.5"></i>
+                            <div class="flex flex-col">
+                                <span class="text-xs text-gray-500">Created</span>
+                                <span class="text-xs text-gray-800 dark:text-gray-300 font-mono">2026-06-04</span>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <i class="ph ph-tag text-gray-400 dark:text-gray-500 mt-0.5"></i>
+                            <div class="flex flex-col w-full">
+                                <span class="text-xs text-gray-500 mb-1">Tags</span>
+                                <div class="flex flex-wrap gap-1">
+                                    <span class="text-[10px] bg-white dark:bg-jewel-surfaceDark border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">#draft</span>
+                                    <span class="text-[10px] bg-white dark:bg-jewel-surfaceDark border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">#act-1</span>
+                                    <span class="text-[10px] bg-white dark:bg-jewel-surfaceDark border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">#action</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linked Mentions -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-1 mb-1 transition-colors">
+                        <h4 class="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Linked Mentions</h4>
+                        <span class="text-[10px] bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 rounded-full transition-colors">3</span>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3">
+                        <!-- Link Card 1 -->
+                        <div class="bg-white dark:bg-jewel-surfaceDark/50 border border-gray-200 dark:border-gray-800 rounded p-2 hover:border-jewel-sapphire/50 dark:hover:border-jewel-sapphire/50 cursor-pointer transition-colors group shadow-sm dark:shadow-none">
+                            <div class="text-xs font-semibold text-jewel-sapphire flex items-center gap-1 mb-1">
+                                <i class="ph ph-link text-[10px]"></i> Elara Voss
+                            </div>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2 group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors">
+                                ...<span class="font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-1 rounded">Chapter_01.md</span> tightened the frayed wool scarf around her neck...
+                            </p>
+                        </div>
+                        
+                        <!-- Link Card 2 -->
+                        <div class="bg-white dark:bg-jewel-surfaceDark/50 border border-gray-200 dark:border-gray-800 rounded p-2 hover:border-jewel-amber/50 dark:hover:border-jewel-amber/50 cursor-pointer transition-colors group shadow-sm dark:shadow-none">
+                            <div class="text-xs font-semibold text-jewel-amber flex items-center gap-1 mb-1">
+                                <i class="ph ph-link text-[10px]"></i> Sunken Market
+                            </div>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2 group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors">
+                                ...She paused near the entrance of the <span class="font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-1 rounded">Chapter_01.md</span>, leaning against a rusted...
+                            </p>
+                        </div>
+
+                        <!-- Link Card 3 -->
+                        <div class="bg-white dark:bg-jewel-surfaceDark/50 border border-gray-200 dark:border-gray-800 rounded p-2 hover:border-jewel-tourmaline/50 dark:hover:border-jewel-tourmaline/50 cursor-pointer transition-colors group shadow-sm dark:shadow-none">
+                            <div class="text-xs font-semibold text-jewel-tourmaline flex items-center gap-1 mb-1">
+                                <i class="ph ph-link text-[10px]"></i> Aetherite
+                            </div>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2 group-hover:text-gray-800 dark:group-hover:text-gray-300 transition-colors">
+                                ...drew the dagger, the <span class="font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-1 rounded">Chapter_01.md</span> blade humming softly as it tasted...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unlinked Mentions -->
+                <div class="flex flex-col gap-2 opacity-70 dark:opacity-60">
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-1 mb-1 transition-colors">
+                        <h4 class="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Unlinked Mentions</h4>
+                        <span class="text-[10px] bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 rounded-full transition-colors">1</span>
+                    </div>
+                    <div class="text-[11px] text-gray-600 dark:text-gray-400 flex items-center justify-between hover:bg-gray-200/50 dark:hover:bg-gray-800/50 p-1 rounded cursor-pointer transition-colors">
+                        <span>"The Vanguard"</span>
+                        <button class="text-jewel-emerald hover:text-gray-900 dark:hover:text-white"><i class="ph ph-link"></i></button>
+                    </div>
+                </div>
+                
+                <!-- Graph View Mini -->
+                <div class="flex flex-col gap-2 mt-2">
+                    <h4 class="text-[10px] uppercase font-bold text-gray-500 tracking-widest border-b border-gray-200 dark:border-gray-800 pb-1 mb-1 transition-colors">Local Graph</h4>
+                    <div class="h-32 bg-gray-100 dark:bg-[#0B0F19] rounded border border-gray-200 dark:border-gray-800 flex items-center justify-center relative overflow-hidden group cursor-pointer transition-colors shadow-inner dark:shadow-none">
+                        <!-- Mock Graph Nodes -->
+                        <div class="absolute w-2 h-2 bg-jewel-amethyst rounded-full shadow-[0_0_8px_rgba(109,40,217,0.5)] dark:shadow-[0_0_8px_rgba(109,40,217,1)] z-10"></div>
+                        
+                        <div class="absolute w-1.5 h-1.5 bg-jewel-sapphire rounded-full left-8 top-6 opacity-80 dark:opacity-70"></div>
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-40 dark:opacity-30 stroke-gray-400 dark:stroke-gray-600 transition-colors" stroke-width="1">
+                            <line x1="50%" y1="50%" x2="25%" y2="25%"></line>
+                        </svg>
+
+                        <div class="absolute w-1.5 h-1.5 bg-jewel-amber rounded-full right-8 top-10 opacity-80 dark:opacity-70"></div>
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-40 dark:opacity-30 stroke-gray-400 dark:stroke-gray-600 transition-colors" stroke-width="1">
+                            <line x1="50%" y1="50%" x2="75%" y2="35%"></line>
+                        </svg>
+
+                        <div class="absolute w-1 h-1 bg-jewel-tourmaline rounded-full right-12 bottom-6 opacity-80 dark:opacity-70"></div>
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-40 dark:opacity-30 stroke-gray-400 dark:stroke-gray-600 transition-colors" stroke-width="1">
+                            <line x1="50%" y1="50%" x2="65%" y2="75%"></line>
+                        </svg>
+                        
+                        <!-- Overlay text -->
+                        <div class="absolute inset-0 bg-white/60 dark:bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                            <span class="text-xs font-semibold text-gray-800 dark:text-white bg-white/90 dark:bg-gray-900/80 px-2 py-1 rounded border border-gray-300 dark:border-gray-700 shadow-sm dark:shadow-none">Open Graph</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // Check local storage for theme preference on load
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            // Setup right panel toggle state
+            const btn = document.getElementById('toggleRightBtn');
+            btn.classList.add('bg-jewel-sapphire/10', 'dark:bg-jewel-sapphire/20', 'text-jewel-sapphire', 'border-jewel-sapphire/30', 'dark:border-jewel-sapphire/50');
+            btn.classList.remove('bg-gray-100', 'dark:bg-jewel-base', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+        });
+
+        // Toggle Theme Function
+        function toggleTheme() {
+            const htmlElements = document.documentElement;
+            htmlElements.classList.toggle('dark');
+            
+            if(htmlElements.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Toggle Right Panel Function
+        function togglePanel(panelId, btnId) {
+            const panel = document.getElementById(panelId);
+            const btn = document.getElementById(btnId);
+            
+            if (panel.style.width === '0px' || panel.style.width === '') {
+                // Open it
+                panel.style.width = '280px';
+                
+                // Update button active state classes
+                btn.classList.add('bg-jewel-sapphire/10', 'dark:bg-jewel-sapphire/20', 'text-jewel-sapphire', 'border-jewel-sapphire/30', 'dark:border-jewel-sapphire/50');
+                btn.classList.remove('bg-gray-100', 'dark:bg-jewel-base', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+            } else {
+                // Close it
+                panel.style.width = '0px';
+                
+                // Update button inactive state classes
+                btn.classList.remove('bg-jewel-sapphire/10', 'dark:bg-jewel-sapphire/20', 'text-jewel-sapphire', 'border-jewel-sapphire/30', 'dark:border-jewel-sapphire/50');
+                btn.classList.add('bg-gray-100', 'dark:bg-jewel-base', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+            }
+        }
+    </script>
+</body>
+</html>
