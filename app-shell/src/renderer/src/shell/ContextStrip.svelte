@@ -3,7 +3,6 @@
   import {
     ArrowsInIcon,
     ArrowsOutIcon,
-    BriefcaseIcon,
     CommandIcon,
     EyeClosedIcon,
     EyeIcon,
@@ -11,7 +10,6 @@
     SidebarIcon,
     StackSimpleIcon
   } from 'phosphor-svelte'
-  import { activeWorkspace } from '../store'
   import { executeCommand, paletteOpen } from '../store/commands'
   import { toggleJobsPanel } from '../store/jobs'
   import { shellContextDescriptors } from '../store/shell-context'
@@ -42,6 +40,16 @@
   let inspectorLabel = $derived(inspectorVisible ? 'Hide inspector' : 'Show inspector')
   let sidebarLabel = $derived(sidebarVisible ? 'Hide sidebar' : 'Show sidebar')
   let zenLabel = $derived(zenMode ? 'Exit zen mode' : 'Enter zen mode')
+  let fallbackContext = $derived.by(() => {
+    if (moduleId === 'shell.documents') return 'No document open'
+    if (moduleId === 'shell.aichat') return 'No conversation selected'
+    if (moduleId === 'shell.web') return 'No page selected'
+    if (moduleId === 'shell.assets') return 'No asset selected'
+    if (moduleId === 'shell.workflow') return 'No workflow selected'
+    if (moduleId === 'shell.tableview') return 'No row selected'
+    if (moduleId === 'shell.promptstudio') return 'No prompt selected'
+    return ''
+  })
 
   onMount(async () => {
     const modules = await window.shell.modules.list()
@@ -49,13 +57,7 @@
   })
 </script>
 
-<section class="context-strip" aria-label="Workspace context">
-  <div class="context-cell context-workspace">
-    <BriefcaseIcon size={15} weight="bold" />
-    <span class="label">{$activeWorkspace?.name ?? 'Workspace'}</span>
-    <span class="detail">{$activeWorkspace?.type ?? 'default'}</span>
-  </div>
-
+<section class="context-strip" aria-label="Module context">
   <div class="context-cell context-module">
     <StackSimpleIcon size={15} weight="bold" />
     <span class="label">{moduleLabel}</span>
@@ -68,17 +70,17 @@
           <span class="separator">/</span>
         {/if}
         {#if item.commandId}
-          <button type="button" class="trail-action" onclick={() => executeCommand(item.commandId)}>
+          <button type="button" class="trail-action" class:trail-leaf={index === descriptor.trail.length - 1} onclick={() => executeCommand(item.commandId)}>
             {item.label}
           </button>
         {:else}
-          <span class="trail-item">{item.label}</span>
+          <span class="trail-item" class:trail-leaf={index === descriptor.trail.length - 1}>{item.label}</span>
         {/if}
       {/each}
     {:else if descriptor?.primaryLabel}
       <span class="trail-item strong">{descriptor.primaryLabel}</span>
-    {:else}
-      <span class="trail-item muted">No active object</span>
+    {:else if fallbackContext}
+      <span class="trail-item muted">{fallbackContext}</span>
     {/if}
 
     {#if descriptor?.secondaryLabel}
@@ -194,19 +196,14 @@
     border-right: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   }
 
-  .context-workspace {
-    grid-column: 2;
-  }
-
   .context-module {
-    grid-column: 3;
+    grid-column: 2;
     width: max-content;
     max-width: 220px;
   }
 
   .context-trail {
     grid-column: 3;
-    padding-left: min(180px, 22vw);
     padding-right: 260px;
   }
 
@@ -235,7 +232,6 @@
     font-weight: 700;
   }
 
-  .detail,
   .muted,
   .context-secondary,
   .separator {
@@ -258,6 +254,15 @@
 
   .trail-action:hover {
     color: var(--color-fg-primary);
+  }
+
+  .trail-item:not(.trail-leaf),
+  .trail-action:not(.trail-leaf) {
+    flex: 0 0 auto;
+  }
+
+  .trail-leaf {
+    flex: 1 1 auto;
   }
 
   .icon-button {

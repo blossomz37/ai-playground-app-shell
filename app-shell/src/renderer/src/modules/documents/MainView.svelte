@@ -10,7 +10,7 @@
   import { Markdown } from 'tiptap-markdown'
   import {
     activeDoc, editorContent, saveDoc, setEditorContent,
-    editorSettings, scheduleAutoSave, cancelAutoSave, countWords, isDirty
+    editorSettings, scheduleAutoSave, cancelAutoSave, isDirty
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
@@ -27,7 +27,6 @@
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
-    const content = get(editorContent)
     const dirty = get(isDirty)
 
     if (!doc) {
@@ -42,14 +41,13 @@
     return {
       moduleId: 'shell.documents',
       primaryLabel: doc.title,
-      secondaryLabel: `${doc.kind} · ${countWords(content).toLocaleString()} words · ${dirty ? 'unsaved' : 'saved'}`,
       trail: [
         { id: 'documents-root', label: 'Manuscript' },
         { id: doc.id, label: doc.title }
       ],
-      actions: [
-        { id: 'documents-save', label: 'Save', commandId: 'documents.save', disabled: !dirty }
-      ]
+      actions: dirty
+        ? [{ id: 'documents-save', label: 'Save', commandId: 'documents.save' }]
+        : []
     }
   }
 
@@ -95,7 +93,6 @@
 
     contextUnsubscribers = [
       activeDoc.subscribe(refreshDocumentContextDescriptor),
-      editorContent.subscribe(refreshDocumentContextDescriptor),
       isDirty.subscribe(refreshDocumentContextDescriptor)
     ]
 

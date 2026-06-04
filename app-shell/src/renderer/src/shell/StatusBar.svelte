@@ -7,22 +7,23 @@
   Author:      carlo
   ────────────────────────────────────────────── -->
 <script lang="ts">
-  import { isDirty, editorContent, activeDoc, activeWorkspace, countWords } from '../store'
+  import { isDirty, editorContent, activeDoc, countWords } from '../store'
   import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
 
   let props = $props<{ moduleId: string | null }>()
 
-  let latestJobStatus = $derived($activeJobs[0]?.message || $recentJobs[0]?.status || 'Idle')
+  let visibleJob = $derived($activeJobs[0] ?? $recentJobs.find(job => job.status === 'failed'))
+  let jobLabel = $derived.by(() => {
+    if ($activeJobs.length > 0) return $activeJobs.length === 1 ? ($activeJobs[0].message || '1 job running') : `${$activeJobs.length} jobs running`
+    if (visibleJob?.status === 'failed') return visibleJob.message || 'Job failed'
+    return ''
+  })
 </script>
 
 <footer class="status-bar">
   <!-- Left zone: module-contributed status items -->
   <div class="zone zone-left">
     {#if props.moduleId === 'shell.documents' && $activeDoc}
-      <span class="item doc-title" title={$activeDoc.title}>
-        {$activeDoc.title}
-      </span>
-      <span class="sep">·</span>
       <span class="item word-count">
         {countWords($editorContent).toLocaleString()} words
       </span>
@@ -40,17 +41,12 @@
 
   <!-- Center zone: reserved for notifications / progress bar -->
   <div class="zone zone-center">
-    <button class="jobs-item" type="button" onclick={toggleJobsPanel}>
-      <span class:active={$activeJobs.length > 0}></span>
-      {$activeJobs.length > 0 ? `${$activeJobs.length} running` : `Jobs ${latestJobStatus}`}
-    </button>
-  </div>
-
-  <!-- Right zone: shell-level info -->
-  <div class="zone zone-right">
-    <span class="item muted">{$activeWorkspace?.type ?? 'workspace'}</span>
-    <span class="sep">·</span>
-    <span class="item muted">App Shell v0.1.0</span>
+    {#if visibleJob && jobLabel}
+      <button class="jobs-item" class:failed={visibleJob.status === 'failed'} type="button" onclick={toggleJobsPanel}>
+        <span class:active={$activeJobs.length > 0} class:failed={visibleJob.status === 'failed'}></span>
+        {jobLabel}
+      </button>
+    {/if}
   </div>
 </footer>
 
@@ -89,13 +85,6 @@
     overflow: hidden;
   }
 
-  .zone-right {
-    grid-column: 3 / 5;
-    justify-self: end;
-    justify-content: flex-end;
-    padding-right: var(--space-2);
-  }
-
   .item {
     white-space: nowrap;
     overflow: hidden;
@@ -110,13 +99,8 @@
     color: var(--color-fg-primary);
   }
 
-  .doc-title {
-    max-width: 180px;
-    font-weight: 500;
-  }
-
   .word-count {
-    color: var(--color-fg-muted);
+    color: var(--color-fg-secondary);
     font-variant-numeric: tabular-nums;
   }
 
@@ -150,7 +134,6 @@
   }
 
   .sep { color: var(--color-fg-muted); opacity: 0.5; flex-shrink: 0; }
-  .muted { color: var(--color-fg-muted); }
 
   .jobs-item {
     display: flex;
@@ -184,5 +167,13 @@
     background: var(--accent-status);
     box-shadow: 0 0 10px color-mix(in srgb, var(--accent-status) 58%, transparent);
     animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  .jobs-item.failed {
+    color: var(--color-danger);
+  }
+
+  .jobs-item span.failed {
+    background: var(--color-danger);
   }
 </style>

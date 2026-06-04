@@ -19,6 +19,7 @@
   import ContextMenu from './ContextMenu.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import JobsPanel from './JobsPanel.svelte'
+  import { CaretDownIcon } from 'phosphor-svelte'
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
   import { activeModuleId, activeWorkspace, workspaces, workspaceId, switchWorkspace, createWorkspace as createWorkspaceAction } from '../store'
   import { toggleJobsPanel } from '../store/jobs'
@@ -236,11 +237,19 @@
         onclick={() => workspaceMenuOpen = !workspaceMenuOpen}
       >
         <span class="workspace-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
-        <span class="workspace-type">{$activeWorkspace?.type ?? 'default'}</span>
+        <span class="workspace-chevron" aria-hidden="true">
+          <CaretDownIcon size={13} weight="bold" />
+        </span>
       </button>
 
       {#if workspaceMenuOpen}
         <div class="workspace-menu">
+          <div class="workspace-current">
+            <span class="field-label">Current workspace</span>
+            <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
+            <span class="workspace-current-type">{$activeWorkspace?.type ?? 'default'}</span>
+          </div>
+
           <label class="field-label" for="workspace-select">Workspace</label>
           <select id="workspace-select" value={$workspaceId} onchange={onWorkspaceSelect}>
             {#each $workspaces as workspace (workspace.id)}
@@ -414,7 +423,7 @@
 
   .workspace-button {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-2);
     min-width: 220px;
     max-width: 360px;
@@ -443,10 +452,29 @@
     font-weight: 600;
   }
 
-  .workspace-type {
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
+  .workspace-chevron {
+    color: var(--color-fg-secondary);
     flex-shrink: 0;
+  }
+
+  .workspace-current {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-shell-main) 58%, transparent);
+  }
+
+  .workspace-current-name {
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
+  .workspace-current-type {
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
   }
 
   .workspace-menu {

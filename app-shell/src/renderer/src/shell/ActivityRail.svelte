@@ -94,13 +94,13 @@
     width: 36px;
     height: 36px;
     border-radius: var(--radius-md);
-    color: var(--color-fg-muted);
+    color: color-mix(in srgb, var(--color-fg-secondary) 78%, var(--color-fg-muted));
     cursor: pointer;
     transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .rail-btn:hover {
-    color: var(--color-fg-secondary);
+    color: var(--color-fg-primary);
     background: var(--color-hover);
   }
 
