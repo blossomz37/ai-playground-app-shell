@@ -1,8 +1,10 @@
-# Jewel Box CSS Pass
+# Plan 22 - Jewel Box CSS Pass
 
 ## Summary
 
-Upgrade the live app’s CSS from a generic neutral theme into a reusable **Jewel Box shell theme**, based on the shared language in the mockups. Scope the first pass to shared shell chrome plus the Documents module, with a quiet centered prose canvas rather than a literal paper page.
+Upgrade the live app’s CSS from a generic neutral theme into a reusable **Jewel Box shell theme**, based on the shared language in the mockups. This pass should run after Plan 21 so it themes the new context strip, full-width status bar, on-demand inspector, and stable shell hierarchy instead of the older grid.
+
+Scope this pass to shared shell chrome plus the Documents module, with a quiet centered prose canvas rather than a literal paper page.
 
 ## Key Changes
 
@@ -13,9 +15,9 @@ Upgrade the live app’s CSS from a generic neutral theme into a reusable **Jewe
   - Keep light/dark/system support; do not remove existing generic tokens.
 
 - Update shared shell chrome in `AppShell.svelte` and shell components:
-  - Give topbar, rail, sidebar, inspector, resize handles, and status bar distinct surface roles instead of one flat `--color-bg-surface`.
+  - Give titlebar, context strip, rail, sidebar, main pane, inspector, resize handles, and full-width status bar distinct surface roles instead of one flat `--color-bg-surface`.
   - Add subtle border hierarchy, hover states, active bars, restrained glow on active controls, and compact uppercase label styling.
-  - Preserve current layout, persisted resizing, zen mode, command palette, settings, and jobs behavior.
+  - Preserve the Plan 21 layout, persisted resizing, zen mode, command palette, settings, and jobs behavior.
 
 - Upgrade Documents module styling:
   - Nav tree: use emerald/amethyst active indicators, tighter row states, clearer folder/file hierarchy, and stable ellipsis behavior.
@@ -28,6 +30,7 @@ Upgrade the live app’s CSS from a generic neutral theme into a reusable **Jewe
 - No TypeScript API, IPC, database, module contract, or behavior changes.
 - CSS tokens become the public design surface for future modules; existing tokens remain supported so other modules do not break.
 - No wholesale mockup CSS import. Implement by translating shared mockup patterns into the current Svelte structure.
+- Do not reopen Plan 21 structural decisions such as context strip ownership, inspector default, status bar placement, or shell grid areas.
 
 ## Test Plan
 
@@ -43,10 +46,12 @@ Upgrade the live app’s CSS from a generic neutral theme into a reusable **Jewe
   - App still reads as the same fixed-zone shell.
   - Documents is clearly more polished and writing-focused.
   - Active nav, editor, inspector, and status states use distinct jewel roles.
+  - The context strip and full-width status bar feel integrated with the Jewel Box theme.
   - Text remains readable in both themes and does not overflow controls.
 
 ## Assumptions
 
-- First pass applies visibly to shared shell chrome and Documents only.
+- Plan 21 has already landed or is being implemented first.
+- This pass applies visibly to shared shell chrome and Documents only.
 - Editor direction is **Quiet Canvas**: centered prose with refined typography, not a literal paper sheet and not a fully dark manuscript-only treatment.
 - Other modules may inherit improved shell tokens immediately, but their internal UI cleanup is deferred unless required to avoid obvious visual clashes.

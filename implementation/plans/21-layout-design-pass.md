@@ -1,8 +1,8 @@
-# Layout Design Pass Plan
+# Plan 21 - Layout Design Pass
 
 ## Summary
 
-Refine the existing fixed-zone app shell into a durable, module-friendly desktop workspace layout that can support authoring, AI tools, research, assets, tables, workflow runs, and future modules without redesigning the shell each time.
+Refine the existing fixed-zone app shell into a durable, module-friendly desktop workspace layout that can support authoring, AI tools, research, assets, tables, workflow runs, and future modules without redesigning the shell each time. This is the structural pass that should happen before the Jewel Box CSS pass.
 
 The pass will keep the current architecture but improve the design hierarchy:
 
@@ -10,7 +10,7 @@ The pass will keep the current architecture but improve the design hierarchy:
 - Make the **inspector closed by default** and clearly on-demand.
 - Strengthen the visual hierarchy: rail = tool, sidebar = module inventory, main = protected work surface, inspector = contextual detail.
 - Move the **status bar to full shell width** so it reads as stable app chrome.
-- Polish Documents as the reference module, without redesigning every module.
+- Lightly polish Documents as the reference module, without doing the full Jewel Box visual theme yet.
 
 ## Key Changes
 
@@ -36,11 +36,12 @@ The pass will keep the current architecture but improve the design hierarchy:
   - Use semantic layout tokens or local CSS variables for row heights, panel widths, chrome backgrounds, and canvas surfaces.
   - Make the main pane visually dominant: lower-contrast side panels, restrained borders, clearer active states, and stable scroll containment.
   - Normalize shell chrome density so it feels like a professional desktop workspace rather than stacked demo panels.
+  - Keep this pass structurally restrained: do not add the full jewel palette, glow language, or deep theme polish planned for Plan 22.
 
 - **Documents reference module**
   - Move document location/context emphasis into the context strip.
   - Keep the editor canvas calm and dominant.
-  - Tighten Documents nav/header and inspector styling to match the new shell hierarchy.
+  - Tighten Documents nav/header and inspector spacing enough to match the new shell hierarchy.
   - Do not redesign other module internals in this slice; they should remain functional under the new chrome.
 
 ## Interfaces And Types
@@ -55,11 +56,11 @@ The pass will keep the current architecture but improve the design hierarchy:
 
 ## Implementation Notes
 
-- Create the durable plan artifact as `implementation/plans/21-layout-design-pass.md` before code changes.
+- This plan is the durable artifact for the slice: `implementation/plans/21-layout-design-pass.md`.
 - Main implementation areas:
   - Shell layout/chrome components under `app-shell/src/renderer/src/shell/`
   - Layout defaults in the main layout service and browser preview shell
-  - Documents renderer views as the reference module polish pass
+  - Documents renderer views as the reference module alignment pass
 - Use Svelte 5 runes style consistent with the existing code.
 - Run the Svelte autofixer on every changed `.svelte` file before final validation.
 - Avoid module-specific shell hacks. If Documents needs context data, feed it through the new renderer context descriptor pattern so future modules can reuse the same path.
@@ -92,6 +93,7 @@ The pass will keep the current architecture but improve the design hierarchy:
 - Inspector default: **closed by default** for fresh layouts.
 - Status placement: **full shell width**.
 - Scope: **shell chrome plus Documents reference polish**.
+- Theme depth: **structural polish only**. Full Jewel Box tokens, zone accents, and prose-surface styling belong in Plan 22.
 - The activity rail remains a permanent first-class zone.
 - The context strip is shell-owned and durable; it should support future modules without creating arbitrary new panel zones.
 - The goal is not a visual reskin. The goal is a clearer, more resilient layout model that can handle many module types while preserving a stable user mental model.
