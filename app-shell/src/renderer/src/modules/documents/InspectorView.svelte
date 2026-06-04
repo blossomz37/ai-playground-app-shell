@@ -110,7 +110,8 @@
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    padding: var(--space-3) var(--space-4);
+    min-height: 34px;
+    padding: 0 var(--space-4);
     border: none;
     background: none;
     cursor: pointer;
@@ -142,7 +143,7 @@
   }
 
   .section-body {
-    padding: 0 var(--space-4) var(--space-3);
+    padding: var(--space-1) var(--space-4) var(--space-3);
   }
 
   .field {
@@ -150,7 +151,7 @@
     justify-content: space-between;
     align-items: baseline;
     gap: var(--space-2);
-    padding: 3px 0;
+    padding: 2px 0;
     font-size: var(--font-size-sm);
   }
 

@@ -10,7 +10,7 @@
   import { isDirty, editorContent, activeDoc, activeWorkspace, countWords } from '../store'
   import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
 
-  let { moduleId }: { moduleId: string | null } = $props()
+  let props = $props<{ moduleId: string | null }>()
 
   let latestJobStatus = $derived($activeJobs[0]?.message || $recentJobs[0]?.status || 'Idle')
 </script>
@@ -18,7 +18,7 @@
 <footer class="status-bar">
   <!-- Left zone: module-contributed status items -->
   <div class="zone zone-left">
-    {#if moduleId === 'shell.documents' && $activeDoc}
+    {#if props.moduleId === 'shell.documents' && $activeDoc}
       <span class="item doc-title" title={$activeDoc.title}>
         {$activeDoc.title}
       </span>
@@ -57,10 +57,10 @@
 <style>
   .status-bar {
     grid-area: statusbar;
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col);
     align-items: center;
-    justify-content: space-between;
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-2);
     gap: var(--space-3);
     background: var(--color-bg-surface);
     border-top: var(--border-subtle);
@@ -77,9 +77,23 @@
     min-width: 0;
   }
 
-  .zone-left  { flex: 1; justify-content: flex-start; }
-  .zone-center { flex: 0 1 auto; }
-  .zone-right { flex: 0 0 auto; justify-content: flex-end; }
+  .zone-left {
+    grid-column: 3;
+    justify-content: flex-start;
+  }
+
+  .zone-center {
+    grid-column: 2;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .zone-right {
+    grid-column: 3 / 5;
+    justify-self: end;
+    justify-content: flex-end;
+    padding-right: var(--space-2);
+  }
 
   .item {
     white-space: nowrap;

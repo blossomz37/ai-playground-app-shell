@@ -12,6 +12,7 @@
   import Sidebar from './Sidebar.svelte'
   import MainPane from './MainPane.svelte'
   import Inspector from './Inspector.svelte'
+  import ContextStrip from './ContextStrip.svelte'
   import StatusBar from './StatusBar.svelte'
   import CommandPalette from './CommandPalette.svelte'
   import ToastContainer from './ToastContainer.svelte'
@@ -41,14 +42,12 @@
   let inspectorVisible = $state(true)
   let zenMode = $state(false)
   let layoutLoaded = $state(false)
-  let activeModule = $state<string | null>(null)
   let workspaceMenuOpen = $state(false)
   let createWorkspaceOpen = $state(false)
   let workspaceName = $state('')
   let workspaceType = $state('authoring')
   let workspaceBusy = $state(false)
   let workspaceError = $state<string | null>(null)
-  let activeModuleUnsubscribe: (() => void) | null = null
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
   let captureJobsListener: (() => void) | null = null
@@ -62,13 +61,12 @@
   let resizeStartX = 0
   let resizeStartWidth = 0
 
-  // Compute grid-template-columns dynamically
-  // In zen mode, hide the activity rail too for full immersion
-  let gridColumns = $derived(
-    zenMode
-      ? '0px 0px 1fr 0px'
-      : `48px ${sidebarVisible ? sidebarWidth + 'px' : '0px'} 1fr ${inspectorVisible ? inspectorWidth + 'px' : '0px'}`
-  )
+  // Compute shared shell tracks dynamically. Rows that represent the same zones
+  // consume these variables so titlebar/context/body/status stay aligned.
+  let railColumn = $derived(zenMode ? '0px' : '48px')
+  let sidebarColumn = $derived(zenMode ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
+  let inspectorColumn = $derived(zenMode ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
+  let gridColumns = $derived('var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col)')
 
   function applyLayout(state: LayoutState) {
     sidebarWidth = state.sidebarWidth
@@ -94,7 +92,6 @@
   }
 
   async function selectModule(id: string) {
-    activeModule = id
     activeModuleId.set(id)
     await window.shell.modules.activate(id)
   }
@@ -162,10 +159,6 @@
   }
 
   onMount(async () => {
-    activeModuleUnsubscribe = activeModuleId.subscribe((id) => {
-      activeModule = id
-    })
-
     // Restore persisted layout
     try {
       const state = await window.shell.layout.get()
@@ -207,7 +200,6 @@
   })
 
   onDestroy(() => {
-    activeModuleUnsubscribe?.()
     if (captureModuleListener) {
       window.removeEventListener('shell:capture-select-module', captureModuleListener)
     }
@@ -228,10 +220,14 @@
   class:zen={zenMode}
   class:resizing={resizing !== null}
   style:grid-template-columns={gridColumns}
+  style:--_rail-col={railColumn}
+  style:--_sidebar-col={sidebarColumn}
+  style:--_inspector-col={inspectorColumn}
   style:--_sidebar-w="{sidebarWidth}px"
   style:--_inspector-w="{inspectorWidth}px"
 >
   <div class="topbar">
+    <div class="topbar-drag-spacer"></div>
     <div class="workspace-switcher">
       <button
         class="workspace-button"
@@ -285,31 +281,26 @@
       {/if}
     </div>
   </div>
+  <ContextStrip
+    moduleId={$activeModuleId}
+    {sidebarVisible}
+    {inspectorVisible}
+    {zenMode}
+    onToggleSidebar={toggleSidebar}
+    onToggleInspector={toggleInspector}
+    onToggleZen={toggleZen}
+  />
   {#if !zenMode}
-    <ActivityRail moduleId={activeModule} onSelect={selectModule} />
+    <ActivityRail moduleId={$activeModuleId} onSelect={selectModule} />
   {/if}
   {#if sidebarVisible && !zenMode}
-    <Sidebar moduleId={activeModule} />
+    {#key $activeModuleId}
+      <Sidebar moduleId={$activeModuleId} />
+    {/key}
   {/if}
-  {#if activeModule === 'shell.documents'}
-    <MainPane moduleId="shell.documents" />
-  {:else if activeModule === 'shell.journal'}
-    <MainPane moduleId="shell.journal" />
-  {:else if activeModule === 'shell.assets'}
-    <MainPane moduleId="shell.assets" />
-  {:else if activeModule === 'shell.workflow'}
-    <MainPane moduleId="shell.workflow" />
-  {:else if activeModule === 'shell.tableview'}
-    <MainPane moduleId="shell.tableview" />
-  {:else if activeModule === 'shell.aichat'}
-    <MainPane moduleId="shell.aichat" />
-  {:else if activeModule === 'shell.web'}
-    <MainPane moduleId="shell.web" />
-  {:else if activeModule === 'shell.promptstudio'}
-    <MainPane moduleId="shell.promptstudio" />
-  {:else}
-    <MainPane moduleId={null} />
-  {/if}
+  {#key $activeModuleId}
+    <MainPane moduleId={$activeModuleId} />
+  {/key}
 
   <!-- Sidebar resize handle -->
   {#if sidebarVisible && !zenMode}
@@ -339,32 +330,12 @@
       onpointerup={onResizeEnd}
       ondblclick={() => onResizeReset('inspector')}
     ></div>
-    {#if activeModule === 'shell.documents'}
-      <Inspector moduleId="shell.documents" />
-    {:else if activeModule === 'shell.journal'}
-      <Inspector moduleId="shell.journal" />
-    {:else if activeModule === 'shell.assets'}
-      <Inspector moduleId="shell.assets" />
-    {:else if activeModule === 'shell.workflow'}
-      <Inspector moduleId="shell.workflow" />
-    {:else if activeModule === 'shell.tableview'}
-      <Inspector moduleId="shell.tableview" />
-    {:else if activeModule === 'shell.aichat'}
-      <Inspector moduleId="shell.aichat" />
-    {:else if activeModule === 'shell.web'}
-      <Inspector moduleId="shell.web" />
-    {:else if activeModule === 'shell.promptstudio'}
-      <Inspector moduleId="shell.promptstudio" />
-    {:else}
-      <Inspector moduleId={null} />
-    {/if}
+    {#key $activeModuleId}
+      <Inspector moduleId={$activeModuleId} />
+    {/key}
   {/if}
   {#if !zenMode}
-    {#if activeModule === 'shell.documents'}
-      <StatusBar moduleId="shell.documents" />
-    {:else}
-      <StatusBar moduleId={null} />
-    {/if}
+    <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} />
   {/if}
 </div>
 
@@ -376,12 +347,17 @@
 
 <style>
   .app-shell {
+    --_topbar-h: 36px;
+    --_context-h: 34px;
+    --_status-h: 30px;
+
     display: grid;
     grid-template-areas:
       "topbar topbar topbar topbar"
+      "contextstrip contextstrip contextstrip contextstrip"
       "rail   sidebar main   inspector"
-      "rail   sidebar statusbar statusbar";
-    grid-template-rows: 36px 1fr 30px;
+      "statusbar statusbar statusbar statusbar";
+    grid-template-rows: var(--_topbar-h) var(--_context-h) 1fr var(--_status-h);
     height: 100vh;
     overflow: hidden;
     background: var(--color-bg-base);
@@ -399,25 +375,36 @@
   .app-shell.zen {
     grid-template-areas:
       "topbar topbar topbar topbar"
+      "contextstrip contextstrip contextstrip contextstrip"
       "main   main   main   main"
       "main   main   main   main";
-    grid-template-rows: 36px 1fr 0px;
+    grid-template-rows: var(--_topbar-h) var(--_context-h) 1fr 0px;
   }
 
   /* Full-width draggable zone that clears the macOS traffic lights.
      36px = standard macOS Big Sur+ title bar height with hiddenInset. */
   .topbar {
     grid-area: topbar;
+    position: relative;
     background: var(--color-bg-surface);
     -webkit-app-region: drag;
     border-bottom: var(--border-subtle);
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col);
     align-items: center;
-    padding-left: 84px;
     padding-right: var(--space-3);
   }
 
+  .topbar-drag-spacer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 84px;
+  }
+
   .workspace-switcher {
+    grid-column: 2 / 4;
     position: relative;
     -webkit-app-region: no-drag;
   }
@@ -531,8 +518,8 @@
   /* ── Resize handles ──────────────────────────────────────────────────── */
   .resize-handle {
     position: absolute;
-    top: 36px;           /* below topbar */
-    bottom: 30px;        /* above status bar */
+    top: calc(var(--_topbar-h) + var(--_context-h));
+    bottom: var(--_status-h);
     width: 5px;
     cursor: col-resize;
     z-index: 100;
@@ -547,7 +534,7 @@
 
   .resize-sidebar {
     /* Positioned at the right edge of the sidebar column */
-    left: calc(48px + var(--_sidebar-w, 240px) - 2px);
+    left: calc(var(--_rail-col) + var(--_sidebar-w, 240px) - 2px);
   }
 
   .resize-inspector {

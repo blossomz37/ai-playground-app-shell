@@ -2,16 +2,15 @@
   import { docTree, activeDocId, selectDoc } from '../../store'
   import { showContextMenu, type ContextMenuItem } from '../../store/contextmenu'
   import { slide } from 'svelte/transition'
+  import { SvelteSet } from 'svelte/reactivity'
   import type { Doc } from '@shared/module-contract'
 
   interface DocNode extends Doc { children: DocNode[] }
 
-  let expanded = $state(new Set<string>())
+  let expanded = new SvelteSet<string>()
 
   function toggle(id: string) {
-    const next = new Set(expanded)
-    next.has(id) ? next.delete(id) : next.add(id)
-    expanded = next
+    expanded.has(id) ? expanded.delete(id) : expanded.add(id)
   }
 
   /** Collect all folder IDs from the tree. */
@@ -27,14 +26,17 @@
   }
 
   function expandAll() {
-    expanded = new Set(allFolderIds($docTree as DocNode[]))
+    expanded.clear()
+    for (const id of allFolderIds($docTree as DocNode[])) {
+      expanded.add(id)
+    }
   }
 
   function collapseAll() {
-    expanded = new Set()
+    expanded.clear()
   }
 
-  let allExpanded = $derived(() => {
+  let allExpanded = $derived.by(() => {
     const folderIds = allFolderIds($docTree as DocNode[])
     return folderIds.length > 0 && folderIds.every(id => expanded.has(id))
   })
@@ -78,7 +80,7 @@
 
   {#if node.kind === 'folder' && expanded.has(node.id)}
     <div transition:slide={{ duration: 150 }}>
-      {#each node.children as child}
+      {#each node.children as child (child.id)}
         {@render treeNode(child, depth + 1)}
       {/each}
     </div>
@@ -90,15 +92,15 @@
     <span class="nav-title">Manuscript</span>
     <button
       class="collapse-btn"
-      onclick={() => allExpanded() ? collapseAll() : expandAll()}
-      title={allExpanded() ? 'Collapse all' : 'Expand all'}
-      aria-label={allExpanded() ? 'Collapse all folders' : 'Expand all folders'}
+      onclick={() => allExpanded ? collapseAll() : expandAll()}
+      title={allExpanded ? 'Collapse all' : 'Expand all'}
+      aria-label={allExpanded ? 'Collapse all folders' : 'Expand all folders'}
     >
-      {allExpanded() ? '⊟' : '⊞'}
+      {allExpanded ? '⊟' : '⊞'}
     </button>
   </header>
   <div class="nav-tree">
-    {#each $docTree as node}
+    {#each $docTree as node (node.id)}
       {@render treeNode(node as DocNode, 0)}
     {/each}
   </div>
@@ -116,7 +118,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3);
+    min-height: 34px;
+    padding: 0 var(--space-3);
     border-bottom: var(--border-subtle);
     flex-shrink: 0;
   }
@@ -149,14 +152,14 @@
   .nav-tree {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-2) 0;
+    padding: var(--space-1) 0;
   }
 
   .tree-item {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    height: 28px;
+    height: 26px;
     padding-right: var(--space-3);
     cursor: pointer;
     color: var(--color-fg-secondary);

@@ -70,7 +70,7 @@ const DEFAULT_LAYOUT: LayoutState = {
   sidebarWidth: 240,
   inspectorWidth: 280,
   sidebarVisible: true,
-  inspectorVisible: true,
+  inspectorVisible: false,
   zenMode: false
 }
 

@@ -16,7 +16,7 @@ const DEFAULTS: LayoutState = {
   sidebarWidth: 240,
   inspectorWidth: 280,
   sidebarVisible: true,
-  inspectorVisible: true,
+  inspectorVisible: false,
   zenMode: false
 }
 
@@ -24,7 +24,7 @@ const store = createSettingsStore('shell')
 
 // Pre-zen visibility state — kept in memory so we can restore after exiting zen.
 let preZenSidebar = true
-let preZenInspector = true
+let preZenInspector = false
 
 /**
  * Layout manager service.
@@ -86,4 +86,3 @@ export const layoutService = {
     }
   }
 }
-

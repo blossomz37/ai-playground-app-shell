@@ -10,18 +10,60 @@
   import { Markdown } from 'tiptap-markdown'
   import {
     activeDoc, editorContent, saveDoc, setEditorContent,
-    editorSettings, scheduleAutoSave, cancelAutoSave
+    editorSettings, scheduleAutoSave, cancelAutoSave, countWords, isDirty
   } from '../../store'
   import { registerCommand } from '../../store/commands'
+  import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
+  import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable } from '@shared/module-contract'
   import EditorToolbar from './EditorToolbar.svelte'
 
-  let element = $state<HTMLDivElement>()
+  let element: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
   let saveCommand: Disposable | null = null
+  let editorContentUnsubscribe: (() => void) | null = null
+  let contextUnsubscribers: Array<() => void> = []
   let captureMarkdownListener: ((event: Event) => void) | null = null
 
+  function buildDocumentContextDescriptor(): ShellContextDescriptor {
+    const doc = get(activeDoc)
+    const content = get(editorContent)
+    const dirty = get(isDirty)
+
+    if (!doc) {
+      return {
+        moduleId: 'shell.documents',
+        primaryLabel: 'Manuscript',
+        secondaryLabel: 'Select a document',
+        trail: [{ id: 'documents-root', label: 'Manuscript' }]
+      }
+    }
+
+    return {
+      moduleId: 'shell.documents',
+      primaryLabel: doc.title,
+      secondaryLabel: `${doc.kind} · ${countWords(content).toLocaleString()} words · ${dirty ? 'unsaved' : 'saved'}`,
+      trail: [
+        { id: 'documents-root', label: 'Manuscript' },
+        { id: doc.id, label: doc.title }
+      ],
+      actions: [
+        { id: 'documents-save', label: 'Save', commandId: 'documents.save', disabled: !dirty }
+      ]
+    }
+  }
+
+  function refreshDocumentContextDescriptor(): void {
+    setShellContextDescriptor(buildDocumentContextDescriptor())
+  }
+
+  function editorHost(node: HTMLDivElement): void {
+    element = node
+  }
+
   onMount(() => {
+    if (!element) return
+
     editor = new Editor({
       element,
       extensions: [
@@ -44,6 +86,19 @@
     // and the command palette both dispatch here via executeCommand.
     saveCommand = registerCommand('documents.save', () => saveDoc())
 
+    editorContentUnsubscribe = editorContent.subscribe((md) => {
+      if (!editor) return
+      if (md !== editor.storage.markdown.getMarkdown()) {
+        editor.commands.setContent(md, { emitUpdate: false })
+      }
+    })
+
+    contextUnsubscribers = [
+      activeDoc.subscribe(refreshDocumentContextDescriptor),
+      editorContent.subscribe(refreshDocumentContextDescriptor),
+      isDirty.subscribe(refreshDocumentContextDescriptor)
+    ]
+
     captureMarkdownListener = (event: Event) => {
       const markdown = (event as CustomEvent<string>).detail
       if (!markdown || !editor) return
@@ -55,22 +110,15 @@
 
   onDestroy(() => {
     cancelAutoSave()
+    editorContentUnsubscribe?.()
+    for (const unsubscribe of contextUnsubscribers) unsubscribe()
+    contextUnsubscribers = []
+    clearShellContextDescriptor('shell.documents')
     if (captureMarkdownListener) {
       window.removeEventListener('shell:capture-document-markdown', captureMarkdownListener)
     }
     saveCommand?.dispose()
     editor?.destroy()
-  })
-
-  // Push store → editor only when the content arrives from outside the editor
-  // (document switch, external reload). Editor-originated edits already match the
-  // store value, so the equality guard makes typing a no-op here — no feedback loop.
-  $effect(() => {
-    const md = $editorContent
-    if (!editor) return
-    if (md !== editor.storage.markdown.getMarkdown()) {
-      editor.commands.setContent(md, { emitUpdate: false })
-    }
   })
 </script>
 
@@ -78,7 +126,6 @@
   {#if $activeDoc}
     <header class="doc-header">
       <h1 class="doc-title">{$activeDoc.title}</h1>
-      <span class="doc-kind">{$activeDoc.kind}</span>
     </header>
   {/if}
 
@@ -86,7 +133,7 @@
   <div
     class="editor-area"
     class:hidden={!$activeDoc}
-    bind:this={element}
+    {@attach editorHost}
     role="textbox"
     tabindex="-1"
     style:--editor-font={$editorSettings.fontFamily}
@@ -114,7 +161,7 @@
     display: flex;
     align-items: baseline;
     gap: var(--space-3);
-    padding: var(--space-5) var(--space-6) var(--space-3);
+    padding: var(--space-4) var(--space-6) var(--space-3);
     border-bottom: var(--border-subtle);
     flex-shrink: 0;
   }
@@ -127,14 +174,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .doc-kind {
-    font-size: var(--font-size-xs);
-    color: var(--color-fg-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    flex-shrink: 0;
   }
 
   .editor-area {
@@ -157,7 +196,7 @@
     font-family: var(--editor-font, var(--font-serif));
     font-size: var(--editor-font-size, var(--font-size-lg));
     line-height: var(--line-height);
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-6);
     max-width: 72ch;
   }
 

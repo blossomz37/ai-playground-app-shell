@@ -16,25 +16,25 @@
   // Prompt Studio
   import PromptStudioMainView from '../modules/promptstudio/MainView.svelte'
 
-  let { moduleId }: { moduleId: string | null } = $props()
+  let props = $props<{ moduleId: string | null }>()
 </script>
 
 <main class="main-pane">
-  {#if moduleId === 'shell.documents'}
+  {#if props.moduleId === 'shell.documents'}
     <DocsMainView />
-  {:else if moduleId === 'shell.journal'}
+  {:else if props.moduleId === 'shell.journal'}
     <JournalMainView />
-  {:else if moduleId === 'shell.assets'}
+  {:else if props.moduleId === 'shell.assets'}
     <AssetsMainView />
-  {:else if moduleId === 'shell.workflow'}
+  {:else if props.moduleId === 'shell.workflow'}
     <WorkflowMainView />
-  {:else if moduleId === 'shell.tableview'}
+  {:else if props.moduleId === 'shell.tableview'}
     <TableMainView />
-  {:else if moduleId === 'shell.aichat'}
+  {:else if props.moduleId === 'shell.aichat'}
     <AIChatMainView />
-  {:else if moduleId === 'shell.web'}
+  {:else if props.moduleId === 'shell.web'}
     <WebMainView />
-  {:else if moduleId === 'shell.promptstudio'}
+  {:else if props.moduleId === 'shell.promptstudio'}
     <PromptStudioMainView />
   {:else}
     <div class="empty">

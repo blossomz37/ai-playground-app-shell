@@ -16,25 +16,25 @@
   // Prompt Studio
   import PromptStudioInspectorView from '../modules/promptstudio/InspectorView.svelte'
 
-  let { moduleId }: { moduleId: string | null } = $props()
+  let props = $props<{ moduleId: string | null }>()
 </script>
 
 <aside class="inspector">
-  {#if moduleId === 'shell.documents'}
+  {#if props.moduleId === 'shell.documents'}
     <DocsInspectorView />
-  {:else if moduleId === 'shell.journal'}
+  {:else if props.moduleId === 'shell.journal'}
     <JournalInspectorView />
-  {:else if moduleId === 'shell.assets'}
+  {:else if props.moduleId === 'shell.assets'}
     <AssetsInspectorView />
-  {:else if moduleId === 'shell.workflow'}
+  {:else if props.moduleId === 'shell.workflow'}
     <WorkflowInspectorView />
-  {:else if moduleId === 'shell.tableview'}
+  {:else if props.moduleId === 'shell.tableview'}
     <TableInspectorView />
-  {:else if moduleId === 'shell.aichat'}
+  {:else if props.moduleId === 'shell.aichat'}
     <AIChatInspectorView />
-  {:else if moduleId === 'shell.web'}
+  {:else if props.moduleId === 'shell.web'}
     <WebInspectorView />
-  {:else if moduleId === 'shell.promptstudio'}
+  {:else if props.moduleId === 'shell.promptstudio'}
     <PromptStudioInspectorView />
   {:else}
     <div class="empty">Nothing selected</div>

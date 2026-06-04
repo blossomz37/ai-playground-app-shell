@@ -11,7 +11,7 @@ export type { ThemeMode }
 export const workspaceId   = writable<string>('ws-default')
 export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
-export const activeModuleId = writable<string | null>(null)
+export const activeModuleId = writable<string | null>('shell.documents')
 
 export const documentsState = getModuleState<DocumentsStateSlice>('shell.documents', 'documents')
 

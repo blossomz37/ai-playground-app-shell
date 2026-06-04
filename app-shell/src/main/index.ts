@@ -135,6 +135,12 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (documentId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (webUrl) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('web:capture-navigate', { detail: ${JSON.stringify(webUrl)} }))`

@@ -16,25 +16,25 @@
   // Prompt Studio
   import PromptStudioNavView from '../modules/promptstudio/NavView.svelte'
 
-  let { moduleId }: { moduleId: string | null } = $props()
+  let props = $props<{ moduleId: string | null }>()
 </script>
 
 <aside class="sidebar">
-  {#if moduleId === 'shell.documents'}
+  {#if props.moduleId === 'shell.documents'}
     <DocsNavView />
-  {:else if moduleId === 'shell.journal'}
+  {:else if props.moduleId === 'shell.journal'}
     <JournalNavView />
-  {:else if moduleId === 'shell.assets'}
+  {:else if props.moduleId === 'shell.assets'}
     <AssetsNavView />
-  {:else if moduleId === 'shell.workflow'}
+  {:else if props.moduleId === 'shell.workflow'}
     <WorkflowNavView />
-  {:else if moduleId === 'shell.tableview'}
+  {:else if props.moduleId === 'shell.tableview'}
     <TableNavView />
-  {:else if moduleId === 'shell.aichat'}
+  {:else if props.moduleId === 'shell.aichat'}
     <AIChatNavView />
-  {:else if moduleId === 'shell.web'}
+  {:else if props.moduleId === 'shell.web'}
     <WebNavView />
-  {:else if moduleId === 'shell.promptstudio'}
+  {:else if props.moduleId === 'shell.promptstudio'}
     <PromptStudioNavView />
   {:else}
     <div class="empty">Nothing selected</div>
