@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, nativeTheme } from 'electron'
 import { join, dirname } from 'path'
-import { mkdirSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 import { initDb } from './core/db'
 import { events } from './core/events'
@@ -192,7 +192,14 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
 
 let initialBgColor = '#1e1e2e' // Updated below once DB is ready
 
+function appIconPath(): string {
+  const devIconPath = join(__dirname, '../../resources/icon.png')
+  if (existsSync(devIconPath)) return devIconPath
+  return join(process.resourcesPath, 'icon.png')
+}
+
 function createWindow(): void {
+  const icon = appIconPath()
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -200,6 +207,7 @@ function createWindow(): void {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     backgroundColor: initialBgColor,
+    icon,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -244,6 +252,10 @@ app.whenReady().then(async () => {
   const isLight = savedTheme === 'light' ||
     (savedTheme === 'system' && !nativeTheme.shouldUseDarkColors)
   initialBgColor = isLight ? '#f5f3f0' : '#1e1e2e'
+  const icon = appIconPath()
+  if (process.platform === 'darwin' && existsSync(icon)) {
+    app.dock?.setIcon(icon)
+  }
 
   // 1. Register all modules — reads manifests only, no code runs.
   const allModules = [
