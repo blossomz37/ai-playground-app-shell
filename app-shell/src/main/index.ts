@@ -17,6 +17,9 @@ import { webModule } from './modules/web'
 import { promptStudioModule } from './modules/promptstudio'
 import { registerIpcHandlers } from './ipc'
 
+const APP_NAME = 'App Shell'
+app.setName(APP_NAME)
+
 /**
  * Dev-only UI-evidence capture. Gated by the SHELL_CAPTURE env var.
  *
@@ -205,6 +208,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    title: APP_NAME,
     titleBarStyle: 'hiddenInset',
     backgroundColor: initialBgColor,
     icon,

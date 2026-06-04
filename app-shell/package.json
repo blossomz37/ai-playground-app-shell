@@ -1,5 +1,6 @@
 {
   "name": "app-shell",
+  "productName": "App Shell",
   "version": "0.1.0",
   "description": "Reusable desktop shell — Electron + Svelte + SQLite",
   "main": "./out/main/index.js",
