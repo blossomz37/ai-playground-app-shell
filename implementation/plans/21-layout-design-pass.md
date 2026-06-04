@@ -16,6 +16,7 @@ The pass will keep the current architecture but improve the design hierarchy:
 
 - **Shell chrome**
   - Restructure the shell grid to four rows: titlebar, context strip, body, full-width status bar.
+  - Treat the root shell grid as a layout contract: titlebar cells, context-strip cells, body columns, resize handles, and status regions should share the same column tracks and width variables wherever they represent the same zone.
   - Keep the activity rail, sidebar, main pane, and inspector as fixed shell zones.
   - Preserve existing resize/toggle/zen behavior, updating handle positions for the new titlebar + context strip height.
   - Keep shell layout stable across modules; modules fill zones but do not create new layout regions.
@@ -35,6 +36,7 @@ The pass will keep the current architecture but improve the design hierarchy:
 - **Visual hierarchy**
   - Use semantic layout tokens or local CSS variables for row heights, panel widths, chrome backgrounds, and canvas surfaces.
   - Make the main pane visually dominant: lower-contrast side panels, restrained borders, clearer active states, and stable scroll containment.
+  - Prefer one parent grid with shared track variables over independently flexed rows that merely approximate alignment; nested module layouts should stay inside their assigned zone.
   - Normalize shell chrome density so it feels like a professional desktop workspace rather than stacked demo panels.
   - Keep this pass structurally restrained: do not add the full jewel palette, glow language, or deep theme polish planned for Plan 22.
 
@@ -73,6 +75,7 @@ The pass will keep the current architecture but improve the design hierarchy:
 - Validate interactions:
   - Fresh launch shows inspector closed.
   - Context strip shows workspace, module, and Documents active document context.
+  - Titlebar/context/body/status alignment remains coherent when the sidebar and inspector are open, closed, and resized.
   - Cmd+I and the context-strip toggle open/close the inspector.
   - Sidebar resize, inspector resize, sidebar toggle, and zen mode still work.
   - Documents editing, word count, save state, and version/history inspector still work.
