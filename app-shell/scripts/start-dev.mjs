@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 
 const APP_NAME = 'App Shell'
 const APP_BUNDLE_ID = 'com.carlosantiago.appshell.dev'
+const APP_BUNDLE_NAME = `${APP_NAME}.app`
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appRoot = resolve(scriptDir, '..')
@@ -15,7 +16,7 @@ delete env.ELECTRON_RUN_AS_NODE
 if (process.platform === 'darwin') {
   env.ELECTRON_EXEC_PATH = join(
     prepareMacDevElectronBundle(),
-    'Electron.app',
+    APP_BUNDLE_NAME,
     'Contents',
     'MacOS',
     'Electron'
@@ -47,7 +48,7 @@ function prepareMacDevElectronBundle() {
   const sourceBundle = join(sourceDist, 'Electron.app')
   const sourcePlist = join(sourceBundle, 'Contents', 'Info.plist')
   const devDist = join(appRoot, '.electron-dev')
-  const targetBundle = join(devDist, 'Electron.app')
+  const targetBundle = join(devDist, APP_BUNDLE_NAME)
   const targetPlist = join(targetBundle, 'Contents', 'Info.plist')
   const markerPath = join(devDist, 'app-shell-electron-dev.json')
 
@@ -62,6 +63,7 @@ function prepareMacDevElectronBundle() {
     existsSync(targetPlist) &&
     marker?.sourceVersion === sourceVersion &&
     marker?.sourceMtimeMs === sourceMtimeMs &&
+    marker?.appBundleName === APP_BUNDLE_NAME &&
     readPlistString(targetPlist, 'CFBundleDisplayName') === APP_NAME &&
     readPlistString(targetPlist, 'CFBundleName') === APP_NAME &&
     readPlistString(targetPlist, 'CFBundleIdentifier') === APP_BUNDLE_ID
@@ -83,7 +85,11 @@ function prepareMacDevElectronBundle() {
   writeFileSync(targetPlist, plist)
   writeFileSync(
     markerPath,
-    JSON.stringify({ appName: APP_NAME, bundleId: APP_BUNDLE_ID, sourceVersion, sourceMtimeMs }, null, 2)
+    JSON.stringify(
+      { appName: APP_NAME, appBundleName: APP_BUNDLE_NAME, bundleId: APP_BUNDLE_ID, sourceVersion, sourceMtimeMs },
+      null,
+      2
+    )
   )
 
   return devDist
