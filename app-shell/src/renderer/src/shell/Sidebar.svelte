@@ -46,8 +46,9 @@
     grid-area: sidebar;
     display: flex;
     flex-direction: column;
-    background: var(--color-bg-surface);
-    border-right: var(--border-subtle);
+    background: var(--color-shell-sidebar);
+    border-right: 1px solid var(--color-border-strong);
+    box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 44%, transparent);
     overflow: hidden;
   }
 

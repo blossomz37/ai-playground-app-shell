@@ -37,6 +37,21 @@
 
   /* Utility aliases */
   --color-fg-accent: var(--color-accent);
+
+  /* Jewel palette */
+  --jewel-ruby:       #9f1239;
+  --jewel-amber:      #b45309;
+  --jewel-citrine:    #ca8a04;
+  --jewel-emerald:    #047857;
+  --jewel-sapphire:   #1d4ed8;
+  --jewel-amethyst:   #6d28d9;
+  --jewel-tourmaline: #be185d;
+
+  /* Zone accents */
+  --accent-nav:       var(--jewel-emerald);
+  --accent-editor:    var(--jewel-sapphire);
+  --accent-inspector: var(--jewel-amethyst);
+  --accent-status:    var(--jewel-citrine);
 }
 
 /* ── Dark palette (default) ───────────────────────────────────────────────── */
@@ -54,6 +69,17 @@
   --color-danger:      #f38ba8;
   --color-success:     #a6e3a1;
   --color-warn:        #fab387;
+  --color-shell-topbar:    #171725;
+  --color-shell-rail:      #1a1a2a;
+  --color-shell-sidebar:   #202033;
+  --color-shell-main:      #191923;
+  --color-shell-inspector: #211f33;
+  --color-shell-status:    #161622;
+  --color-hover:           rgb(255 255 255 / 0.055);
+  --color-border-strong:   #5b5f78;
+  --color-panel-glint:     rgb(255 255 255 / 0.06);
+  --shadow-panel:          0 16px 42px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.035);
+  --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, transparent), 0 0 18px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 /* Explicit dark attribute — mirrors the default :root colors above */
@@ -71,6 +97,17 @@
   --color-danger:      #f38ba8;
   --color-success:     #a6e3a1;
   --color-warn:        #fab387;
+  --color-shell-topbar:    #171725;
+  --color-shell-rail:      #1a1a2a;
+  --color-shell-sidebar:   #202033;
+  --color-shell-main:      #191923;
+  --color-shell-inspector: #211f33;
+  --color-shell-status:    #161622;
+  --color-hover:           rgb(255 255 255 / 0.055);
+  --color-border-strong:   #5b5f78;
+  --color-panel-glint:     rgb(255 255 255 / 0.06);
+  --shadow-panel:          0 16px 42px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.035);
+  --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, transparent), 0 0 18px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 /* ── Light palette ────────────────────────────────────────────────────────── */
@@ -88,6 +125,17 @@
   --color-danger:      #c53d56;
   --color-success:     #2d8a4e;
   --color-warn:        #c47a2e;
+  --color-shell-topbar:    #e8e4de;
+  --color-shell-rail:      #e1ddd7;
+  --color-shell-sidebar:   #ede9e2;
+  --color-shell-main:      #f7f5f1;
+  --color-shell-inspector: #ebe7f1;
+  --color-shell-status:    #e6e2db;
+  --color-hover:           rgb(30 30 46 / 0.06);
+  --color-border-strong:   #aaa296;
+  --color-panel-glint:     rgb(255 255 255 / 0.62);
+  --shadow-panel:          0 16px 38px rgb(30 30 46 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.78);
+  --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 /* ── System mode fallback ─────────────────────────────────────────────────── *
@@ -111,5 +159,16 @@
     --color-danger:      #c53d56;
     --color-success:     #2d8a4e;
     --color-warn:        #c47a2e;
+    --color-shell-topbar:    #e8e4de;
+    --color-shell-rail:      #e1ddd7;
+    --color-shell-sidebar:   #ede9e2;
+    --color-shell-main:      #f7f5f1;
+    --color-shell-inspector: #ebe7f1;
+    --color-shell-status:    #e6e2db;
+    --color-hover:           rgb(30 30 46 / 0.06);
+    --color-border-strong:   #aaa296;
+    --color-panel-glint:     rgb(255 255 255 / 0.62);
+    --shadow-panel:          0 16px 38px rgb(30 30 46 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.78);
+    --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 16%, transparent);
   }
 }

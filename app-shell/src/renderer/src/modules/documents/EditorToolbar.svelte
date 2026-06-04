@@ -31,6 +31,10 @@
 
   let raf = 0
 
+  function toolbarHost(node: HTMLDivElement): void {
+    toolbarEl = node
+  }
+
   function updatePosition(): void {
     if (!editor || editor.state.selection.empty) {
       visible = false
@@ -105,7 +109,7 @@
 {#if visible && editor}
   <div
     class="editor-toolbar"
-    bind:this={toolbarEl}
+    {@attach toolbarHost}
     style:left="{x}px"
     style:top="{y}px"
     role="toolbar"
@@ -174,13 +178,11 @@
     gap: 2px;
     padding: 4px 6px;
     border-radius: var(--radius-md);
-    background: rgba(36, 36, 62, 0.88);
+    background: color-mix(in srgb, var(--color-shell-inspector) 88%, transparent);
     backdrop-filter: blur(16px) saturate(1.4);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
-    border: 1px solid rgba(137, 180, 250, 0.15);
-    box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.4),
-      0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 26%, var(--color-border));
+    box-shadow: var(--shadow-panel);
     pointer-events: auto;
     animation: toolbar-in 0.12s ease-out;
   }
@@ -202,18 +204,19 @@
     font-size: var(--font-size-sm);
     font-family: var(--font-sans);
     cursor: pointer;
-    transition: color 0.1s, background 0.1s;
+    transition: color 0.1s, background 0.1s, box-shadow 0.1s;
     line-height: 1;
   }
 
   .tb-btn:hover {
     color: var(--color-fg-primary);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--color-hover);
   }
 
   .tb-btn.active {
-    color: var(--color-accent);
-    background: var(--color-accent-dim);
+    color: var(--color-fg-primary);
+    background: color-mix(in srgb, var(--accent-editor) 22%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-inspector) 30%, transparent);
   }
 
   .tb-btn.mono {
@@ -231,7 +234,7 @@
   .tb-sep {
     width: 1px;
     height: 16px;
-    background: var(--color-border);
+    background: color-mix(in srgb, var(--accent-inspector) 28%, var(--color-border));
     opacity: 0.5;
     margin: 0 2px;
     flex-shrink: 0;

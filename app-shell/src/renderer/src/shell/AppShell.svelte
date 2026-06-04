@@ -360,7 +360,9 @@
     grid-template-rows: var(--_topbar-h) var(--_context-h) 1fr var(--_status-h);
     height: 100vh;
     overflow: hidden;
-    background: var(--color-bg-base);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 80%, transparent), transparent 180px),
+      var(--color-shell-main);
     position: relative;
     /* Smooth panel slide transitions */
     transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -386,13 +388,14 @@
   .topbar {
     grid-area: topbar;
     position: relative;
-    background: var(--color-bg-surface);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 92%, var(--color-panel-glint)), var(--color-shell-topbar));
     -webkit-app-region: drag;
-    border-bottom: var(--border-subtle);
+    border-bottom: 1px solid var(--color-border-strong);
     display: grid;
     grid-template-columns: var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col);
     align-items: center;
     padding-right: var(--space-3);
+    box-shadow: inset 0 1px 0 var(--color-panel-glint);
   }
 
   .topbar-drag-spacer {
@@ -419,13 +422,17 @@
     padding: 0 var(--space-3);
     border-radius: var(--radius-md);
     color: var(--color-fg-primary);
-    background: transparent;
-    border: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-shell-topbar) 82%, var(--color-panel-glint));
+    border: 1px solid color-mix(in srgb, var(--color-border) 86%, var(--accent-editor));
     cursor: pointer;
+    box-shadow: inset 0 1px 0 var(--color-panel-glint);
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .workspace-button:hover {
-    background: var(--color-bg-overlay);
+    background: var(--color-hover);
+    border-color: color-mix(in srgb, var(--accent-editor) 46%, var(--color-border));
+    box-shadow: var(--shadow-active-glow);
   }
 
   .workspace-name {
@@ -452,16 +459,17 @@
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-3);
-    border: var(--border-subtle);
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
-    background: var(--color-bg-surface);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+    background: var(--color-shell-sidebar);
+    box-shadow: var(--shadow-panel);
   }
 
   .field-label {
     font-size: var(--font-size-xs);
     color: var(--color-fg-muted);
     font-weight: 600;
+    text-transform: uppercase;
   }
 
   .workspace-menu select,
@@ -469,9 +477,9 @@
     width: 100%;
     min-height: 30px;
     padding: 0 var(--space-2);
-    border: var(--border-subtle);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: var(--color-bg-base);
+    background: var(--color-shell-main);
     color: var(--color-fg-primary);
   }
 
@@ -480,17 +488,17 @@
     min-height: 30px;
     padding: 0 var(--space-3);
     border-radius: var(--radius-sm);
-    background: var(--color-accent);
-    color: var(--color-bg-base);
+    background: var(--accent-editor);
+    color: white;
     font-size: var(--font-size-sm);
     font-weight: 600;
     cursor: pointer;
   }
 
   .new-workspace-toggle {
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--accent-nav) 13%, transparent);
     color: var(--color-fg-primary);
-    border: var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--accent-nav) 34%, var(--color-border));
   }
 
   .workspace-form {
@@ -523,13 +531,14 @@
     width: 5px;
     cursor: col-resize;
     z-index: 100;
-    transition: background 0.15s;
+    transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
   }
 
   .resize-handle:hover,
   .resize-handle.active {
-    background: var(--color-accent);
-    opacity: 0.5;
+    background: var(--accent-editor);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent-editor) 48%, transparent);
+    opacity: 0.62;
   }
 
   .resize-sidebar {

@@ -49,7 +49,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: var(--color-bg-base);
+    background: var(--color-shell-main);
     overflow: hidden;
   }
 

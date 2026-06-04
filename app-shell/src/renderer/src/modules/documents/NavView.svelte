@@ -118,18 +118,17 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 34px;
+    min-height: 38px;
     padding: 0 var(--space-3);
-    border-bottom: var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
     flex-shrink: 0;
   }
 
   .nav-title {
     font-size: var(--font-size-xs);
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--color-fg-muted);
+    color: color-mix(in srgb, var(--accent-nav) 58%, var(--color-fg-muted));
   }
 
   .collapse-btn {
@@ -141,35 +140,59 @@
     padding: 2px 4px;
     border-radius: var(--radius-sm);
     line-height: 1;
-    transition: color 0.15s, background 0.15s;
+    transition: color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
   .collapse-btn:hover {
     color: var(--color-fg-primary);
-    background: var(--color-bg-overlay);
+    background: var(--color-hover);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-nav) 24%, transparent);
   }
 
   .nav-tree {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-1) 0;
+    padding: var(--space-2) var(--space-2);
   }
 
   .tree-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    height: 26px;
+    height: 28px;
     padding-right: var(--space-3);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     color: var(--color-fg-secondary);
     font-size: var(--font-size-sm);
     user-select: none;
     outline: none;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .tree-item:hover  { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
-  .tree-item.active { background: var(--color-accent-dim); color: var(--color-accent); }
+  .tree-item:hover  {
+    background: var(--color-hover);
+    color: var(--color-fg-primary);
+  }
+
+  .tree-item.active {
+    background: color-mix(in srgb, var(--accent-nav) 15%, var(--color-shell-sidebar));
+    color: var(--color-fg-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 24%, transparent);
+  }
+
+  .tree-item.active::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--accent-nav), var(--accent-inspector));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-nav) 50%, transparent);
+  }
 
   .glyph {
     width: 14px;
@@ -178,7 +201,7 @@
     color: var(--color-fg-muted);
     flex-shrink: 0;
   }
-  .glyph.is-folder { color: var(--color-accent); }
+  .glyph.is-folder { color: var(--accent-inspector); }
 
   .folder-chevron {
     display: inline-block;

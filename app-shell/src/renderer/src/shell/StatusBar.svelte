@@ -62,8 +62,9 @@
     align-items: center;
     padding: 0 var(--space-2);
     gap: var(--space-3);
-    background: var(--color-bg-surface);
-    border-top: var(--border-subtle);
+    background: linear-gradient(180deg, var(--color-shell-status), color-mix(in srgb, var(--color-shell-status) 86%, black));
+    border-top: 1px solid var(--color-border-strong);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent-status) 15%, var(--color-panel-glint));
     font-size: var(--font-size-xs);
     color: var(--color-fg-secondary);
     overflow: hidden;
@@ -105,7 +106,7 @@
   }
 
   .item:hover {
-    background: var(--color-bg-overlay);
+    background: var(--color-hover);
     color: var(--color-fg-primary);
   }
 
@@ -126,8 +127,8 @@
     transition: color 0.3s ease;
   }
 
-  .save-indicator.clean { color: var(--color-success); }
-  .save-indicator.dirty { color: var(--color-warn); }
+  .save-indicator.clean { color: var(--accent-nav); }
+  .save-indicator.dirty { color: var(--accent-status); }
 
   .save-icon {
     font-size: 9px;
@@ -168,7 +169,7 @@
   }
 
   .jobs-item:hover {
-    background: var(--color-bg-overlay);
+    background: var(--color-hover);
     color: var(--color-fg-primary);
   }
 
@@ -180,7 +181,8 @@
   }
 
   .jobs-item span.active {
-    background: var(--color-accent);
+    background: var(--accent-status);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-status) 58%, transparent);
     animation: pulse-dot 1.5s ease-in-out infinite;
   }
 </style>

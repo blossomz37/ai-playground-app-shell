@@ -176,8 +176,9 @@
     display: grid;
     grid-template-columns: var(--_rail-col) minmax(180px, var(--_sidebar-col)) minmax(0, 1fr) var(--_inspector-col);
     min-height: var(--_context-h);
-    background: var(--color-bg-surface);
-    border-bottom: var(--border-subtle);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 74%, var(--color-panel-glint)), var(--color-shell-topbar));
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 54%, transparent);
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     overflow: hidden;
@@ -190,7 +191,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: 0 var(--space-3);
-    border-right: var(--border-subtle);
+    border-right: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   }
 
   .context-workspace {
@@ -231,7 +232,7 @@
 
   .label {
     color: var(--color-fg-primary);
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .detail,
@@ -250,8 +251,9 @@
   }
 
   .trail-action {
-    color: var(--color-fg-secondary);
+    color: var(--accent-editor);
     cursor: pointer;
+    font-weight: 600;
   }
 
   .trail-action:hover {
@@ -263,18 +265,27 @@
     align-items: center;
     justify-content: center;
     min-width: 26px;
+    max-width: 96px;
     height: 24px;
     padding: 0 var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
     background: transparent;
     cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .icon-button:hover,
   .icon-button[aria-pressed='true'] {
-    background: var(--color-bg-overlay);
+    background: var(--color-hover);
     color: var(--color-fg-primary);
+  }
+
+  .icon-button[aria-pressed='true'] {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-inspector) 30%, transparent);
   }
 
   .icon-button:disabled {
@@ -284,6 +295,7 @@
 
   .text-action {
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
   }
 </style>

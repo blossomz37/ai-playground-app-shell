@@ -155,15 +155,19 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    background:
+      radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--accent-editor) 7%, transparent), transparent 28%),
+      var(--color-shell-main);
   }
 
   .doc-header {
     display: flex;
     align-items: baseline;
     gap: var(--space-3);
-    padding: var(--space-4) var(--space-6) var(--space-3);
-    border-bottom: var(--border-subtle);
+    padding: var(--space-4) clamp(var(--space-5), 6vw, 72px) var(--space-3);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-editor) 18%, var(--color-border));
     flex-shrink: 0;
+    background: color-mix(in srgb, var(--color-shell-main) 88%, var(--color-panel-glint));
   }
 
   .doc-title {
@@ -179,8 +183,17 @@
   .editor-area {
     flex: 1;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+    display: block;
+    scrollbar-gutter: stable both-edges;
+    background:
+      linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-panel-glint) 24%, transparent) 50%, transparent),
+      transparent;
+  }
+
+  .editor-area::selection,
+  .editor-area :global(.ProseMirror ::selection) {
+    background: color-mix(in srgb, var(--accent-editor) 28%, transparent);
+    color: var(--color-fg-primary);
   }
 
   .editor-area.hidden {
@@ -190,42 +203,45 @@
   /* TipTap injects .ProseMirror; style the prose surface here.
      Font and size cascade from editorSettings via CSS custom properties. */
   .editor-area :global(.ProseMirror) {
-    flex: 1;
+    min-height: 100%;
     outline: none;
     color: var(--color-fg-primary);
     font-family: var(--editor-font, var(--font-serif));
     font-size: var(--editor-font-size, var(--font-size-lg));
-    line-height: var(--line-height);
-    padding: var(--space-6);
-    max-width: 72ch;
+    line-height: 1.72;
+    padding: clamp(34px, 6vh, 70px) clamp(var(--space-5), 7vw, 84px) 96px;
+    max-width: 78ch;
+    margin: 0 auto;
   }
 
   .editor-area :global(.ProseMirror p) {
-    margin: 0 0 var(--space-4);
+    margin: 0 0 1.05em;
   }
 
   .editor-area :global(.ProseMirror h1) {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    margin: var(--space-3) 0 var(--space-4);
-    line-height: 1.3;
+    font-size: clamp(26px, 3vw, 34px);
+    font-weight: 650;
+    margin: var(--space-3) 0 var(--space-5);
+    line-height: 1.22;
+    color: var(--color-fg-primary);
   }
 
   .editor-area :global(.ProseMirror h2) {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: 600;
-    margin: var(--space-4) 0 var(--space-3);
+    margin: var(--space-6) 0 var(--space-3);
+    color: color-mix(in srgb, var(--accent-editor) 28%, var(--color-fg-primary));
   }
 
   .editor-area :global(.ProseMirror h3) {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    margin: var(--space-3) 0 var(--space-2);
-    color: var(--color-fg-secondary);
+    font-size: var(--font-size-lg);
+    font-weight: 650;
+    margin: var(--space-5) 0 var(--space-2);
+    color: color-mix(in srgb, var(--accent-inspector) 36%, var(--color-fg-secondary));
   }
 
   .editor-area :global(.ProseMirror blockquote) {
-    border-left: 3px solid var(--color-border);
+    border-left: 3px solid var(--accent-inspector);
     margin: 0 0 var(--space-4);
     padding-left: var(--space-4);
     color: var(--color-fg-secondary);
@@ -241,7 +257,7 @@
   .editor-area :global(.ProseMirror code) {
     font-family: var(--font-mono);
     font-size: 0.9em;
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--accent-inspector) 12%, var(--color-shell-inspector));
     padding: 1px 5px;
     border-radius: var(--radius-sm);
   }
@@ -249,9 +265,10 @@
   .editor-area :global(.ProseMirror pre) {
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--color-shell-inspector) 82%, black);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 24%, var(--color-border));
     margin: 0 0 var(--space-4);
     overflow-x: auto;
   }
@@ -280,18 +297,18 @@
     position: relative;
     min-width: 90px;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 20%, var(--color-border));
     vertical-align: top;
   }
 
   .editor-area :global(.ProseMirror th) {
-    background: var(--color-bg-active);
+    background: color-mix(in srgb, var(--accent-editor) 18%, var(--color-shell-main));
     color: var(--color-fg-primary);
     font-weight: 700;
   }
 
   .editor-area :global(.ProseMirror td) {
-    background: color-mix(in srgb, var(--color-bg-surface) 70%, transparent);
+    background: color-mix(in srgb, var(--color-shell-sidebar) 62%, transparent);
   }
 
   .editor-area :global(.ProseMirror th p),
@@ -303,7 +320,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    background: color-mix(in srgb, var(--accent-editor) 18%, transparent);
     pointer-events: none;
   }
 
@@ -313,7 +330,7 @@
     right: -2px;
     bottom: 0;
     width: 4px;
-    background: var(--color-accent);
+    background: var(--accent-editor);
     pointer-events: none;
   }
 
