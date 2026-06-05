@@ -3,6 +3,23 @@ import type { Doc, DocVersion } from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
 
+function sameParent(left: string | null, right: string | null): boolean {
+  return left === right
+}
+
+function parentRows(db: ReturnType<typeof getDb>, workspaceId: string, parentId: string | null): Doc[] {
+  return db
+    .prepare(`
+      SELECT *
+      FROM documents
+      WHERE workspaceId = ?
+        AND parentId IS ?
+        AND archivedAt IS NULL
+      ORDER BY sortOrder, createdAt
+    `)
+    .all(workspaceId, parentId) as Doc[]
+}
+
 export const documents = {
   list(workspaceId: string): Doc[] {
     return getDb()
@@ -88,6 +105,80 @@ export const documents = {
     events.emit('documents:changed', id)
 
     return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
+  },
+
+  move(params: { id: string; parentId?: string | null; sortOrder: number }): Doc[] {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const current = db
+      .prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL')
+      .get(params.id) as Doc | undefined
+    if (!current) throw new Error(`Document not found: ${params.id}`)
+
+    const nextParentId = params.parentId ?? null
+    if (nextParentId) {
+      const parent = db
+        .prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL')
+        .get(nextParentId) as Doc | undefined
+      if (!parent) throw new Error(`Parent document not found: ${nextParentId}`)
+      if (parent.workspaceId !== current.workspaceId) {
+        throw new Error('Cannot move a document across workspaces.')
+      }
+
+      const descendant = db.prepare(`
+        WITH RECURSIVE descendants(id) AS (
+          SELECT id FROM documents WHERE parentId = ? AND archivedAt IS NULL
+          UNION ALL
+          SELECT d.id
+          FROM documents d
+          JOIN descendants child ON d.parentId = child.id
+          WHERE d.archivedAt IS NULL
+        )
+        SELECT id FROM descendants WHERE id = ?
+      `).get(current.id, nextParentId) as { id: string } | undefined
+      if (descendant || nextParentId === current.id) {
+        throw new Error('Cannot move a document inside itself.')
+      }
+    }
+
+    const sourceParentId = current.parentId
+    const destinationRows = parentRows(db, current.workspaceId, nextParentId)
+      .filter(doc => doc.id !== current.id)
+    const insertIndex = Math.max(0, Math.min(params.sortOrder, destinationRows.length))
+    const nextDestinationIds = destinationRows.map(doc => doc.id)
+    nextDestinationIds.splice(insertIndex, 0, current.id)
+
+    const currentSiblingIds = parentRows(db, current.workspaceId, sourceParentId).map(doc => doc.id)
+    if (sameParent(sourceParentId, nextParentId) && currentSiblingIds.join('\0') === nextDestinationIds.join('\0')) {
+      throw new Error('Move would not change document order.')
+    }
+
+    const affectedParentIds = new Set<string | null>([sourceParentId, nextParentId])
+
+    db.transaction(() => {
+      if (!sameParent(sourceParentId, nextParentId)) {
+        db.prepare('UPDATE documents SET parentId = ?, updatedAt = ? WHERE id = ?').run(nextParentId, now, current.id)
+
+        const sourceRows = parentRows(db, current.workspaceId, sourceParentId)
+          .filter(doc => doc.id !== current.id)
+        sourceRows.forEach((doc, index) => {
+          db.prepare('UPDATE documents SET sortOrder = ?, updatedAt = ? WHERE id = ?').run(index, now, doc.id)
+        })
+      }
+
+      nextDestinationIds.forEach((id, index) => {
+        db.prepare('UPDATE documents SET parentId = ?, sortOrder = ?, updatedAt = ? WHERE id = ?').run(nextParentId, index, now, id)
+      })
+    })()
+
+    const affectedDocs = Array.from(affectedParentIds)
+      .flatMap(parentId => parentRows(db, current.workspaceId, parentId))
+
+    for (const doc of affectedDocs) {
+      events.emit('documents:changed', doc.id)
+    }
+
+    return affectedDocs
   },
 
   archive(id: string, options: { recursive?: boolean } = {}): string[] {

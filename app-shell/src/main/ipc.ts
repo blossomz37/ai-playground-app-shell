@@ -46,6 +46,10 @@ export function registerIpcHandlers(): void {
     workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number
   }) => documents.create(params))
 
+  ipcMain.handle('documents:move', (_e, params: {
+    id: string; parentId?: string | null; sortOrder: number
+  }) => documents.move(params))
+
   ipcMain.handle('documents:archive', (_e, { id, options }: {
     id: string; options?: { recursive?: boolean }
   }) => documents.archive(id, options))

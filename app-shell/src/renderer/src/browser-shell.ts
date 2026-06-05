@@ -196,6 +196,57 @@ function createBrowserShell(): ShellApi {
         docs.set(doc.id, doc)
         return doc
       },
+      move: async (params) => {
+        const current = docs.get(params.id)
+        if (!current || current.archivedAt) throw new Error(`Document not found: ${params.id}`)
+        const parentId = params.parentId ?? null
+        if (parentId) {
+          const parent = docs.get(parentId)
+          if (!parent || parent.archivedAt) throw new Error(`Parent document not found: ${parentId}`)
+          if (parent.workspaceId !== current.workspaceId) throw new Error('Cannot move a document across workspaces.')
+
+          const descendants = new Set<string>()
+          let changed = true
+          while (changed) {
+            changed = false
+            for (const doc of docs.values()) {
+              if (doc.archivedAt || descendants.has(doc.id)) continue
+              if (doc.parentId === current.id || (doc.parentId && descendants.has(doc.parentId))) {
+                descendants.add(doc.id)
+                changed = true
+              }
+            }
+          }
+          if (descendants.has(parentId) || parentId === current.id) {
+            throw new Error('Cannot move a document inside itself.')
+          }
+        }
+
+        const siblings = Array.from(docs.values())
+          .filter(doc => doc.workspaceId === current.workspaceId && doc.parentId === parentId && !doc.archivedAt && doc.id !== current.id)
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt))
+        const insertIndex = Math.max(0, Math.min(params.sortOrder, siblings.length))
+        siblings.splice(insertIndex, 0, { ...current, parentId })
+
+        const sourceParentId = current.parentId
+        const affectedParents = new Set<string | null>([sourceParentId, parentId])
+        if (sourceParentId !== parentId) {
+          const sourceSiblings = Array.from(docs.values())
+            .filter(doc => doc.workspaceId === current.workspaceId && doc.parentId === sourceParentId && !doc.archivedAt && doc.id !== current.id)
+            .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt))
+          sourceSiblings.forEach((doc, index) => {
+            docs.set(doc.id, { ...doc, sortOrder: index, updatedAt: new Date().toISOString() })
+          })
+        }
+
+        siblings.forEach((doc, index) => {
+          docs.set(doc.id, { ...doc, parentId, sortOrder: index, updatedAt: new Date().toISOString() })
+        })
+
+        return Array.from(docs.values())
+          .filter(doc => affectedParents.has(doc.parentId) && !doc.archivedAt)
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt))
+      },
       archive: async (id, options) => {
         const now = new Date().toISOString()
         const affected = new Set<string>([id])

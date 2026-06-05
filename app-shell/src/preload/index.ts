@@ -8,6 +8,7 @@ const api: ShellApi = {
     save:     (id, content) => ipcRenderer.invoke('documents:save', { id, content }),
     update:   (id, patch)   => ipcRenderer.invoke('documents:update', { id, patch }),
     create:   (params)      => ipcRenderer.invoke('documents:create', params),
+    move:     (params)      => ipcRenderer.invoke('documents:move', params),
     archive:  (id, options) => ipcRenderer.invoke('documents:archive', { id, options }),
     versions: (id)          => ipcRenderer.invoke('documents:versions', { id }),
     onChanged: (cb) => {

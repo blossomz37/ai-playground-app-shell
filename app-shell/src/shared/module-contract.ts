@@ -255,6 +255,7 @@ export interface ModuleContext {
     save(id: string, content: unknown): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): Disposable
@@ -285,6 +286,7 @@ export interface ShellApi {
     save(id: string, content: string): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): void

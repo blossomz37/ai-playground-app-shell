@@ -5,15 +5,21 @@ export interface DocNode extends Doc {
   children: DocNode[]
 }
 
+export type DocumentsSortMode = 'manual' | 'alphabetical' | 'date'
+export type DocumentDropPlacement = 'before' | 'after' | 'inside'
+
 export interface DocumentsPort {
   list(workspaceId: string): Promise<Doc[]>
   open(id: string): Promise<Doc | undefined>
   save(id: string, content: string): Promise<void>
   update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
   create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+  move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
   archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
   versions(id: string): Promise<DocVersion[]>
   onChanged(cb: (id: string) => void): void
+  getSortMode(): Promise<unknown>
+  setSortMode(mode: DocumentsSortMode): Promise<void>
 }
 
 export interface DocumentsState {
@@ -24,9 +30,11 @@ export interface DocumentsState {
   isDirty: boolean
   versions: DocVersion[]
   docTree: DocNode[]
+  sortMode: DocumentsSortMode
 }
 
 const AUTO_SAVE_MS = 3000
+const NATURAL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
 export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   private documents: Doc[] = []
@@ -34,6 +42,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   private editorContent = ''
   private isDirty = false
   private versions: DocVersion[] = []
+  private sortMode: DocumentsSortMode = 'manual'
   private drafts = new Map<string, string>()
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null
   private changeListenerInstalled = false
@@ -50,7 +59,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       editorContent: this.editorContent,
       isDirty: this.isDirty,
       versions: this.versions,
-      docTree: this.buildTree()
+      docTree: this.buildTree(),
+      sortMode: this.sortMode
     }
   }
 
@@ -65,6 +75,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   async loadWorkspace(workspaceId: string): Promise<void> {
     this.cancelAutoSave()
     this.drafts.clear()
+    this.sortMode = normalizeSortMode(await this.port.getSortMode())
     this.documents = await this.port.list(workspaceId)
     this.activeDocId = null
     this.editorContent = ''
@@ -92,7 +103,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
   async updateDoc(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<void> {
     const updated = await this.port.update(id, patch)
-    this.documents = this.documents.map(item => item.id === updated.id ? updated : item)
+    this.upsertDocument(updated)
 
     this.emit()
   }
@@ -111,6 +122,56 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.upsertDocument(created)
     await this.selectDoc(created.id)
     return created
+  }
+
+  async setSortMode(mode: DocumentsSortMode): Promise<void> {
+    if (this.sortMode === mode) return
+    this.sortMode = mode
+    await this.port.setSortMode(mode)
+    this.emit()
+  }
+
+  async moveDoc(sourceId: string, targetId: string, placement: DocumentDropPlacement): Promise<boolean> {
+    if (sourceId === targetId) return false
+
+    const source = this.documents.find(doc => doc.id === sourceId)
+    const target = this.documents.find(doc => doc.id === targetId)
+    if (!source || !target) return false
+    if (this.isDescendant(targetId, sourceId)) {
+      throw new Error('Cannot move a document inside itself.')
+    }
+
+    const visibleTreeBeforeMove = this.buildTree()
+    if (this.sortMode !== 'manual') {
+      this.sortMode = 'manual'
+      await this.port.setSortMode('manual')
+      await this.persistTreeOrder(visibleTreeBeforeMove)
+    }
+
+    const nextTarget = this.documents.find(doc => doc.id === targetId)
+    if (!nextTarget) return false
+
+    const parentId = placement === 'inside' ? nextTarget.id : nextTarget.parentId
+    const siblings = this.sortedSiblings(parentId).filter(doc => doc.id !== sourceId)
+    const targetIndex = siblings.findIndex(doc => doc.id === targetId)
+    const sortOrder = placement === 'inside'
+      ? siblings.length
+      : Math.max(0, targetIndex + (placement === 'after' ? 1 : 0))
+
+    if (source.parentId === parentId) {
+      const currentOrder = this.sortedSiblings(parentId).map(doc => doc.id)
+      const nextOrder = siblings.map(doc => doc.id)
+      nextOrder.splice(sortOrder, 0, sourceId)
+      if (currentOrder.join('\0') === nextOrder.join('\0')) {
+        this.emit()
+        return false
+      }
+    }
+
+    const affected = await this.port.move({ id: sourceId, parentId, sortOrder })
+    this.upsertDocuments(affected)
+    this.emit()
+    return true
   }
 
   async archiveDoc(id: string): Promise<{ archivedIds: string[]; nextActiveId: string | null }> {
@@ -229,13 +290,25 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   private upsertDocument(doc: Doc): void {
     const existingIndex = this.documents.findIndex(item => item.id === doc.id)
     if (existingIndex === -1) {
-      this.documents = [...this.documents, doc].sort(sortDocuments)
+      this.documents = [...this.documents, doc].sort(compareManualDocuments)
       return
     }
 
     this.documents = this.documents
       .map(item => item.id === doc.id ? doc : item)
-      .sort(sortDocuments)
+      .sort(compareManualDocuments)
+  }
+
+  private upsertDocuments(docs: Doc[]): void {
+    for (const doc of docs) {
+      const existingIndex = this.documents.findIndex(item => item.id === doc.id)
+      if (existingIndex === -1) {
+        this.documents.push(doc)
+      } else {
+        this.documents[existingIndex] = doc
+      }
+    }
+    this.documents = [...this.documents].sort(compareManualDocuments)
   }
 
   private activeDoc(): Doc | null {
@@ -257,7 +330,25 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       }
     }
 
-    return roots
+    return this.sortNodes(roots)
+  }
+
+  private sortNodes(nodes: DocNode[]): DocNode[] {
+    nodes.sort((a, b) => this.compareDocs(a, b))
+    for (const node of nodes) {
+      node.children = this.sortNodes(node.children)
+    }
+    return nodes
+  }
+
+  private compareDocs(a: Doc, b: Doc): number {
+    if (this.sortMode === 'alphabetical') {
+      return NATURAL_COLLATOR.compare(a.title, b.title) || compareManualDocuments(a, b)
+    }
+    if (this.sortMode === 'date') {
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || NATURAL_COLLATOR.compare(a.title, b.title)
+    }
+    return compareManualDocuments(a, b)
   }
 
   private defaultTitle(kind: 'chapter' | 'scene' | 'folder'): string {
@@ -327,13 +418,41 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     return Array.from(affected)
   }
 
+  private isDescendant(candidateId: string, ancestorId: string): boolean {
+    return this.collectDescendantIds(ancestorId).includes(candidateId)
+  }
+
+  private sortedSiblings(parentId: string | null): Doc[] {
+    return this.documents
+      .filter(doc => doc.parentId === parentId)
+      .sort(compareManualDocuments)
+  }
+
+  private async persistTreeOrder(nodes: DocNode[], parentId: string | null = null): Promise<void> {
+    for (let index = 0; index < nodes.length; index += 1) {
+      const node = nodes[index]
+      try {
+        const affected = await this.port.move({ id: node.id, parentId, sortOrder: index })
+        this.upsertDocuments(affected)
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes('Move would not change')) {
+          throw error
+        }
+      }
+    }
+
+    for (const node of nodes) {
+      await this.persistTreeOrder(node.children, node.id)
+    }
+  }
+
   private nextSelectionAfterArchive(activeId: string, affected: Set<string>): string | null {
     const active = this.documents.find(doc => doc.id === activeId)
     if (!active) return null
 
     const siblings = this.documents
       .filter(doc => doc.parentId === active.parentId && !affected.has(doc.id))
-      .sort(sortDocuments)
+      .sort(compareManualDocuments)
     const nextSibling = siblings.find(doc => doc.sortOrder > active.sortOrder)
     if (nextSibling) return nextSibling.id
 
@@ -347,12 +466,16 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
     const roots = this.documents
       .filter(doc => doc.parentId === null && !affected.has(doc.id))
-      .sort(sortDocuments)
+      .sort(compareManualDocuments)
     return roots[0]?.id ?? null
   }
 }
 
-function sortDocuments(a: Doc, b: Doc): number {
+function normalizeSortMode(value: unknown): DocumentsSortMode {
+  return value === 'alphabetical' || value === 'date' || value === 'manual' ? value : 'manual'
+}
+
+function compareManualDocuments(a: Doc, b: Doc): number {
   if (a.parentId !== b.parentId) {
     return (a.parentId ?? '').localeCompare(b.parentId ?? '')
   }

@@ -89,6 +89,7 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Dis
       async save(id, content) { documents.save(id, String(content)) },
       async update(id, patch) { return documents.update(id, patch) },
       async create(params) { return documents.create(params) },
+      async move(params) { return documents.move(params) },
       async archive(id, options) { return documents.archive(id, options) },
       async versions(id) { return documents.versions(id) },
       onChanged(cb) { return track(events.on('documents:changed', cb as (p: unknown) => void)) }

@@ -1,6 +1,6 @@
 import { writable, readable, get } from 'svelte/store'
 import type { ThemeMode, Workspace } from '@shared/module-contract'
-import type { DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
+import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
 import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
@@ -28,6 +28,7 @@ export const editorContent = fromDocumentsState(state => state.editorContent)
 export const isDirty = fromDocumentsState(state => state.isDirty)
 export const versions = fromDocumentsState(state => state.versions)
 export const docTree = fromDocumentsState(state => state.docTree)
+export const documentsSortMode = fromDocumentsState(state => state.sortMode)
 
 export interface EditorSettings {
   fontFamily: string
@@ -195,6 +196,14 @@ export async function createDoc(params: { workspaceId: string; kind: 'chapter' |
 
 export async function archiveDoc(id: string) {
   return documentsState.archiveDoc(id)
+}
+
+export async function setDocumentsSortMode(mode: DocumentsSortMode): Promise<void> {
+  await documentsState.setSortMode(mode)
+}
+
+export async function moveDoc(sourceId: string, targetId: string, placement: DocumentDropPlacement): Promise<boolean> {
+  return documentsState.moveDoc(sourceId, targetId, placement)
 }
 
 export function setEditorContent(content: string, options?: { dirty?: boolean }): void {

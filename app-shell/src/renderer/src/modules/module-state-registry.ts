@@ -36,9 +36,12 @@ registerModuleState('shell.documents', 'documents', new DocumentsStateSlice({
   save: (id, content) => window.shell.documents.save(id, content),
   update: (id, patch) => window.shell.documents.update(id, patch),
   create: (params) => window.shell.documents.create(params),
+  move: (params) => window.shell.documents.move(params),
   archive: (id, options) => window.shell.documents.archive(id, options),
   versions: (id) => window.shell.documents.versions(id),
-  onChanged: (cb) => window.shell.documents.onChanged(cb)
+  onChanged: (cb) => window.shell.documents.onChanged(cb),
+  getSortMode: () => window.shell.settings.get('documents.tree.sortMode'),
+  setSortMode: (mode) => window.shell.settings.set('documents.tree.sortMode', mode)
 }))
 
 registerModuleState('shell.aichat', 'aichat', new AiChatStateSlice({

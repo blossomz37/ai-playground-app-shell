@@ -156,6 +156,7 @@ interface ModuleContext {
   documents: {                                  // the shell-owned open/save/version pipeline (DB-as-truth, Q6)
     open(id: string): Promise<Doc>;
     save(id: string, content: unknown): Promise<void>;
+    move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>;
     versions(id: string): Promise<DocVersion[]>;
     onChanged(cb: (id: string) => void): Disposable;
   };
