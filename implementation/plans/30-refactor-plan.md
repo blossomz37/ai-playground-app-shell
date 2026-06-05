@@ -3,6 +3,18 @@
 **Goal:** reduce duplicated UI/state patterns without changing app behavior.  
 **Rule:** one refactor family per pass; no feature work bundled into cleanup.
 
+**Phase 0 outcome (2026-06-05):** baseline safety check passed before new refactor edits.
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run audit:contrast`
+- Screenshot evidence captured locally:
+  - `implementation/screenshots/refactor-phase0-baseline-documents-2026-06-05.png`
+  - `implementation/screenshots/refactor-phase0-baseline-promptstudio-2026-06-05.png`
+  - `implementation/screenshots/refactor-phase0-baseline-web-2026-06-05.png`
+  - `implementation/screenshots/refactor-phase0-baseline-settings-2026-06-05.png`
+  - `implementation/screenshots/refactor-phase0-baseline-journal-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
