@@ -1,13 +1,17 @@
 import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
 import type {
   AssetImportCandidate,
+  DocumentExportParams,
+  JournalEntry,
+  JournalExportParams,
   ThemeMode,
   WorkspaceDuplicateParams,
   WorkspaceImportParams,
   WorkspaceListParams
 } from '@shared/module-contract'
-import { statSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import path from 'path'
+import { randomUUID } from 'crypto'
 import { documents } from './core/documents'
 import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
@@ -17,6 +21,7 @@ import { workspaceService } from './core/workspaces'
 import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
 import { metadataForImportedAsset } from './assets/metadata'
+import { parseJournalMarkdown, serializeJournalEntry } from '@shared/journal-markdown'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
 import { themeStartupBackground, toNativeThemeSource } from './core/theme'
@@ -37,6 +42,10 @@ const shellSettings = createSettingsStore('shell')
 export function registerIpcHandlers(): void {
   ipcMain.handle('documents:list', (_e, { workspaceId }: { workspaceId: string }) =>
     documents.list(workspaceId)
+  )
+
+  ipcMain.handle('documents:listArchived', (_e, { workspaceId }: { workspaceId: string }) =>
+    documents.listArchived(workspaceId)
   )
 
   ipcMain.handle('documents:open', (_e, { id }: { id: string }) =>
@@ -62,6 +71,29 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('documents:archive', (_e, { id, options }: {
     id: string; options?: { recursive?: boolean }
   }) => documents.archive(id, options))
+
+  ipcMain.handle('documents:restore', (_e, { id, options }: {
+    id: string; options?: { recursive?: boolean }
+  }) => documents.restore(id, options))
+
+  ipcMain.handle('documents:exportSubtree', async (event, { id, params }: {
+    id: string; params?: DocumentExportParams
+  }) => {
+    let targetDir = params?.targetDir
+    if (!targetDir) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Export document',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Document export cancelled')
+      }
+      targetDir = result.filePaths[0]
+    }
+
+    return documents.exportSubtree(id, { ...params, targetDir })
+  })
 
   ipcMain.handle('documents:versions', (_e, { id }: { id: string }) =>
     documents.versions(id)
@@ -255,6 +287,73 @@ export function registerIpcHandlers(): void {
     shell.showItemInFolder(filePath)
   })
 
+  // ── Journal import/export ────────────────────────────────────────────────
+  ipcMain.handle('journal:pickImportFiles', async (event, params?: { filePaths?: string[] }) => {
+    let filePaths = params?.filePaths
+    if (!filePaths) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Import journal entries',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.canceled) return []
+      filePaths = result.filePaths
+    }
+
+    return filePaths.map((filePath) => {
+      const content = readFileSync(filePath, 'utf8')
+      const parsed = parseJournalMarkdown(content, {
+        title: path.basename(filePath, path.extname(filePath)),
+        date: 'Imported',
+        fullDate: 'Imported'
+      })
+      return {
+        sourcePath: filePath,
+        entry: {
+          id: randomUUID(),
+          ...parsed
+        }
+      }
+    })
+  })
+
+  ipcMain.handle('journal:exportEntries', async (event, { entries, params }: {
+    entries: JournalEntry[]
+    params?: JournalExportParams
+  }) => {
+    let targetDir = params?.targetDir
+    if (!targetDir) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Export journal entries',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Journal export cancelled')
+      }
+      targetDir = result.filePaths[0]
+    }
+
+    const resolvedTarget = path.resolve(targetDir)
+    mkdirSync(resolvedTarget, { recursive: true })
+    const usedPaths = new Set<string>()
+    const filesWritten = entries.map((entry) => {
+      const filePath = uniqueJournalExportPath(resolvedTarget, entry.title, usedPaths)
+      writeFileSync(filePath, serializeJournalEntry(entry), 'utf8')
+      return filePath
+    })
+
+    return {
+      targetDir: resolvedTarget,
+      filesWritten
+    }
+  })
+
   // ── Layout ────────────────────────────────────────────────────────────────
   ipcMain.handle('layout:get', () => layoutService.get())
 
@@ -310,4 +409,29 @@ export function registerIpcHandlers(): void {
       win.setBackgroundColor(bgColor)
     }
   })
+}
+
+const INVALID_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1F]/g
+
+function uniqueJournalExportPath(outputDir: string, title: string, usedPaths: Set<string>): string {
+  const baseName = safeJournalFilename(title)
+  let suffix = 1
+  let candidate = path.join(outputDir, `${baseName}.md`)
+  while (usedPaths.has(candidate) || existsSync(candidate)) {
+    suffix += 1
+    candidate = path.join(outputDir, `${baseName}-${suffix}.md`)
+  }
+  usedPaths.add(candidate)
+  return candidate
+}
+
+function safeJournalFilename(title: string): string {
+  const normalized = title
+    .trim()
+    .replace(INVALID_FILENAME_CHARS, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/[. ]+$/g, '')
+    .replace(/^\.+/g, '')
+
+  return normalized || 'journal-entry'
 }

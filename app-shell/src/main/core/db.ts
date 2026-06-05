@@ -42,6 +42,7 @@ function migrate(db: Database.Database): void {
       contentFormat   TEXT NOT NULL DEFAULT 'markdown',
       sourcePath      TEXT,
       sourceChecksum  TEXT,
+      metadataJson    TEXT,
       createdAt       TEXT NOT NULL,
       updatedAt       TEXT NOT NULL,
       archivedAt      TEXT
@@ -244,6 +245,7 @@ function migrate(db: Database.Database): void {
   ensureColumn(db, 'workspaces', 'lastOpenedAt', 'TEXT')
   ensureColumn(db, 'workspaces', 'archivedAt', 'TEXT')
   ensureColumn(db, 'documents', 'icon', 'TEXT')
+  ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
   const now = new Date().toISOString()
   db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)
 }

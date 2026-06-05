@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto'
-import type { Doc, DocVersion } from '@shared/module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocVersion } from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
+import { exportDocumentSubtree } from './document-export'
 
 function sameParent(left: string | null, right: string | null): boolean {
   return left === right
@@ -24,6 +25,12 @@ export const documents = {
   list(workspaceId: string): Doc[] {
     return getDb()
       .prepare('SELECT * FROM documents WHERE workspaceId = ? AND archivedAt IS NULL ORDER BY sortOrder')
+      .all(workspaceId) as Doc[]
+  },
+
+  listArchived(workspaceId: string): Doc[] {
+    return getDb()
+      .prepare('SELECT * FROM documents WHERE workspaceId = ? AND archivedAt IS NOT NULL ORDER BY archivedAt DESC, sortOrder, createdAt')
       .all(workspaceId) as Doc[]
   },
 
@@ -216,6 +223,88 @@ export const documents = {
     }
 
     return affectedIds
+  },
+
+  restore(id: string, options: { recursive?: boolean } = {}): Doc[] {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const current = db.prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NOT NULL').get(id) as Doc | undefined
+    if (!current) return []
+
+    const restoreIds = new Set<string>([id])
+
+    let parentId = current.parentId
+    while (parentId) {
+      const parent = db.prepare('SELECT * FROM documents WHERE id = ?').get(parentId) as Doc | undefined
+      if (!parent) {
+        db.prepare('UPDATE documents SET parentId = NULL, updatedAt = ? WHERE id = ?').run(now, current.id)
+        break
+      }
+      if (parent.archivedAt) restoreIds.add(parent.id)
+      parentId = parent.parentId
+    }
+
+    if (options.recursive ?? true) {
+      const rows = db.prepare(`
+        WITH RECURSIVE subtree(id) AS (
+          SELECT id FROM documents WHERE id = ?
+          UNION ALL
+          SELECT d.id
+          FROM documents d
+          JOIN subtree s ON d.parentId = s.id
+          WHERE d.archivedAt IS NOT NULL
+        )
+        SELECT id FROM subtree
+      `).all(id) as Array<{ id: string }>
+      for (const row of rows) restoreIds.add(row.id)
+    }
+
+    const affectedIds = Array.from(restoreIds)
+    const placeholders = affectedIds.map(() => '?').join(', ')
+    db.prepare(`
+      UPDATE documents
+      SET archivedAt = NULL, updatedAt = ?
+      WHERE id IN (${placeholders})
+    `).run(now, ...affectedIds)
+
+    const restored = db.prepare(`
+      SELECT *
+      FROM documents
+      WHERE id IN (${placeholders})
+      ORDER BY sortOrder, createdAt
+    `).all(...affectedIds) as Doc[]
+
+    for (const affectedId of affectedIds) {
+      events.emit('documents:changed', affectedId)
+    }
+
+    return restored
+  },
+
+  exportSubtree(id: string, params: DocumentExportParams = {}): DocumentExportResult {
+    const targetDir = params.targetDir?.trim()
+    if (!targetDir) throw new Error('Export target folder is required.')
+
+    const db = getDb()
+    const root = db.prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL').get(id) as Doc | undefined
+    if (!root) throw new Error(`Document not found: ${id}`)
+
+    const subtreeDocs = db.prepare(`
+      WITH RECURSIVE subtree(id) AS (
+        SELECT id FROM documents WHERE id = ? AND archivedAt IS NULL
+        UNION ALL
+        SELECT d.id
+        FROM documents d
+        JOIN subtree s ON d.parentId = s.id
+        WHERE d.archivedAt IS NULL
+      )
+      SELECT documents.*
+      FROM documents
+      JOIN subtree ON subtree.id = documents.id
+      ORDER BY documents.parentId, documents.sortOrder, documents.createdAt
+    `).all(id) as Doc[]
+
+    return exportDocumentSubtree(root, subtreeDocs, targetDir)
   },
 
   versions(id: string): DocVersion[] {

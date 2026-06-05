@@ -91,6 +91,9 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Dis
       async create(params) { return documents.create(params) },
       async move(params) { return documents.move(params) },
       async archive(id, options) { return documents.archive(id, options) },
+      async listArchived(workspaceId) { return documents.listArchived(workspaceId) },
+      async restore(id, options) { return documents.restore(id, options) },
+      async exportSubtree(id, params) { return documents.exportSubtree(id, params) },
       async versions(id) { return documents.versions(id) },
       onChanged(cb) { return track(events.on('documents:changed', cb as (p: unknown) => void)) }
     },

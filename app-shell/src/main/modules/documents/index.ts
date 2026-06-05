@@ -22,6 +22,7 @@ export const documentsModule: Module = {
         { id: 'documents.newScene',   title: 'New Scene' },
         { id: 'documents.newFolder',  title: 'New Folder' },
         { id: 'documents.rename',     title: 'Rename' },
+        { id: 'documents.export',     title: 'Export Document' },
         { id: 'documents.archive',    title: 'Archive' },
         { id: 'shell.settings',       title: 'Open Settings',      keybinding: 'CmdOrCtrl+,' },
         { id: 'shell.layout.toggleSidebar',   title: 'Toggle Sidebar',   keybinding: 'CmdOrCtrl+B' },
@@ -60,6 +61,10 @@ export const documentsModule: Module = {
 
     ctx.commands.register('documents.archive', async () => {
       ctx.notify({ level: 'info', message: 'Archive is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.export', async () => {
+      ctx.notify({ level: 'info', message: 'Export is available from the Documents tree.' })
     })
 
     ctx.events.on('documents:changed', (id) => {

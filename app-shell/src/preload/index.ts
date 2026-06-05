@@ -4,12 +4,15 @@ import type { ShellApi } from '@shared/module-contract'
 const api: ShellApi = {
   documents: {
     list:     (workspaceId) => ipcRenderer.invoke('documents:list', { workspaceId }),
+    listArchived: (workspaceId) => ipcRenderer.invoke('documents:listArchived', { workspaceId }),
     open:     (id)          => ipcRenderer.invoke('documents:open', { id }),
     save:     (id, content) => ipcRenderer.invoke('documents:save', { id, content }),
     update:   (id, patch)   => ipcRenderer.invoke('documents:update', { id, patch }),
     create:   (params)      => ipcRenderer.invoke('documents:create', params),
     move:     (params)      => ipcRenderer.invoke('documents:move', params),
     archive:  (id, options) => ipcRenderer.invoke('documents:archive', { id, options }),
+    restore:  (id, options) => ipcRenderer.invoke('documents:restore', { id, options }),
+    exportSubtree: (id, params) => ipcRenderer.invoke('documents:exportSubtree', { id, params }),
     versions: (id)          => ipcRenderer.invoke('documents:versions', { id }),
     onChanged: (cb) => {
       ipcRenderer.on('documents:changed', (_event, id: string) => cb(id))
@@ -65,6 +68,11 @@ const api: ShellApi = {
   assets: {
     importFiles: () => ipcRenderer.invoke('assets:importFiles'),
     reveal: (path) => ipcRenderer.invoke('assets:reveal', { path })
+  },
+
+  journal: {
+    pickImportFiles: (filePaths) => ipcRenderer.invoke('journal:pickImportFiles', { filePaths }),
+    exportEntries: (entries, params) => ipcRenderer.invoke('journal:exportEntries', { entries, params })
   },
 
   layout: {

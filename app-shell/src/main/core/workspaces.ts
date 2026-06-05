@@ -6,6 +6,7 @@ import type { Doc, Workspace, WorkspaceDuplicateParams, WorkspaceImportParams, W
 import { getDb } from './db'
 import { createSettingsStore } from './settings'
 import { events } from './events'
+import { parseFrontmatter } from './frontmatter'
 
 const shellSettings = createSettingsStore('shell')
 const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceId'
@@ -20,6 +21,7 @@ type ImportedDocument = {
   content: string
   sourcePath: string | null
   sourceChecksum: string | null
+  metadataJson: string | null
 }
 
 function rowToWorkspace(row: Record<string, unknown>): Workspace {
@@ -134,22 +136,25 @@ function importableEntries(root: string, parentId: string | null = null): Import
         sortOrder: index,
         content: '',
         sourcePath: entry.fullPath,
-        sourceChecksum: null
+        sourceChecksum: null,
+        metadataJson: null
       })
       docs.push(...importableEntries(entry.fullPath, id))
       return
     }
 
     const content = readFileSync(entry.fullPath)
+    const parsed = parseFrontmatter(content.toString('utf8'))
     docs.push({
       id: randomUUID(),
       parentId,
       kind: 'chapter',
       title: titleFromFile(entry.fullPath),
       sortOrder: index,
-      content: content.toString('utf8'),
+      content: parsed.body,
       sourcePath: entry.fullPath,
-      sourceChecksum: checksum(content)
+      sourceChecksum: checksum(content),
+      metadataJson: parsed.metadata ? JSON.stringify(parsed.metadata) : null
     })
   })
 
@@ -185,8 +190,8 @@ function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now
 
   const insertDoc = db.prepare(`
     INSERT INTO documents
-      (id, workspaceId, parentId, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, createdAt, updatedAt, archivedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, workspaceId, parentId, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt, archivedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   for (const doc of sourceDocs) {
@@ -202,6 +207,7 @@ function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now
       doc.contentFormat,
       doc.sourcePath,
       doc.sourceChecksum,
+      doc.metadataJson,
       now,
       now,
       doc.archivedAt
@@ -308,8 +314,8 @@ export const workspaceService = {
       insertWorkspace(workspace)
       const insertDoc = getDb().prepare(`
         INSERT INTO documents
-          (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, sourcePath, sourceChecksum, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'markdown', ?, ?, ?, ?)
+          (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'markdown', ?, ?, ?, ?, ?)
       `)
 
       for (const doc of importedDocs) {
@@ -323,6 +329,7 @@ export const workspaceService = {
           doc.content,
           doc.sourcePath,
           doc.sourceChecksum,
+          doc.metadataJson,
           now,
           now
         )
