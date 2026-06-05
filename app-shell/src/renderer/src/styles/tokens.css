@@ -61,8 +61,8 @@
   --color-bg-overlay:  #2d2d4d;
   --color-bg-active:   #313158;
   --color-fg-primary:  #cdd6f4;
-  --color-fg-secondary:#a6adc8;
-  --color-fg-muted:    #8b91ad;
+  --color-fg-secondary:#b7bfdc;
+  --color-fg-muted:    #9ca4c0;
   --color-accent:      #89b4fa;
   --color-accent-dim:  #1e3a5f;
   --color-border:      #45475a;
@@ -78,6 +78,15 @@
   --color-hover:           rgb(255 255 255 / 0.055);
   --color-border-strong:   #5b5f78;
   --color-panel-glint:     rgb(255 255 255 / 0.06);
+  --color-focus-ring:      #c4b5fd;
+  --color-focus-ring-offset:#171725;
+  --color-action-text:     #89b4fa;
+  --editor-table-border:   #66708f;
+  --editor-table-header-bg:#242b3d;
+  --editor-table-header-fg:#dbe4ff;
+  --editor-table-cell-bg:  #1b1d2a;
+  --editor-table-selection:#567fc6;
+  --editor-table-resize:   #8fb6ff;
   --shadow-panel:          0 16px 42px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.035);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, transparent), 0 0 18px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
@@ -89,8 +98,8 @@
   --color-bg-overlay:  #2d2d4d;
   --color-bg-active:   #313158;
   --color-fg-primary:  #cdd6f4;
-  --color-fg-secondary:#a6adc8;
-  --color-fg-muted:    #8b91ad;
+  --color-fg-secondary:#b7bfdc;
+  --color-fg-muted:    #9ca4c0;
   --color-accent:      #89b4fa;
   --color-accent-dim:  #1e3a5f;
   --color-border:      #45475a;
@@ -106,6 +115,15 @@
   --color-hover:           rgb(255 255 255 / 0.055);
   --color-border-strong:   #5b5f78;
   --color-panel-glint:     rgb(255 255 255 / 0.06);
+  --color-focus-ring:      #c4b5fd;
+  --color-focus-ring-offset:#171725;
+  --color-action-text:     #89b4fa;
+  --editor-table-border:   #66708f;
+  --editor-table-header-bg:#242b3d;
+  --editor-table-header-fg:#dbe4ff;
+  --editor-table-cell-bg:  #1b1d2a;
+  --editor-table-selection:#567fc6;
+  --editor-table-resize:   #8fb6ff;
   --shadow-panel:          0 16px 42px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.035);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, transparent), 0 0 18px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
@@ -117,8 +135,8 @@
   --color-bg-overlay:  #dfdbd6;
   --color-bg-active:   #d4d0ca;
   --color-fg-primary:  #1e1e2e;
-  --color-fg-secondary:#44475a;
-  --color-fg-muted:    #6f7183;
+  --color-fg-secondary:#34364a;
+  --color-fg-muted:    #55576a;
   --color-accent:      #3b6fd4;
   --color-accent-dim:  #d0dff5;
   --color-border:      #c8c4be;
@@ -134,6 +152,15 @@
   --color-hover:           rgb(30 30 46 / 0.06);
   --color-border-strong:   #aaa296;
   --color-panel-glint:     rgb(255 255 255 / 0.62);
+  --color-focus-ring:      #5b21b6;
+  --color-focus-ring-offset:#f7f5f1;
+  --color-action-text:     #1d4ed8;
+  --editor-table-border:   #938b80;
+  --editor-table-header-bg:#e5ded4;
+  --editor-table-header-fg:#242437;
+  --editor-table-cell-bg:  #fbfaf7;
+  --editor-table-selection:#6b82a8;
+  --editor-table-resize:   #315faa;
   --shadow-panel:          0 16px 38px rgb(30 30 46 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.78);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
@@ -151,8 +178,8 @@
     --color-bg-overlay:  #dfdbd6;
     --color-bg-active:   #d4d0ca;
     --color-fg-primary:  #1e1e2e;
-    --color-fg-secondary:#44475a;
-    --color-fg-muted:    #6f7183;
+    --color-fg-secondary:#34364a;
+    --color-fg-muted:    #55576a;
     --color-accent:      #3b6fd4;
     --color-accent-dim:  #d0dff5;
     --color-border:      #c8c4be;
@@ -168,6 +195,15 @@
     --color-hover:           rgb(30 30 46 / 0.06);
     --color-border-strong:   #aaa296;
     --color-panel-glint:     rgb(255 255 255 / 0.62);
+    --color-focus-ring:      #5b21b6;
+    --color-focus-ring-offset:#f7f5f1;
+    --color-action-text:     #1d4ed8;
+    --editor-table-border:   #938b80;
+    --editor-table-header-bg:#e5ded4;
+    --editor-table-header-fg:#242437;
+    --editor-table-cell-bg:  #fbfaf7;
+    --editor-table-selection:#6b82a8;
+    --editor-table-resize:   #315faa;
     --shadow-panel:          0 16px 38px rgb(30 30 46 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.78);
     --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 16%, transparent);
   }

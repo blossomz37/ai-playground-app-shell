@@ -183,7 +183,7 @@
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 54%, transparent);
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
-    overflow: hidden;
+    overflow: visible;
     user-select: none;
   }
 
@@ -247,7 +247,7 @@
   }
 
   .trail-action {
-    color: var(--accent-editor);
+    color: var(--color-action-text);
     cursor: pointer;
     font-weight: 600;
   }
@@ -266,6 +266,7 @@
   }
 
   .icon-button {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -296,6 +297,36 @@
   .icon-button:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  .icon-button::after {
+    content: attr(aria-label);
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    z-index: 30;
+    min-width: max-content;
+    max-width: 220px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+    border: 1px solid var(--color-border-strong);
+    box-shadow: var(--shadow-panel);
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 650;
+    line-height: 1.3;
+    text-transform: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+
+  .icon-button:hover::after,
+  .icon-button:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .text-action {

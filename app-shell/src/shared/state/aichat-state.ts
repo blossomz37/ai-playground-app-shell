@@ -23,8 +23,6 @@ export interface AiChatState {
   selectedConversation: AiConversationView | null
 }
 
-const welcomeText = 'Hello! I\'m your AI writing assistant. How can I help with your manuscript today?'
-
 export class AiChatStateSlice extends ObservableSlice<AiChatState> {
   private conversations: AiConversationView[] = []
   private selectedConversationId = ''
@@ -50,7 +48,7 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
     this.loadPromise = (async () => {
       let conversations = (await this.port.conversations(workspaceId)).map(conversation => this.toView(conversation))
       if (conversations.length === 0) {
-        conversations = [await this.createWelcomeConversation(workspaceId)]
+        conversations = [await this.createEmptyConversation(workspaceId)]
       }
 
       this.conversations = this.sortConversations(conversations)
@@ -73,7 +71,7 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
   }
 
   async createConversation(workspaceId: string): Promise<string> {
-    const conversation = await this.createWelcomeConversation(workspaceId)
+    const conversation = await this.createEmptyConversation(workspaceId)
     this.conversations = [conversation, ...this.conversations]
     this.selectedConversationId = conversation.id
     this.initializedWorkspaceId = workspaceId
@@ -116,20 +114,9 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
     return this.selectedConversationId
   }
 
-  private async createWelcomeConversation(workspaceId: string): Promise<AiConversationView> {
+  private async createEmptyConversation(workspaceId: string): Promise<AiConversationView> {
     const conversation = await this.port.createConversation({ workspaceId })
-    const message = await this.port.appendMessage({
-      workspaceId,
-      conversationId: conversation.id,
-      role: 'assistant',
-      content: welcomeText
-    })
-
-    return this.toView({
-      ...conversation,
-      updatedAt: message.createdAt,
-      messages: [message]
-    })
+    return this.toView(conversation)
   }
 
   private selectedConversation(): AiConversationView | null {

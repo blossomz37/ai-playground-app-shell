@@ -1,0 +1,65 @@
+<h2 class="sr-only">A before-and-after mockup of the DocuFrame top chrome. Before: the workspace name appears twice. After: a project switcher pill owns the name once, the tab strip shows only modules, and the breadcrumb shows only navigation with document metadata in a single place.</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.ti{font-size:16px;line-height:1}
+.dot{width:11px;height:11px;border-radius:50%}
+</style>
+
+<div style="padding:1rem 0;">
+
+  <div style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px 2px;">Before — name rendered by two components</div>
+  <div style="background:#0f1422;border:0.5px solid rgba(255,255,255,0.12);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
+      <span style="display:flex;align-items:center;gap:8px;padding:4px 9px;border:0.5px solid rgba(255,255,255,0.16);border-radius:9px;color:#e7e9f0;font-size:12px;"><i class="ti ti-briefcase" aria-hidden="true"></i>My Workspace<span style="color:#8b90a3;">authoring</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;height:36px;padding:0 12px;font-size:12px;">
+      <span style="display:flex;align-items:center;gap:7px;color:#e7e9f0;"><i class="ti ti-briefcase" aria-hidden="true"></i>My Workspace <span style="color:#8b90a3;">authoring</span><span style="margin-left:6px;font-size:10px;background:var(--color-background-danger);color:var(--color-text-danger);padding:1px 6px;border-radius:6px;">duplicate</span></span>
+      <span style="color:#5f6678;">|</span>
+      <span style="display:flex;align-items:center;gap:6px;color:#8b90a3;"><i class="ti ti-stack-2" aria-hidden="true"></i>Documents</span>
+    </div>
+  </div>
+
+  <div style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 6px 2px;">After — one level per band, name appears once</div>
+  <div style="background:#0f1422;border:0.5px solid rgba(255,255,255,0.12);border-radius:var(--border-radius-lg);overflow:hidden;">
+
+    <div style="display:flex;align-items:center;height:42px;padding:0 12px;border-left:3px solid #7F77DD;border-bottom:0.5px solid rgba(255,255,255,0.08);">
+      <span class="dot" style="background:#ff5f57;"></span>
+      <span class="dot" style="background:#febc2e;margin:0 7px;"></span>
+      <span class="dot" style="background:#28c840;"></span>
+      <span style="display:flex;align-items:center;gap:8px;margin-left:18px;padding:5px 10px;border:0.5px solid rgba(255,255,255,0.16);border-radius:9px;color:#e7e9f0;font-size:13px;cursor:default;"><i class="ti ti-briefcase" style="color:#a9a2ec;" aria-hidden="true"></i>My Workspace<span style="font-size:10px;background:rgba(127,119,221,0.22);color:#cecbf6;padding:1px 7px;border-radius:6px;">authoring</span><i class="ti ti-chevron-down" style="color:#8b90a3;font-size:14px;" aria-hidden="true"></i></span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 12px;border-left:3px solid #1D9E75;border-bottom:0.5px solid rgba(255,255,255,0.08);">
+      <span style="display:flex;align-items:stretch;gap:0;height:100%;">
+        <span style="display:flex;align-items:center;gap:7px;padding:0 12px;color:#f2f3f7;font-size:13px;border-bottom:2px solid #2dd4a7;"><i class="ti ti-stack-2" style="color:#2dd4a7;" aria-hidden="true"></i>Documents</span>
+        <span style="display:flex;align-items:center;gap:7px;padding:0 12px;color:#8b90a3;font-size:13px;"><i class="ti ti-message" aria-hidden="true"></i>AI Chat</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:15px;color:#c9cdda;font-size:13px;">
+        <span style="color:#e7e9f0;">Save</span>
+        <i class="ti ti-layout-sidebar" aria-hidden="true"></i>
+        <i class="ti ti-eye" aria-hidden="true"></i>
+        <i class="ti ti-maximize" aria-hidden="true"></i>
+        <i class="ti ti-command" aria-hidden="true"></i>
+        <span>Jobs</span>
+        <i class="ti ti-settings" aria-hidden="true"></i>
+      </span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;height:34px;padding:0 12px;border-left:3px solid #378ADD;">
+      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8b90a3;">Manuscript<i class="ti ti-chevron-right" style="font-size:13px;color:#5f6678;" aria-hidden="true"></i><span style="color:#e7e9f0;">Chapter 1 — The Arrival</span></span>
+      <span style="font-size:12px;color:#8b90a3;display:flex;align-items:center;gap:6px;">104 words<span style="color:#5f6678;">·</span><span style="color:#2dd4a7;display:flex;align-items:center;gap:3px;"><i class="ti ti-check" style="font-size:13px;" aria-hidden="true"></i>saved</span></span>
+    </div>
+
+    <div style="display:flex;align-items:center;height:26px;padding:0 12px;border-top:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#5f6678;">
+      <i class="ti ti-circle" style="font-size:9px;margin-right:6px;" aria-hidden="true"></i>Jobs idle
+    </div>
+
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:12px;color:var(--color-text-secondary);">
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#7F77DD;"></span>Project — switcher only</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#1D9E75;"></span>Module — tabs only</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;"></span>Document — breadcrumb + metadata</span>
+  </div>
+
+</div>

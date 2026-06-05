@@ -45,6 +45,11 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
+  const captureTheme = process.env['SHELL_CAPTURE_THEME']
+  const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
+  const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
+  const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
+  const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
 
@@ -180,6 +185,37 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (captureTheme === 'dark' || captureTheme === 'light') {
+        await win.webContents.executeJavaScript(
+          `document.documentElement.setAttribute('data-theme', ${JSON.stringify(captureTheme)})`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (showInspector) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-label="Show inspector"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (newAiConversation) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[title="New conversation"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openRailMore) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[data-rail-id="rail-more"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openAiContext) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-haspopup="dialog"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      await win.webContents.executeJavaScript('window.getSelection()?.removeAllRanges()')
       await waitForWebviewRender()
       const img = await win.webContents.capturePage()
       mkdirSync(dirname(out), { recursive: true })

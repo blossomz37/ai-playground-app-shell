@@ -277,7 +277,7 @@
 
   .editor-area :global(.ProseMirror .tableWrapper) {
     overflow-x: auto;
-    margin: 0 0 var(--space-4);
+    margin: var(--space-4) 0 var(--space-5);
   }
 
   .editor-area :global(.ProseMirror table) {
@@ -287,25 +287,30 @@
     margin: 0;
     font-family: var(--font-sans);
     font-size: var(--font-size-sm);
+    background: var(--editor-table-cell-bg);
+    border-top: 1px solid var(--editor-table-border);
+    border-bottom: 1px solid var(--editor-table-border);
   }
 
   .editor-area :global(.ProseMirror th),
   .editor-area :global(.ProseMirror td) {
     position: relative;
     min-width: 90px;
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 20%, var(--color-border));
+    padding: 10px var(--space-3);
+    border: none;
+    border-bottom: 1px solid var(--editor-table-border);
     vertical-align: top;
+    background: var(--editor-table-cell-bg);
   }
 
   .editor-area :global(.ProseMirror th) {
-    background: color-mix(in srgb, var(--accent-editor) 18%, var(--color-shell-main));
-    color: var(--color-fg-primary);
+    background: var(--editor-table-header-bg);
+    color: var(--editor-table-header-fg);
     font-weight: 700;
   }
 
   .editor-area :global(.ProseMirror td) {
-    background: color-mix(in srgb, var(--color-shell-sidebar) 62%, transparent);
+    color: var(--color-fg-primary);
   }
 
   .editor-area :global(.ProseMirror th p),
@@ -317,7 +322,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--accent-editor) 18%, transparent);
+    background: color-mix(in srgb, var(--editor-table-selection) 32%, transparent);
     pointer-events: none;
   }
 
@@ -327,7 +332,7 @@
     right: -2px;
     bottom: 0;
     width: 4px;
-    background: var(--accent-editor);
+    background: var(--editor-table-resize);
     pointer-events: none;
   }
 
