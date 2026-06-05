@@ -109,6 +109,19 @@
     - `implementation/screenshots/refactor-phase6-document-tree-after-2026-06-05.png`
     - `implementation/screenshots/refactor-phase6-document-tree-selected-after-2026-06-05.png`
 
+**Phase 6C outcome (2026-06-05):** extracted Documents tree drag helpers.
+
+- Added `app-shell/src/renderer/src/modules/documents/documentTreeDrag.ts`.
+- Moved pure drag helper logic for pointer drag threshold, native drag payload/effects, drop placement calculation, internal drag-leave detection, and pointer target lookup out of `Documents/NavView.svelte`.
+- Kept drag state, document move calls, command registration, rename state, context menus, archive, create, and expansion updates in `NavView.svelte`.
+- Validation:
+  - Svelte autofixer clean for `NavView.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase6-document-tree-drag-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

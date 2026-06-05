@@ -18,6 +18,17 @@
   import { SvelteSet } from 'svelte/reactivity'
   import { SortAscendingIcon } from 'phosphor-svelte'
   import DocumentTree from './DocumentTree.svelte'
+  import {
+    createDocumentTreePointerDrag,
+    getDocumentDropPlacement,
+    getDocumentTreeDragTarget,
+    getNativeDocumentDragSourceId,
+    hasPointerDragPassedThreshold,
+    isInternalDocumentDragLeave,
+    markNativeDocumentDropMove,
+    setNativeDocumentDragPayload,
+    type DocumentTreePointerDrag
+  } from './documentTreeDrag'
   import type { Disposable } from '@shared/module-contract'
   import type { DocNode, DocumentDropPlacement, DocumentsSortMode } from '@shared/state/documents-state'
 
@@ -28,12 +39,7 @@
   let draggingDocId = $state<string | null>(null)
   let dragOverDocId = $state<string | null>(null)
   let dragOverPlacement = $state<DocumentDropPlacement>('inside')
-  let pointerDrag = $state<{
-    sourceId: string
-    startX: number
-    startY: number
-    dragging: boolean
-  } | null>(null)
+  let pointerDrag = $state<DocumentTreePointerDrag | null>(null)
   let suppressClickDocId = $state<string | null>(null)
   let commandDisposables: Disposable[] = []
 
@@ -274,28 +280,22 @@
     cancelPointerDrag()
     draggingDocId = node.id
     dragOverDocId = null
-    event.dataTransfer?.setData('text/plain', node.id)
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move'
-    }
+    setNativeDocumentDragPayload(event, node.id)
   }
 
   function onTreeDragOver(event: DragEvent, node: DocNode) {
-    const sourceId = draggingDocId ?? event.dataTransfer?.getData('text/plain') ?? null
+    const sourceId = getNativeDocumentDragSourceId(event, draggingDocId)
     if (!sourceId || sourceId === node.id) return
 
     event.preventDefault()
     dragOverDocId = node.id
-    dragOverPlacement = placementFromPoint(event.currentTarget as HTMLElement, event.clientY)
+    dragOverPlacement = getDocumentDropPlacement(event.currentTarget as HTMLElement, event.clientY)
 
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move'
-    }
+    markNativeDocumentDropMove(event)
   }
 
   function onTreeDragLeave(event: DragEvent, node: DocNode) {
-    const target = event.currentTarget as HTMLElement
-    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
+    if (isInternalDocumentDragLeave(event)) return
     if (dragOverDocId === node.id) {
       dragOverDocId = null
     }
@@ -303,7 +303,7 @@
 
   async function onTreeDrop(event: DragEvent, node: DocNode) {
     event.preventDefault()
-    const sourceId = draggingDocId ?? event.dataTransfer?.getData('text/plain') ?? null
+    const sourceId = getNativeDocumentDragSourceId(event, draggingDocId)
     if (!sourceId || sourceId === node.id) {
       clearDragState()
       return
@@ -328,12 +328,7 @@
   function onTreePointerDown(event: PointerEvent, node: DocNode) {
     if (event.button !== 0 || renamingDocId === node.id) return
 
-    pointerDrag = {
-      sourceId: node.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      dragging: false
-    }
+    pointerDrag = createDocumentTreePointerDrag(node.id, event)
     window.addEventListener('pointermove', onTreePointerMove)
     window.addEventListener('pointerup', onTreePointerUp, { once: true })
   }
@@ -341,27 +336,20 @@
   function onTreePointerMove(event: PointerEvent) {
     if (!pointerDrag) return
 
-    const distance = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY)
-    if (!pointerDrag.dragging && distance < 6) return
+    if (!hasPointerDragPassedThreshold(pointerDrag, event)) return
 
     pointerDrag.dragging = true
     draggingDocId = pointerDrag.sourceId
     event.preventDefault()
 
-    const targetRow = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-doc-id]')
-    if (!targetRow) {
+    const target = getDocumentTreeDragTarget(event.clientX, event.clientY, pointerDrag.sourceId)
+    if (!target) {
       dragOverDocId = null
       return
     }
 
-    const targetId = targetRow.dataset.docId ?? null
-    if (!targetId || targetId === pointerDrag.sourceId) {
-      dragOverDocId = null
-      return
-    }
-
-    dragOverDocId = targetId
-    dragOverPlacement = placementFromPoint(targetRow, event.clientY)
+    dragOverDocId = target.id
+    dragOverPlacement = target.placement
   }
 
   async function onTreePointerUp() {
@@ -395,16 +383,6 @@
     } finally {
       clearDragState()
     }
-  }
-
-  function placementFromPoint(target: HTMLElement, clientY: number): DocumentDropPlacement {
-    const rect = target.getBoundingClientRect()
-    const offset = clientY - rect.top
-    const third = rect.height / 3
-
-    if (offset < third) return 'before'
-    if (offset > third * 2) return 'after'
-    return 'inside'
   }
 
   function clearDragState() {
