@@ -19,6 +19,10 @@
   let { moduleId, onSelect }: Props = $props()
   let modules = $state<RailItem[]>([])
   let focusedControlId = $state<string | null>(null)
+  let customRailOrder = $state<string[] | null>(null)
+  let draggingModuleId = $state<string | null>(null)
+  let dragOverModuleId = $state<string | null>(null)
+  let dragOverPlacement = $state<'before' | 'after'>('before')
 
   const railOrder = [
     'shell.tableview',
@@ -30,6 +34,7 @@
     'shell.web',
     'shell.promptstudio'
   ]
+  const RAIL_ORDER_SETTING = 'activityRail.order'
 
   const iconMap: Record<string, Component> = {
     'shell.documents': PenNibIcon,
@@ -42,12 +47,16 @@
     'shell.promptstudio': TerminalIcon
   }
 
-  const railModules = $derived(sortModules(modules.filter(mod => railOrder.includes(mod.id)), railOrder))
+  const effectiveRailOrder = $derived(normalizeRailOrder(customRailOrder ?? railOrder))
+  const railModules = $derived(sortModules(modules.filter(mod => railOrder.includes(mod.id)), effectiveRailOrder))
   const visibleControlIds = $derived(railModules.map(mod => mod.id))
   const tabStopId = $derived(focusedControlId ?? activeRailControlId())
 
   onMount(async () => {
-    const list = await window.shell.modules.list()
+    const [list, savedOrder] = await Promise.all([
+      window.shell.modules.list(),
+      window.shell.settings.get(RAIL_ORDER_SETTING) as Promise<unknown>
+    ])
     modules = list
       .filter(m => m.enabled)
       .map(m => ({
@@ -55,10 +64,33 @@
         label: m.name,
         icon: iconMap[m.id] ?? PenNibIcon
       }))
+
+    if (Array.isArray(savedOrder)) {
+      customRailOrder = normalizeRailOrder(savedOrder.filter(item => typeof item === 'string'))
+    }
   })
 
   function sortModules(items: RailItem[], order: string[]): RailItem[] {
     return [...items].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+  }
+
+  function normalizeRailOrder(order: string[]): string[] {
+    const seen: string[] = []
+    const normalized: string[] = []
+
+    for (const id of order) {
+      if (!railOrder.includes(id) || seen.includes(id)) continue
+      seen.push(id)
+      normalized.push(id)
+    }
+
+    for (const id of railOrder) {
+      if (seen.includes(id)) continue
+      seen.push(id)
+      normalized.push(id)
+    }
+
+    return normalized
   }
 
   function activeRailControlId(): string | null {
@@ -94,6 +126,69 @@
     focusedControlId = id
     await onSelect(id)
   }
+
+  function onRailDragStart(event: DragEvent, id: string): void {
+    draggingModuleId = id
+    dragOverModuleId = null
+    event.dataTransfer?.setData('text/plain', id)
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+    }
+  }
+
+  function onRailDragOver(event: DragEvent, id: string): void {
+    if (!draggingModuleId || draggingModuleId === id) return
+    event.preventDefault()
+
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    dragOverModuleId = id
+    dragOverPlacement = event.clientY > rect.top + rect.height / 2 ? 'after' : 'before'
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  function onRailDragLeave(event: DragEvent, id: string): void {
+    const target = event.currentTarget as HTMLElement
+    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
+    if (dragOverModuleId === id) {
+      dragOverModuleId = null
+    }
+  }
+
+  async function onRailDrop(event: DragEvent, id: string): Promise<void> {
+    event.preventDefault()
+    if (!draggingModuleId || draggingModuleId === id) {
+      clearDragState()
+      return
+    }
+
+    await moveRailModule(draggingModuleId, id, dragOverPlacement)
+    clearDragState()
+  }
+
+  function onRailDragEnd(): void {
+    clearDragState()
+  }
+
+  async function moveRailModule(sourceId: string, targetId: string, placement: 'before' | 'after'): Promise<void> {
+    const currentOrder = railModules.map(mod => mod.id)
+    const nextOrder = currentOrder.filter(id => id !== sourceId)
+    const targetIndex = nextOrder.indexOf(targetId)
+    if (targetIndex === -1) return
+
+    nextOrder.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, sourceId)
+    customRailOrder = normalizeRailOrder(nextOrder)
+    await window.shell.settings.set(RAIL_ORDER_SETTING, customRailOrder)
+  }
+
+  function clearDragState(): void {
+    draggingModuleId = null
+    dragOverModuleId = null
+  }
 </script>
 
 <nav class="activity-rail" aria-label="Module navigation">
@@ -103,13 +198,22 @@
     <button
       class="rail-btn"
       class:active={isActive}
-      title={mod.label}
+      class:dragging={draggingModuleId === mod.id}
+      class:drop-before={dragOverModuleId === mod.id && dragOverPlacement === 'before'}
+      class:drop-after={dragOverModuleId === mod.id && dragOverPlacement === 'after'}
+      title={`${mod.label} (drag to reorder)`}
       aria-label={mod.label}
       aria-current={isActive ? 'page' : undefined}
       data-rail-id={mod.id}
+      draggable="true"
       tabindex={tabStopId === mod.id ? 0 : -1}
       onfocus={() => focusedControlId = mod.id}
       onkeydown={(event) => onRailKeydown(event, mod.id)}
+      ondragstart={(event) => onRailDragStart(event, mod.id)}
+      ondragover={(event) => onRailDragOver(event, mod.id)}
+      ondragleave={(event) => onRailDragLeave(event, mod.id)}
+      ondrop={(event) => onRailDrop(event, mod.id)}
+      ondragend={onRailDragEnd}
       onclick={() => selectModule(mod.id)}
     >
       <mod.icon
@@ -144,8 +248,12 @@
     height: 36px;
     border-radius: var(--radius-md);
     color: color-mix(in srgb, var(--color-fg-secondary) 78%, var(--color-fg-muted));
-    cursor: pointer;
+    cursor: grab;
     transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .rail-btn:active {
+    cursor: grabbing;
   }
 
   .rail-btn:hover {
@@ -159,6 +267,10 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-nav) 28%, transparent);
   }
 
+  .rail-btn.dragging {
+    opacity: 0.46;
+  }
+
   /* Active indicator bar on left edge */
   .rail-btn.active::before {
     content: '';
@@ -170,6 +282,26 @@
     border-radius: 0 2px 2px 0;
     background: linear-gradient(180deg, var(--accent-nav), var(--accent-editor));
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent-nav) 48%, transparent);
+  }
+
+  .rail-btn.drop-before::after,
+  .rail-btn.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-focus-ring);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-focus-ring) 64%, transparent);
+  }
+
+  .rail-btn.drop-before::after {
+    top: -2px;
+  }
+
+  .rail-btn.drop-after::after {
+    bottom: -2px;
   }
 
   .rail-tooltip {
@@ -198,6 +330,10 @@
   .rail-btn:focus-visible .rail-tooltip {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
+  }
+
+  .rail-btn.dragging .rail-tooltip {
+    opacity: 0;
   }
 
 </style>
