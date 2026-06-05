@@ -156,6 +156,23 @@
   - Screenshot evidence:
     - `implementation/screenshots/refactor-phase7-editor-settings-after-2026-06-05.png`
 
+**Phase 7C outcome (2026-06-05):** extracted the Settings AI provider section.
+
+- Added `app-shell/src/renderer/src/shell/AiProviderSettings.svelte`.
+- Moved AI provider mode, active-provider status, OpenAI key shortcut, model selector, custom model input, temperature control, provider-derived state, and provider-scoped styles out of `SettingsPanel.svelte`.
+- Preserved the existing OpenAI key save sequence: store `OPENAI_API_KEY`, mark it stored, select `openai-responses`, refresh secrets, refresh AI providers, then select `openai-responses` again.
+- Kept `SettingsPanel.svelte` as the modal shell with exported `toggle()`.
+- Kept generic secrets CRUD in `SettingsPanel.svelte`.
+- Deferred `SecretsSettings.svelte` to the final narrow Phase 7 pass.
+- Validation:
+  - Svelte autofixer clean for `AiProviderSettings.svelte`
+  - Svelte autofixer clean for `SettingsPanel.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase7-ai-provider-settings-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
