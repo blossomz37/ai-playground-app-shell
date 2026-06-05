@@ -1,6 +1,9 @@
 import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
 import type {
-  AssetImportCandidate,
+  AssetExportParams,
+  AssetImportParams,
+  AssetListParams,
+  AssetUpdatePatch,
   DocumentExportParams,
   JournalEntry,
   JournalExportParams,
@@ -9,10 +12,11 @@ import type {
   WorkspaceImportParams,
   WorkspaceListParams
 } from '@shared/module-contract'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import { documents } from './core/documents'
+import { assets } from './core/assets'
 import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
 import { layoutService } from './core/layout'
@@ -20,7 +24,6 @@ import { secretsService } from './core/secrets'
 import { workspaceService } from './core/workspaces'
 import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
-import { metadataForImportedAsset } from './assets/metadata'
 import { parseJournalMarkdown, serializeJournalEntry } from '@shared/journal-markdown'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
@@ -255,32 +258,58 @@ export function registerIpcHandlers(): void {
   )
 
   // ── Assets ───────────────────────────────────────────────────────────────
-  ipcMain.handle('assets:importFiles', async (event): Promise<AssetImportCandidate[]> => {
-    const win = BrowserWindow.fromWebContents(event.sender)
-    const result = await dialog.showOpenDialog(win ?? undefined, {
-      title: 'Import assets',
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Assets', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf', 'txt', 'md', 'docx'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    })
+  ipcMain.handle('assets:list', (_event, params: AssetListParams) => assets.list(params))
 
-    if (result.canceled) return []
-    const importedAt = new Date().toISOString()
-    return Promise.all(result.filePaths.map(async (filePath) => {
-      const stat = statSync(filePath)
-      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase()
-      const metadata = await metadataForImportedAsset(filePath, extension)
-      return {
-        name: path.basename(filePath),
-        filePath,
-        extension,
-        sizeBytes: stat.size,
-        importedAt,
-        ...metadata
+  ipcMain.handle('assets:open', (_event, { id }: { id: string }) => assets.open(id))
+
+  ipcMain.handle('assets:importFiles', async (event, params: AssetImportParams) => {
+    let filePaths = params.filePaths
+    if (!filePaths) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Import assets',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Assets', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf', 'epub', 'mp3', 'm4a', 'wav', 'aiff', 'flac', 'txt', 'md', 'markdown', 'docx'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.canceled) return []
+      filePaths = result.filePaths
+    }
+
+    return assets.importFiles({ ...params, filePaths })
+  })
+
+  ipcMain.handle('assets:update', (_event, { id, patch }: { id: string; patch: AssetUpdatePatch }) =>
+    assets.update(id, patch)
+  )
+
+  ipcMain.handle('assets:archive', (_event, { id }: { id: string }) => assets.archive(id))
+
+  ipcMain.handle('assets:restore', (_event, { id }: { id: string }) => assets.restore(id))
+
+  ipcMain.handle('assets:delete', (_event, { id }: { id: string }) => assets.delete(id))
+
+  ipcMain.handle('assets:exportAssets', async (event, { ids, params }: {
+    ids: string[]
+    params?: AssetExportParams
+  }) => {
+    let targetDir = params?.targetDir
+    if (!targetDir) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Export assets',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Asset export cancelled')
       }
-    }))
+      targetDir = result.filePaths[0]
+    }
+
+    return assets.exportAssets(ids, { ...params, targetDir })
   })
 
   ipcMain.handle('assets:reveal', (_e, { path: filePath }: { path: string }) => {

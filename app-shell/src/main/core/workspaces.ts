@@ -7,6 +7,7 @@ import { getDb } from './db'
 import { createSettingsStore } from './settings'
 import { events } from './events'
 import { parseFrontmatter } from './frontmatter'
+import { copyAssetWorkspaceLinks, deleteAssetWorkspaceLinks } from './assets'
 
 const shellSettings = createSettingsStore('shell')
 const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceId'
@@ -235,6 +236,8 @@ function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now
 
 function deleteWorkspaceRows(workspaceId: string): void {
   const db = getDb()
+  deleteAssetWorkspaceLinks(workspaceId)
+
   const documentIds = db
     .prepare('SELECT id FROM documents WHERE workspaceId = ?')
     .all(workspaceId) as Array<{ id: string }>
@@ -353,6 +356,7 @@ export const workspaceService = {
     getDb().transaction(() => {
       insertWorkspace(workspace)
       copyDocuments(source.id, workspace.id, now)
+      copyAssetWorkspaceLinks(source.id, workspace.id, now)
       copyWorkspaceSettings(source.id, workspace.id)
     })()
 

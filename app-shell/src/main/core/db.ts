@@ -215,6 +215,48 @@ function migrate(db: Database.Database): void {
       updatedAt   TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS assets (
+      id               TEXT PRIMARY KEY,
+      label            TEXT NOT NULL,
+      originalName     TEXT NOT NULL,
+      filePath         TEXT,
+      extension        TEXT NOT NULL DEFAULT '',
+      mimeType         TEXT NOT NULL DEFAULT 'application/octet-stream',
+      mediaType        TEXT NOT NULL DEFAULT 'other',
+      sizeBytes        INTEGER NOT NULL DEFAULT 0,
+      fileCreatedAt    TEXT,
+      fileModifiedAt   TEXT,
+      importedAt       TEXT NOT NULL,
+      updatedAt        TEXT NOT NULL,
+      archivedAt       TEXT,
+      checksum         TEXT,
+      thumbnailDataUrl TEXT,
+      metadataJson     TEXT NOT NULL DEFAULT '{}',
+      comments         TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS asset_tags (
+      assetId TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      tag     TEXT NOT NULL,
+      PRIMARY KEY (assetId, tag)
+    );
+
+    CREATE TABLE IF NOT EXISTS asset_workspace_links (
+      assetId     TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      workspaceId TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      role        TEXT NOT NULL DEFAULT 'imported',
+      createdAt   TEXT NOT NULL,
+      PRIMARY KEY (assetId, workspaceId, role)
+    );
+
+    CREATE TABLE IF NOT EXISTS asset_document_links (
+      assetId      TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      documentId   TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      relationType TEXT NOT NULL DEFAULT 'reference',
+      createdAt    TEXT NOT NULL,
+      PRIMARY KEY (assetId, documentId, relationType)
+    );
+
     -- FTS5 virtual table for full-text search on documents
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
       title, content, content='documents', content_rowid='rowid'

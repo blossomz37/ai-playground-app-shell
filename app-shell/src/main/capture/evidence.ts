@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { basename, dirname, join } from 'path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { isThemeMode } from '../core/theme'
 import { getDb } from '../core/db'
 
@@ -44,12 +44,19 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
     ?? join(app.getPath('temp'), `app-shell-journal-lifecycle-${Date.now()}`)
   const journalImportDir = join(journalSmokeDir, 'import')
   const journalExportDir = join(journalSmokeDir, 'export')
+  const assetsDbSmoke = process.env['SHELL_CAPTURE_ASSETS_DB_SMOKE'] === '1'
+  const assetsImportDir = process.env['SHELL_CAPTURE_ASSETS_IMPORT_DIR']
+    ?? join(process.cwd(), '..', 'sample-assets-import')
+  const assetsExportDir = process.env['SHELL_CAPTURE_ASSETS_EXPORT_DIR']
+    ?? join(process.cwd(), '..', 'sample-assets-export')
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
   let workspaceSmokeCleanup: { initialWorkspaceId: string; workspaceIds: string[] } | null = null
   let workspaceSmokeDocumentId: string | null = null
   let documentSmokeCleanupIds: string[] = []
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
+  let assetsSmokeCleanupIds: string[] = []
+  let assetsSmokeExportPaths: string[] = []
 
   async function waitForWebviewRender(): Promise<void> {
     if (moduleId !== 'shell.web') return
@@ -436,6 +443,58 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         console.log('[SHELL_CAPTURE_JOURNAL_LIFECYCLE_SMOKE]', JSON.stringify(smokeResult))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (assetsDbSmoke) {
+        mkdirSync(assetsExportDir, { recursive: true })
+        const importFilePaths = readdirSync(assetsImportDir, { withFileTypes: true })
+          .filter(entry => entry.isFile() && !entry.name.startsWith('.'))
+          .map(entry => join(assetsImportDir, entry.name))
+          .sort()
+
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.assets' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            if (typeof window.__assetsCaptureDbSmoke !== 'function') {
+              throw new Error('Assets capture DB smoke hook is not installed.')
+            }
+            const result = await window.__assetsCaptureDbSmoke({
+              importFilePaths: ${JSON.stringify(importFilePaths)},
+              exportDir: ${JSON.stringify(assetsExportDir)}
+            })
+            document.querySelector('button[aria-label="Show inspector"]')?.click()
+            return { workspaceId: workspace.id, ...result }
+          })()
+        `)
+
+        assetsSmokeCleanupIds = Array.isArray(result.importedIds)
+          ? result.importedIds.map(String)
+          : []
+        const filesWritten = Array.isArray(result.exportResult?.filesWritten)
+          ? result.exportResult.filesWritten.map(String)
+          : []
+        const manifestPath = result.exportResult?.manifestPath ? String(result.exportResult.manifestPath) : ''
+        assetsSmokeExportPaths = [...filesWritten, manifestPath].filter(Boolean)
+        const manifest = manifestPath && existsSync(manifestPath)
+          ? JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>
+          : null
+        const sourceExistsAfterDelete = result.deletedSourcePath
+          ? existsSync(String(result.deletedSourcePath))
+          : false
+
+        const smokeResult = {
+          ...result,
+          importSourceCount: importFilePaths.length,
+          exportedFilesExist: filesWritten.length > 0 && filesWritten.every(filePath => existsSync(filePath)),
+          manifestExists: Boolean(manifestPath && existsSync(manifestPath)),
+          manifestAssetCount: Array.isArray(manifest?.['assets']) ? manifest['assets'].length : 0,
+          missingFilesRecorded: Array.isArray(result.exportResult?.missingFiles),
+          sourceExistsAfterDatabaseDelete: sourceExistsAfterDelete,
+          cleanupScheduled: assetsSmokeCleanupIds.length > 0
+        }
+        console.log('[SHELL_CAPTURE_ASSETS_DB_SMOKE]', JSON.stringify(smokeResult))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (openSettings) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-open-settings'))`
@@ -547,6 +606,35 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_JOURNAL_LIFECYCLE_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (assetsSmokeCleanupIds.length > 0 || assetsSmokeExportPaths.length > 0) {
+        try {
+          if (assetsSmokeCleanupIds.length > 0) {
+            await win.webContents.executeJavaScript(`
+              (async () => {
+                const ids = ${JSON.stringify(assetsSmokeCleanupIds)}
+                if (typeof window.__assetsCaptureDeleteAssets === 'function') {
+                  await window.__assetsCaptureDeleteAssets(ids)
+                } else {
+                  for (const id of ids) await window.shell.assets.delete(id)
+                }
+                return { deletedAssetIds: ids }
+              })()
+            `).then((cleanupResult) => {
+              console.log('[SHELL_CAPTURE_ASSETS_DB_CLEANUP]', JSON.stringify(cleanupResult))
+            })
+          }
+          for (const filePath of assetsSmokeExportPaths) {
+            if (existsSync(filePath)) unlinkSync(filePath)
+          }
+          if (assetsSmokeExportPaths.length > 0) {
+            console.log('[SHELL_CAPTURE_ASSETS_EXPORT_CLEANUP]', JSON.stringify({
+              deletedPaths: assetsSmokeExportPaths
+            }))
+          }
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_ASSETS_DB_CLEANUP] failed:', cleanupErr)
         }
       }
       app.quit()
