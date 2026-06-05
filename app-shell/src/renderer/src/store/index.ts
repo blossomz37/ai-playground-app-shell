@@ -23,12 +23,14 @@ function fromDocumentsState<T>(selector: (state: DocumentsState) => T) {
 }
 
 export const documents = fromDocumentsState(state => state.documents)
+export const archivedDocuments = fromDocumentsState(state => state.archivedDocuments)
 export const activeDocId = fromDocumentsState(state => state.activeDocId)
 export const activeDoc = fromDocumentsState(state => state.activeDoc)
 export const editorContent = fromDocumentsState(state => state.editorContent)
 export const isDirty = fromDocumentsState(state => state.isDirty)
 export const versions = fromDocumentsState(state => state.versions)
 export const docTree = fromDocumentsState(state => state.docTree)
+export const archivedDocTree = fromDocumentsState(state => state.archivedDocTree)
 export const documentsSortMode = fromDocumentsState(state => state.sortMode)
 
 export interface EditorSettings {
@@ -241,6 +243,14 @@ export async function createDoc(params: { workspaceId: string; kind: 'chapter' |
 
 export async function archiveDoc(id: string) {
   return documentsState.archiveDoc(id)
+}
+
+export async function restoreDoc(id: string) {
+  return documentsState.restoreDoc(id)
+}
+
+export async function exportDocSubtree(id: string, params?: { targetDir?: string }) {
+  return documentsState.exportSubtree(id, params)
 }
 
 export async function setDocumentsSortMode(mode: DocumentsSortMode): Promise<void> {
