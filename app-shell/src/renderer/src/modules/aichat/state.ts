@@ -26,6 +26,10 @@ export function selectAiConversation(id: string): void {
   aiChatState.selectConversation(id)
 }
 
+export async function renameAiConversation(id: string, title: string): Promise<void> {
+  await aiChatState.renameConversation(get(workspaceId), id, title)
+}
+
 export async function createAiConversation(): Promise<string> {
   return aiChatState.createConversation(get(workspaceId))
 }

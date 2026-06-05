@@ -11,7 +11,9 @@ import type {
   AppendAiMessageParams,
   CreateAiConversationParams,
   InvokeAiParams,
-  ListAiRunsParams
+  ListAiRunsParams,
+  RenameAiConversationParams,
+  RenameAiPromptTemplateParams
 } from '@shared/ai'
 import { getDb } from '../core/db'
 
@@ -242,6 +244,31 @@ export const aiRepository = {
     return conversation
   },
 
+  renameConversation(params: RenameAiConversationParams): AiConversation {
+    const title = params.title.trim()
+    if (!title) throw new Error('Conversation title cannot be blank.')
+
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_conversations
+      SET title = ?, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(title, now, params.id, params.workspaceId)
+
+    const row = db
+      .prepare('SELECT * FROM ai_conversations WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!row) throw new Error('Conversation not found.')
+
+    const messages = db
+      .prepare('SELECT * FROM ai_messages WHERE workspaceId = ? AND conversationId = ? ORDER BY createdAt ASC')
+      .all(params.workspaceId, params.id)
+      .map(messageRow => messageFromRow(messageRow as Record<string, unknown>))
+
+    return conversationFromRow(row, messages)
+  },
+
   appendMessage(params: AppendAiMessageParams): AiChatMessage {
     const db = getDb()
     const now = new Date().toISOString()
@@ -467,5 +494,24 @@ export const aiRepository = {
       createdAt,
       updatedAt
     }
+  },
+
+  renameTemplate(params: RenameAiPromptTemplateParams): AiPromptTemplate {
+    const name = params.name.trim()
+    if (!name) throw new Error('Template name cannot be blank.')
+
+    const db = getDb()
+    const updatedAt = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_prompt_templates
+      SET name = ?, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(name, updatedAt, params.id, params.workspaceId)
+
+    const row = db
+      .prepare('SELECT * FROM ai_prompt_templates WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!row) throw new Error('Prompt template not found.')
+    return templateFromRow(row)
   }
 }

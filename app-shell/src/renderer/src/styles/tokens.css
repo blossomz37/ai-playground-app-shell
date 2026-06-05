@@ -36,6 +36,9 @@
   --font-size-2xl: 24px;
   --line-height:   1.6;
 
+  /* Shell layout */
+  --shell-zone-header-h: 42px;
+
   /* Utility aliases */
   --color-fg-accent: var(--color-accent);
 

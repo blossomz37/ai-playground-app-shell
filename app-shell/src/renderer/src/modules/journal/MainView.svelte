@@ -1,14 +1,41 @@
 <!-- Journal MainView — today's entry editor -->
 <script lang="ts">
-  import { selectedJournalEntry, updateSelectedJournalContent } from './state'
+  import InlineRename from '../../shell/InlineRename.svelte'
+  import { addToast } from '../../store/toasts'
+  import { renameJournalEntry, selectedJournalEntry, updateSelectedJournalContent } from './state'
 
   let entry = $derived($selectedJournalEntry)
+  let renamingTitle = $state(false)
+
+  function commitRename(id: string, title: string): void {
+    if (!title) {
+      addToast('warn', 'Journal title cannot be blank.')
+      renamingTitle = false
+      return
+    }
+    renameJournalEntry(id, title)
+    renamingTitle = false
+  }
 </script>
 
 <div class="main-view">
   {#if entry}
-    <header class="entry-header">
-      <h1 class="entry-date">{entry.fullDate}</h1>
+    <header class="zone-header entry-header">
+      <div class="entry-heading">
+        {#if renamingTitle}
+          <InlineRename
+            value={entry.title}
+            ariaLabel="Rename journal entry"
+            onCommit={(title) => commitRename(entry.id, title)}
+            onCancel={() => renamingTitle = false}
+          />
+        {:else}
+          <button type="button" class="title-button" onclick={() => renamingTitle = true}>
+            {entry.title}
+          </button>
+        {/if}
+        <span class="entry-full-date">{entry.fullDate}</span>
+      </div>
       <span class="entry-badge">{entry.date}</span>
     </header>
     <div class="entry-content">
@@ -25,11 +52,10 @@
 
 <style>
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .entry-header {
-    display: flex; align-items: baseline; gap: var(--space-3);
-    padding: var(--space-5) var(--space-6) var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0;
-  }
-  .entry-date { font-size: var(--font-size-xl); font-weight: 600; color: var(--color-fg-primary); }
+  .entry-header { justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-6); }
+  .entry-heading { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .title-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: var(--font-size-md); font-weight: 700; color: var(--color-fg-primary); }
+  .entry-full-date { font-size: var(--font-size-xs); color: var(--color-fg-muted); }
   .entry-badge {
     font-size: var(--font-size-xs); color: var(--color-accent); background: var(--color-accent-dim);
     padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 500;

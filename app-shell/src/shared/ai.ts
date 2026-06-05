@@ -165,12 +165,24 @@ export interface CreateAiConversationParams {
   title?: string
 }
 
+export interface RenameAiConversationParams {
+  workspaceId: string
+  id: string
+  title: string
+}
+
 export interface AppendAiMessageParams {
   workspaceId: string
   conversationId: string
   role: AiChatMessageRole
   content: string
   runId?: string | null
+}
+
+export interface RenameAiPromptTemplateParams {
+  workspaceId: string
+  id: string
+  name: string
 }
 
 export interface ListAiProvidersParams {

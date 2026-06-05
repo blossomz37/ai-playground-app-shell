@@ -1,41 +1,74 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
+  import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
-  import { aiBusy, aiTemplates, invokeAi, loadAiTemplates, refreshAiContext } from '../../store/ai'
+  import { aiBusy, invokeAi, loadAiTemplates, refreshAiContext, renameAiTemplate, selectedAiTemplate } from '../../store/ai'
+  import { addToast } from '../../store/toasts'
 
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
   const textPlaceholder = 'Value for {{text}}...'
 
-  let templateName = $state('Summarize Document')
   let promptText = $state('Please summarize the included context in 3 useful bullet points.\n\n{{text}}')
   let variableText = $state('')
   let outputText = $state('')
+  let renamingTemplate = $state(false)
+  let activeTemplate = $derived($selectedAiTemplate)
+  let templateName = $derived(activeTemplate?.name ?? 'No template selected')
+  let hydratedTemplateId: string | null = null
+  let templateUnsubscribe: (() => void) | null = null
 
   onMount(async () => {
+    templateUnsubscribe = selectedAiTemplate.subscribe((template) => {
+      if (template && template.id !== hydratedTemplateId) {
+        promptText = template.body
+        hydratedTemplateId = template.id
+      }
+    })
     await Promise.all([loadAiTemplates(), refreshAiContext()])
-    const first = $aiTemplates[0]
-    if (first) {
-      templateName = first.name
-      promptText = first.body
-    }
+  })
+
+  onDestroy(() => {
+    templateUnsubscribe?.()
   })
 
   async function runTemplate() {
     const result = await invokeAi({
       moduleId: 'shell.promptstudio',
       originType: 'template',
-      originId: templateName,
+      originId: activeTemplate?.id ?? templateName,
       prompt: promptText,
       variables: { text: variableText }
     })
     outputText = result.run.error ?? result.run.outputText
   }
+
+  async function commitRename(name: string): Promise<void> {
+    if (!activeTemplate) return
+    if (!name) {
+      addToast('warn', 'Template name cannot be blank.')
+      renamingTemplate = false
+      return
+    }
+    await renameAiTemplate(activeTemplate.id, name)
+    renamingTemplate = false
+  }
 </script>
 
 <div class="main-view">
-  <header class="template-header">
+  <header class="zone-header template-header">
     <div class="title-block">
-      <h1>{templateName}</h1>
+      {#if renamingTemplate && activeTemplate}
+        <InlineRename
+          value={activeTemplate.name}
+          ariaLabel="Rename prompt template"
+          onCommit={commitRename}
+          onCancel={() => renamingTemplate = false}
+        />
+      {:else}
+        <button type="button" class="template-title-button" onclick={() => renamingTemplate = true}>
+          {templateName}
+        </button>
+      {/if}
     </div>
     <div class="actions">
       <button class="btn primary" onclick={runTemplate} disabled={$aiBusy}>
@@ -82,24 +115,23 @@
   }
 
   .template-header {
-    display: flex;
     justify-content: space-between;
-    align-items: center;
     gap: var(--space-4);
-    padding: var(--space-4) var(--space-5);
-    border-bottom: var(--border-subtle);
-    flex-shrink: 0;
+    padding: 0 var(--space-5);
   }
 
   .title-block {
     min-width: 0;
   }
 
-  h1 {
-    margin: 0;
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    line-height: 1.25;
+  .template-title-button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    font-size: var(--font-size-md);
+    font-weight: 700;
     color: var(--color-fg-primary);
   }
 

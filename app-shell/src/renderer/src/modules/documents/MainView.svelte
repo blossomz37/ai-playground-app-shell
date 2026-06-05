@@ -145,7 +145,7 @@
 
 <div class="main-view">
   {#if $activeDoc}
-    <header class="doc-toolbar" aria-label="Document editing toolbar">
+    <header class="zone-header doc-toolbar" aria-label="Document editing toolbar">
       <div class="toolbar-group" role="group" aria-label="Text style">
         <button type="button" class="tool-btn" aria-label="Paragraph" disabled={!editor} onclick={setParagraph}>P</button>
         <button type="button" class="tool-btn" aria-label="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>H1</button>
@@ -192,13 +192,8 @@
   }
 
   .doc-toolbar {
-    display: flex;
-    align-items: center;
     gap: var(--space-2);
-    min-height: 42px;
     padding: 0 clamp(var(--space-5), 6vw, 72px);
-    border-bottom: var(--border-zone);
-    flex-shrink: 0;
     background: color-mix(in srgb, var(--color-shell-main) 88%, var(--color-panel-glint));
   }
 

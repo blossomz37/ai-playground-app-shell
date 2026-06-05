@@ -4,6 +4,18 @@
 
 Add consistent rename support for user-owned named items across the shell: documents, journal entries, assets, AI chats, prompt chains, web bookmarks/hyperlinks, and prompt templates. At the same time, normalize sidebar and main-view header heights so horizontal borders align across the fixed shell zones.
 
+## Implementation Outcome
+
+Implemented on 2026-06-05.
+
+- Added shared `InlineRename.svelte` and reused it for Journal, Assets, AI Chat, Workflow Runner, Web bookmarks, and Prompt Studio rename affordances.
+- Kept the existing Documents tree rename path intact while moving its sidebar/main toolbar headers onto shared header classes.
+- Added settings-backed rename methods for Journal entries, asset display labels, Workflow Runner fallback profiles, and Web bookmark titles.
+- Added explicit SQLite-backed shell API routes for AI conversation rename and prompt-template rename.
+- Shared Prompt Studio selected-template identity between the nav and main surfaces; rename updates the template name without resetting prompt body text or run output.
+- Added `--shell-zone-header-h`, `.zone-header`, `.zone-title`, and `.zone-header-actions`; converted sidebar headers and single-row main headers/toolbars to the shared row height.
+- Chose the minimum acceptable prompt-chain path for this slice: Workflow profiles remain settings-backed and now persist renamed names. Full `ai_prompt_chains` DB adoption remains a follow-up.
+
 ## Current Findings
 
 - Documents already have a shell-owned rename path through `documents.update(id, { title })` and inline rename in `Documents/NavView.svelte`.
@@ -181,10 +193,11 @@ Use a small shared rename vocabulary rather than inventing different UX in each 
 
 ## Validation Plan
 
-- `npm run typecheck`
-- `npm run build`
-- `npm run audit:contrast`
-- Svelte autofixer for every changed `.svelte` file.
+- ✅ `npm run typecheck`
+- ✅ `npm run build`
+- ✅ `npm run audit:contrast`
+- ✅ `git diff --check`
+- ✅ Svelte autofixer for every changed `.svelte` file.
 - Browser/Electron smoke:
   - Rename a document from the tree and confirm active editor content remains intact.
   - Rename a journal entry and confirm content remains intact.
@@ -197,9 +210,9 @@ Use a small shared rename vocabulary rather than inventing different UX in each 
   - Reload and confirm persisted labels remain for SQLite-backed and settings-backed items.
   - Switch across modules and confirm sidebar/main header borders align.
 - Screenshot evidence:
-  - `implementation/screenshots/universal-rename-documents-after-2026-06-05.png`
-  - `implementation/screenshots/universal-rename-ai-after-2026-06-05.png`
-  - `implementation/screenshots/header-alignment-after-2026-06-05.png`
+  - ✅ `implementation/screenshots/universal-rename-documents-after-2026-06-05.png`
+  - ✅ `implementation/screenshots/universal-rename-ai-after-2026-06-05.png`
+  - ✅ `implementation/screenshots/header-alignment-after-2026-06-05.png`
 
 ## Risks And Decisions
 

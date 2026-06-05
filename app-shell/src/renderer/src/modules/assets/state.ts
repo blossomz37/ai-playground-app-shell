@@ -29,6 +29,10 @@ export function selectAsset(id: string): void {
   assetsState.selectAsset(id)
 }
 
+export function renameAsset(id: string, name: string): void {
+  assetsState.renameAsset(id, name)
+}
+
 export async function copySelectedAssetPath(): Promise<void> {
   const path = assetsState.getSnapshot().selectedAsset?.filePath
   if (!path) return

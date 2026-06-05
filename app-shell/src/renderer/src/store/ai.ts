@@ -1,4 +1,4 @@
-import { get, writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 import type {
   AiContextCandidate,
   AiInvokeResult,
@@ -14,6 +14,12 @@ import { activeDocId, workspaceId } from './index'
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
 export const aiTemplates = writable<AiPromptTemplate[]>([])
+export const selectedAiTemplateId = writable<string | null>(null)
+export const selectedAiTemplate = derived(
+  [aiTemplates, selectedAiTemplateId],
+  ([$aiTemplates, $selectedAiTemplateId]) =>
+    $aiTemplates.find(template => template.id === $selectedAiTemplateId) ?? $aiTemplates[0] ?? null
+)
 export const aiProviders = writable<AiProvider[]>([])
 export const aiSecretNames = writable<string[]>([])
 export const selectedAiProviderId = writable<AiProviderId>('mock-local')
@@ -64,6 +70,27 @@ export async function loadAiRuns(moduleId?: string): Promise<void> {
 export async function loadAiTemplates(): Promise<void> {
   const templates = await window.shell.ai.templates(get(workspaceId))
   aiTemplates.set(templates)
+  const selectedId = get(selectedAiTemplateId)
+  if (!selectedId || !templates.some(template => template.id === selectedId)) {
+    selectedAiTemplateId.set(templates[0]?.id ?? null)
+  }
+}
+
+export function selectAiTemplate(id: string): void {
+  if (!get(aiTemplates).some(template => template.id === id)) return
+  selectedAiTemplateId.set(id)
+}
+
+export async function renameAiTemplate(id: string, name: string): Promise<void> {
+  const nextName = name.trim()
+  if (!nextName) return
+  const updated = await window.shell.ai.renameTemplate({
+    workspaceId: get(workspaceId),
+    id,
+    name: nextName
+  })
+  aiTemplates.update(templates => templates.map(template => template.id === id ? updated : template))
+  selectedAiTemplateId.set(id)
 }
 
 export async function loadAiProviders(): Promise<void> {

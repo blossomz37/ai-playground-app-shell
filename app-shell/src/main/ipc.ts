@@ -20,7 +20,9 @@ import type {
   CreateAiConversationParams,
   InvokeAiParams,
   ListAiProvidersParams,
-  ListAiRunsParams
+  ListAiRunsParams,
+  RenameAiConversationParams,
+  RenameAiPromptTemplateParams
 } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
@@ -155,6 +157,10 @@ export function registerIpcHandlers(): void {
     aiOrchestrator.createConversation(params)
   )
 
+  ipcMain.handle('ai:conversations:rename', (_e, params: RenameAiConversationParams) =>
+    aiOrchestrator.renameConversation(params)
+  )
+
   ipcMain.handle('ai:messages:append', (_e, params: AppendAiMessageParams) =>
     aiOrchestrator.appendMessage(params)
   )
@@ -165,6 +171,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:templates:save', (_e, template: AiPromptTemplate) =>
     aiOrchestrator.saveTemplate(template)
+  )
+
+  ipcMain.handle('ai:templates:rename', (_e, params: RenameAiPromptTemplateParams) =>
+    aiOrchestrator.renameTemplate(params)
   )
 
   // ── Assets ───────────────────────────────────────────────────────────────

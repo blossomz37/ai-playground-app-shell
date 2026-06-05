@@ -1,13 +1,15 @@
 <!-- Workflow MainView — job runner with output log -->
 <script lang="ts">
+  import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { addToast } from '../../store/toasts'
   import { refreshAiContext, includedAiContextCandidates } from '../../store/ai'
   import { submitJob } from '../../store/jobs'
-  import { selectedWorkflowProfile } from './state'
+  import { renameWorkflowProfile, selectedWorkflowProfile } from './state'
 
   let running = $state(false)
   let log = $state<string[]>([])
+  let renamingProfile = $state(false)
 
   async function runWorkflow() {
     running = true
@@ -31,11 +33,32 @@
     running = false
     addToast('info', 'Workflow job queued')
   }
+
+  function commitRename(id: string, name: string): void {
+    if (!name) {
+      addToast('warn', 'Prompt chain name cannot be blank.')
+      renamingProfile = false
+      return
+    }
+    renameWorkflowProfile(id, name)
+    renamingProfile = false
+  }
 </script>
 
 <div class="main-view">
-  <header class="runner-header">
-    <h1 class="runner-title">{$selectedWorkflowProfile.name}</h1>
+  <header class="zone-header runner-header">
+    {#if renamingProfile}
+      <InlineRename
+        value={$selectedWorkflowProfile.name}
+        ariaLabel="Rename prompt chain"
+        onCommit={(name) => commitRename($selectedWorkflowProfile.id, name)}
+        onCancel={() => renamingProfile = false}
+      />
+    {:else}
+      <button type="button" class="runner-title" onclick={() => renamingProfile = true}>
+        {$selectedWorkflowProfile.name}
+      </button>
+    {/if}
     <button class="run-btn" class:running onclick={runWorkflow} disabled={running}>
       {running ? 'Running...' : 'Run Chain'}
     </button>
@@ -55,8 +78,8 @@
 
 <style>
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .runner-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-6); border-bottom: var(--border-zone); flex-shrink: 0; }
-  .runner-title { font-size: var(--font-size-xl); font-weight: 600; color: var(--color-fg-primary); }
+  .runner-header { justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-6); }
+  .runner-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: var(--font-size-md); font-weight: 700; color: var(--color-fg-primary); }
   .run-btn {
     padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: 500;
     color: var(--color-bg-base); background: var(--color-accent); cursor: pointer; transition: opacity 0.15s;

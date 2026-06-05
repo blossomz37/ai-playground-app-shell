@@ -1,13 +1,41 @@
 <!-- Assets MainView — asset preview/detail -->
 <script lang="ts">
-  import { copySelectedAssetPath, removeSelectedAsset, revealSelectedAsset, selectedAsset } from './state'
+  import InlineRename from '../../shell/InlineRename.svelte'
+  import { addToast } from '../../store/toasts'
+  import { copySelectedAssetPath, removeSelectedAsset, renameAsset, revealSelectedAsset, selectedAsset } from './state'
 
   let asset = $derived($selectedAsset)
   let hasFilePath = $derived(Boolean(asset?.filePath))
+  let renamingAsset = $state(false)
+
+  function commitRename(id: string, name: string): void {
+    if (!name) {
+      addToast('warn', 'Asset label cannot be blank.')
+      renamingAsset = false
+      return
+    }
+    renameAsset(id, name)
+    renamingAsset = false
+  }
 </script>
 
 <div class="main-view">
   {#if asset}
+    <header class="zone-header asset-header">
+      {#if renamingAsset}
+        <InlineRename
+          value={asset.name}
+          ariaLabel="Rename asset label"
+          onCommit={(name) => commitRename(asset.id, name)}
+          onCancel={() => renamingAsset = false}
+        />
+      {:else}
+        <button type="button" class="asset-title" onclick={() => renamingAsset = true}>
+          {asset.name}
+        </button>
+      {/if}
+      <span class="asset-kind">{asset.kindLabel}</span>
+    </header>
     <div class="preview-area">
       <div class:preview-card={asset.thumbnailDataUrl} class:placeholder-img={!asset.thumbnailDataUrl}>
         {#if asset.thumbnailDataUrl}
@@ -29,6 +57,9 @@
 
 <style>
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  .asset-header { gap: var(--space-3); padding: 0 var(--space-6); }
+  .asset-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-md); font-weight: 700; color: var(--color-fg-primary); text-align: left; }
+  .asset-kind { margin-left: auto; flex-shrink: 0; font-size: var(--font-size-xs); color: var(--color-fg-muted); }
   .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--space-6); }
   .placeholder-img, .preview-card {
     display: flex; flex-direction: column; align-items: center; gap: var(--space-3);

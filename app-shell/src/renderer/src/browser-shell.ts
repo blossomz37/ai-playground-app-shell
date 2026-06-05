@@ -355,7 +355,19 @@ function createBrowserShell(): ShellApi {
         .slice(0, params.limit ?? 12),
       templates: async () => aiTemplates,
       saveTemplate: async (template) => {
-        aiTemplates.unshift(template)
+        const existingIndex = aiTemplates.findIndex(item => item.id === template.id)
+        if (existingIndex >= 0) {
+          aiTemplates[existingIndex] = template
+        } else {
+          aiTemplates.unshift(template)
+        }
+        return template
+      },
+      renameTemplate: async (params) => {
+        const template = aiTemplates.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!template) throw new Error('Prompt template not found.')
+        template.name = params.name.trim()
+        template.updatedAt = new Date().toISOString()
         return template
       },
       conversations: async () => aiConversations,
@@ -370,6 +382,13 @@ function createBrowserShell(): ShellApi {
           messages: []
         }
         aiConversations.unshift(conversation)
+        return conversation
+      },
+      renameConversation: async (params) => {
+        const conversation = aiConversations.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!conversation) throw new Error('Conversation not found.')
+        conversation.title = params.title.trim()
+        conversation.updatedAt = new Date().toISOString()
         return conversation
       },
       appendMessage: async (params) => {

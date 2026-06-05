@@ -49,6 +49,10 @@ export function openBookmarkInNewTab(id: string): void {
   webState.openBookmarkInNewTab(id)
 }
 
+export function renameBookmark(id: string, title: string): void {
+  webState.renameBookmark(id, title)
+}
+
 export function navigateTo(input: string, explicitTitle?: string): void {
   webState.navigateTo(input, explicitTitle)
 }

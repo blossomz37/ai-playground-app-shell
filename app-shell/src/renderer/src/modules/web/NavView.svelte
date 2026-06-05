@@ -1,48 +1,91 @@
 <!-- Web NavView — bookmarks and global history -->
 <script lang="ts">
   import { PlusIcon } from 'phosphor-svelte'
+  import InlineRename from '../../shell/InlineRename.svelte'
+  import { addToast } from '../../store/toasts'
   import {
     openBookmark,
     openBookmarkInNewTab,
     openHistoryItem,
+    renameBookmark,
     selectedBookmarkId,
     webBookmarks,
     webHistory
   } from './state'
+
+  let renamingBookmarkId = $state<string | null>(null)
+
+  function startRename(event: MouseEvent, id: string): void {
+    event.stopPropagation()
+    renamingBookmarkId = id
+  }
+
+  function cancelRename(): void {
+    renamingBookmarkId = null
+  }
+
+  function commitRename(id: string, title: string): void {
+    if (!title) {
+      addToast('warn', 'Bookmark title cannot be blank.')
+      cancelRename()
+      return
+    }
+    renameBookmark(id, title)
+    cancelRename()
+  }
 </script>
 
 <div class="nav-view">
   <section class="nav-section bookmarks">
-    <header class="nav-header"><span class="nav-title">Bookmarks</span></header>
+    <header class="zone-header nav-header"><span class="zone-title nav-title">Bookmarks</span></header>
     <div class="bookmark-list">
       {#each $webBookmarks as bm (bm.id)}
         <div class="bm-row" class:active={$selectedBookmarkId === bm.id}>
-          <button
-            class="bm-item"
-            aria-pressed={$selectedBookmarkId === bm.id}
-            onclick={() => openBookmark(bm.id)}
-          >
-            <span class="bm-icon">{bm.icon}</span>
-            <span class="bm-info">
-              <span class="bm-title">{bm.title}</span>
-              <span class="bm-url">{bm.url}</span>
-            </span>
-          </button>
-          <button
-            class="row-action"
-            title="Open in new tab"
-            aria-label="Open bookmark in new tab"
-            onclick={() => openBookmarkInNewTab(bm.id)}
-          >
-            <PlusIcon size={13} weight="bold" />
-          </button>
+          {#if renamingBookmarkId === bm.id}
+            <InlineRename
+              value={bm.title}
+              ariaLabel="Rename bookmark"
+              onCommit={(title) => commitRename(bm.id, title)}
+              onCancel={cancelRename}
+            />
+          {:else}
+            <button
+              class="bm-item"
+              aria-pressed={$selectedBookmarkId === bm.id}
+              onclick={() => openBookmark(bm.id)}
+            >
+              <span class="bm-icon">{bm.icon}</span>
+              <span class="bm-info">
+                <span class="bm-title">{bm.title}</span>
+                <span class="bm-url">{bm.url}</span>
+              </span>
+            </button>
+            <div class="row-actions">
+              <button
+                class="row-action"
+                title="Rename"
+                aria-label={`Rename ${bm.title}`}
+                onclick={(event) => startRename(event, bm.id)}
+              >
+                ✎
+              </button>
+              <button
+                class="row-action"
+                title="Open in new tab"
+                aria-label="Open bookmark in new tab"
+                onclick={() => openBookmarkInNewTab(bm.id)}
+              >
+                <PlusIcon size={13} weight="bold" />
+              </button>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
   </section>
 
   <section class="nav-section history">
-    <header class="nav-header"><span class="nav-title">History</span></header>
+    <header class="zone-header nav-header"><span class="zone-title nav-title">History</span></header>
     <div class="history-list">
       {#each $webHistory as item (item.id)}
         <button class="history-item" onclick={() => openHistoryItem(item.id)}>
@@ -77,22 +120,6 @@
     flex: 1;
   }
 
-  .nav-header {
-    display: flex;
-    align-items: center;
-    padding: var(--space-3);
-    border-bottom: var(--border-zone);
-    flex-shrink: 0;
-  }
-
-  .nav-title {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-fg-muted);
-  }
-
   .bookmark-list,
   .history-list {
     overflow-y: auto;
@@ -101,7 +128,7 @@
 
   .bm-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 26px;
+    grid-template-columns: minmax(0, 1fr) 50px;
     align-items: center;
     border-radius: var(--radius-md);
     color: var(--color-fg-secondary);
@@ -166,6 +193,19 @@
     height: 22px;
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
+  }
+
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+  }
+
+  .bm-row:hover .row-actions,
+  .bm-row.active .row-actions,
+  .row-actions:focus-within {
+    opacity: 1;
   }
 
   .row-action:hover {

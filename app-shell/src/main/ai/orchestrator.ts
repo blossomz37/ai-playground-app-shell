@@ -10,7 +10,9 @@ import type {
   CreateAiConversationParams,
   InvokeAiParams,
   ListAiProvidersParams,
-  ListAiRunsParams
+  ListAiRunsParams,
+  RenameAiConversationParams,
+  RenameAiPromptTemplateParams
 } from '@shared/ai'
 import { documents } from '../core/documents'
 import { events } from '../core/events'
@@ -198,6 +200,11 @@ export const aiOrchestrator = {
     return aiRepository.createConversation(params)
   },
 
+  renameConversation(params: RenameAiConversationParams): AiConversation {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.renameConversation(params)
+  },
+
   appendMessage(params: AppendAiMessageParams): AiChatMessage {
     aiRepository.ensureDefaults(params.workspaceId)
     return aiRepository.appendMessage(params)
@@ -209,5 +216,9 @@ export const aiOrchestrator = {
 
   saveTemplate(template: AiPromptTemplate): AiPromptTemplate {
     return aiRepository.saveTemplate(template)
+  },
+
+  renameTemplate(params: RenameAiPromptTemplateParams): AiPromptTemplate {
+    return aiRepository.renameTemplate(params)
   }
 }

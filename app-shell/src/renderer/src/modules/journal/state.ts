@@ -28,6 +28,10 @@ export function selectJournalEntry(id: string): void {
   journalState.selectEntry(id)
 }
 
+export function renameJournalEntry(id: string, title: string): void {
+  journalState.renameEntry(id, title)
+}
+
 export function updateSelectedJournalContent(content: string): void {
   journalState.updateSelectedContent(content)
 }

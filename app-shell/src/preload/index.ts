@@ -50,8 +50,10 @@ const api: ShellApi = {
     runs: (params) => ipcRenderer.invoke('ai:runs', params),
     templates: (workspaceId) => ipcRenderer.invoke('ai:templates', { workspaceId }),
     saveTemplate: (template) => ipcRenderer.invoke('ai:templates:save', template),
+    renameTemplate: (params) => ipcRenderer.invoke('ai:templates:rename', params),
     conversations: (workspaceId) => ipcRenderer.invoke('ai:conversations', { workspaceId }),
     createConversation: (params) => ipcRenderer.invoke('ai:conversations:create', params),
+    renameConversation: (params) => ipcRenderer.invoke('ai:conversations:rename', params),
     appendMessage: (params) => ipcRenderer.invoke('ai:messages:append', params)
   },
 

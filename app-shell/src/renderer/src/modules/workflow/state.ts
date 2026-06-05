@@ -50,6 +50,10 @@ export function selectWorkflowProfile(id: string): void {
   workflowState.selectProfile(id)
 }
 
+export function renameWorkflowProfile(id: string, name: string): void {
+  workflowState.renameProfile(id, name)
+}
+
 function persistenceKey(wsId: string): string {
   return `modules.workflow.${wsId}.state`
 }

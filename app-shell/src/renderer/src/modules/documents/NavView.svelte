@@ -516,8 +516,8 @@
 {/snippet}
 
 <div class="nav-view">
-  <header class="nav-header">
-    <span class="nav-title">Documents</span>
+  <header class="zone-header nav-header">
+    <span class="zone-title nav-title">Documents</span>
     <div class="nav-actions">
       <div class="sort-control">
         <button
@@ -578,19 +578,10 @@
   }
 
   .nav-header {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-    min-height: 42px;
-    padding: 0 var(--space-3);
-    border-bottom: var(--border-zone);
-    flex-shrink: 0;
   }
 
   .nav-title {
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
     color: color-mix(in srgb, var(--accent-nav) 58%, var(--color-fg-muted));
   }
 

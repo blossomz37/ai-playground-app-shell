@@ -5,7 +5,7 @@
 </script>
 
 <div class="nav-view">
-  <header class="nav-header"><span class="nav-title">Filters</span></header>
+  <header class="zone-header nav-header"><span class="zone-title nav-title">Filters</span></header>
   <div class="controls">
     <div class="field">
       <label class="field-label" for="table-filter-kind">Kind</label>
@@ -34,8 +34,6 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0; }
-  .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
   .controls { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
   .field { display: flex; flex-direction: column; gap: var(--space-1); }
   .field-label { font-size: var(--font-size-xs); color: var(--color-fg-muted); }

@@ -74,7 +74,7 @@
 </script>
 
 <div class="main-view">
-  <header class="tab-strip" aria-label="Browser tabs">
+  <header class="zone-header tab-strip" aria-label="Browser tabs">
     <div class="tabs">
       {#each $webTabs as tab (tab.id)}
         <div
@@ -161,12 +161,11 @@
   }
 
   .tab-strip {
-    display: flex;
     align-items: stretch;
-    min-height: 40px;
-    border-bottom: var(--border-zone);
+    min-height: var(--shell-zone-header-h);
+    height: var(--shell-zone-header-h);
+    padding: 0;
     background: var(--color-bg-base);
-    flex-shrink: 0;
   }
 
   .tabs {

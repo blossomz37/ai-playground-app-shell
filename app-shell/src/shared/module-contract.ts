@@ -15,7 +15,9 @@ import type {
   CreateAiConversationParams,
   InvokeAiParams,
   ListAiProvidersParams,
-  ListAiRunsParams
+  ListAiRunsParams,
+  RenameAiConversationParams,
+  RenameAiPromptTemplateParams
 } from './ai'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
@@ -320,8 +322,10 @@ export interface ShellApi {
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
     saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>
+    renameTemplate(params: RenameAiPromptTemplateParams): Promise<AiPromptTemplate>
     conversations(workspaceId: string): Promise<AiConversation[]>
     createConversation(params: CreateAiConversationParams): Promise<AiConversation>
+    renameConversation(params: RenameAiConversationParams): Promise<AiConversation>
     appendMessage(params: AppendAiMessageParams): Promise<AiChatMessage>
   }
   assets: {

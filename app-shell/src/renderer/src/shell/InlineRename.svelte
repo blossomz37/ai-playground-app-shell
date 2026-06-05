@@ -13,11 +13,7 @@
     onCancel: () => void
   } = $props()
 
-  let draft = $state(value)
-
-  $effect(() => {
-    draft = value
-  })
+  let draft = $derived(value)
 
   function inputHost(node: HTMLInputElement): void {
     queueMicrotask(() => {
