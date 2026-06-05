@@ -53,6 +53,18 @@
   - `npm run audit:contrast`
   - Screenshot evidence: `implementation/screenshots/refactor-phase3-workflow-helper-after-2026-06-05.png`
 
+**Phase 3D outcome (2026-06-05):** migrated Table View to the shared settings-backed persistence helper.
+
+- Replaced Table View's local load/hydrate/save boilerplate with `connectSettingsBackedPersistence`.
+- Kept the existing Table View settings key: `modules.tableview.<workspaceId>.state`.
+- Preserved the separate live Documents subscription for table rows; only filter, sort, and selected row state remain settings-backed.
+- Deferred Web migration to the final Phase 3 pass.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence: `implementation/screenshots/refactor-phase3-tableview-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

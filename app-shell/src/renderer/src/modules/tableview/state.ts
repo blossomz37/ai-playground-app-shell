@@ -2,16 +2,14 @@ import { readable } from 'svelte/store'
 import {
   TableViewStateSlice,
   type TableFilterKind,
-  type TableViewPersistenceSnapshot,
   type TableSortBy,
   type TableViewState
 } from '@shared/state/tableview-state'
 import { documents, workspaceId } from '../../store'
 import { getModuleState } from '../module-state-registry'
+import { connectSettingsBackedPersistence } from '../settings-backed-persistence'
 
 const tableViewState = getModuleState<TableViewStateSlice>('shell.tableview', 'tableview')
-let activeWorkspaceId = ''
-let persistenceReady = false
 
 documents.subscribe((docs) => {
   tableViewState.setDocuments(docs)
@@ -57,20 +55,9 @@ function persistenceKey(wsId: string): string {
   return `modules.tableview.${wsId}.state`
 }
 
-async function loadTablePersistence(wsId: string): Promise<void> {
-  activeWorkspaceId = wsId
-  persistenceReady = false
-  const snapshot = await window.shell.settings.get(persistenceKey(wsId)) as TableViewPersistenceSnapshot | undefined
-  if (activeWorkspaceId !== wsId) return
-  persistenceReady = true
-  tableViewState.hydrate(snapshot)
-}
-
-workspaceId.subscribe((wsId) => {
-  void loadTablePersistence(wsId)
-})
-
-tableViewState.subscribe(() => {
-  if (!persistenceReady || !activeWorkspaceId) return
-  void window.shell.settings.set(persistenceKey(activeWorkspaceId), tableViewState.persistenceSnapshot())
+connectSettingsBackedPersistence({
+  label: 'shell.tableview',
+  workspaceId,
+  slice: tableViewState,
+  settingsKey: persistenceKey
 })
