@@ -41,6 +41,18 @@
   - `npm run audit:contrast`
   - Screenshot evidence: `implementation/screenshots/refactor-phase3-assets-helper-after-2026-06-05.png`
 
+**Phase 3C outcome (2026-06-05):** migrated Workflow to the shared settings-backed persistence helper.
+
+- Replaced Workflow's local load/hydrate/save boilerplate with `connectSettingsBackedPersistence`.
+- Kept the existing Workflow settings key: `modules.workflow.<workspaceId>.state`.
+- Preserved Workflow profile selection, renamed profile names, context toggles, proposal toggle, and prompt text behavior.
+- Deferred Table View and Web migration to later Phase 3 passes.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence: `implementation/screenshots/refactor-phase3-workflow-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
