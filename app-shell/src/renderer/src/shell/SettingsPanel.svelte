@@ -8,7 +8,7 @@
   ────────────────────────────────────────────── -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { editorSettings, type EditorSettings, themeMode, setThemePreference, type ThemeMode } from '../store'
+  import { editorSettings, type EditorSettings } from '../store'
   import {
     aiProviders,
     aiSecretNames,
@@ -21,28 +21,9 @@
     selectedAiProviderId,
     selectedAiTemperature
   } from '../store/ai'
+  import AppearanceSettings from './AppearanceSettings.svelte'
 
   let open = $state(false)
-
-  // Theme state
-  let currentTheme = $state<ThemeMode>($themeMode)
-  $effect(() => { currentTheme = $themeMode })
-
-  const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [
-    { mode: 'light', label: 'Light', icon: '☀️' },
-    { mode: 'dark',  label: 'Dark',  icon: '🌙' },
-    { mode: 'system', label: 'System', icon: '💻' },
-  ]
-
-  async function selectTheme(mode: ThemeMode) {
-    currentTheme = mode
-    await setThemePreference(mode)
-  }
-
-  // Local copy for live editing
-  let fontFamily = $state($editorSettings.fontFamily)
-  let fontSize = $state($editorSettings.fontSize)
-  let spellcheck = $state($editorSettings.spellcheck)
 
   // Secrets state
   let secretNames = $state<string[]>([])
@@ -59,13 +40,6 @@
   let knownSecretNames = $derived(new Set([...$aiSecretNames, ...secretNames]))
   let aiProviderReady = $derived(!activeAiProvider?.secretName || knownSecretNames.has(activeAiProvider.secretName))
   let openAiKeyStored = $derived(knownSecretNames.has('OPENAI_API_KEY'))
-
-  // Sync when store changes externally
-  $effect(() => {
-    fontFamily = $editorSettings.fontFamily
-    fontSize = $editorSettings.fontSize
-    spellcheck = $editorSettings.spellcheck
-  })
 
   const fontOptions = [
     { label: 'System Serif', value: "var(--font-serif)" },
@@ -185,29 +159,7 @@
       </header>
 
       <div class="settings-body">
-        <!-- Appearance section -->
-        <section class="section">
-          <h3 class="section-title">Appearance</h3>
-
-          <div class="field">
-            <span class="field-label" id="theme-label">Theme</span>
-            <div class="theme-selector" role="radiogroup" aria-labelledby="theme-label">
-              {#each themeOptions as opt}
-                <button
-                  class="theme-btn"
-                  class:active={currentTheme === opt.mode}
-                  onclick={() => selectTheme(opt.mode)}
-                  title={opt.label}
-                  role="radio"
-                  aria-checked={currentTheme === opt.mode}
-                >
-                  <span class="theme-icon">{opt.icon}</span>
-                  <span class="theme-label">{opt.label}</span>
-                </button>
-              {/each}
-            </div>
-          </div>
-        </section>
+        <AppearanceSettings />
 
         <!-- Editor section -->
         <section class="section">
@@ -218,10 +170,10 @@
             <select
               id="settings-font"
               class="field-select"
-              bind:value={fontFamily}
-              onchange={() => apply('fontFamily', fontFamily)}
+              value={$editorSettings.fontFamily}
+              onchange={(event) => apply('fontFamily', event.currentTarget.value)}
             >
-              {#each fontOptions as opt}
+              {#each fontOptions as opt (opt.value)}
                 <option value={opt.value}>{opt.label}</option>
               {/each}
             </select>
@@ -232,10 +184,10 @@
             <select
               id="settings-size"
               class="field-select"
-              bind:value={fontSize}
-              onchange={() => apply('fontSize', fontSize)}
+              value={$editorSettings.fontSize}
+              onchange={(event) => apply('fontSize', event.currentTarget.value)}
             >
-              {#each sizeOptions as opt}
+              {#each sizeOptions as opt (opt.value)}
                 <option value={opt.value}>{opt.label}</option>
               {/each}
             </select>
@@ -246,10 +198,10 @@
             <button
               id="settings-spellcheck"
               class="toggle-btn"
-              class:active={spellcheck}
-              onclick={() => { spellcheck = !spellcheck; apply('spellcheck', spellcheck) }}
+              class:active={$editorSettings.spellcheck}
+              onclick={() => apply('spellcheck', !$editorSettings.spellcheck)}
               role="switch"
-              aria-checked={spellcheck}
+              aria-checked={$editorSettings.spellcheck}
               aria-label="Toggle spellcheck"
             >
               <span class="toggle-knob"></span>
@@ -811,46 +763,4 @@
     padding: var(--space-2) 0;
   }
 
-  /* ── Theme selector (segmented control) ──────────────────────────────── */
-  .theme-selector {
-    display: flex;
-    gap: 2px;
-    background: var(--color-bg-overlay);
-    border: var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 2px;
-  }
-
-  .theme-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-sm);
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition: color 0.15s, background 0.15s;
-  }
-
-  .theme-btn:hover {
-    color: var(--color-fg-secondary);
-  }
-
-  .theme-btn.active {
-    background: var(--color-bg-surface);
-    color: var(--color-accent);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  }
-
-  .theme-icon {
-    font-size: 14px;
-    line-height: 1;
-  }
-
-  .theme-label {
-    font-weight: 500;
-  }
 </style>

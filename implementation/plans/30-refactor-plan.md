@@ -122,6 +122,23 @@
   - Screenshot evidence:
     - `implementation/screenshots/refactor-phase6-document-tree-drag-helper-after-2026-06-05.png`
 
+**Phase 7A outcome (2026-06-05):** extracted the Settings appearance section.
+
+- Added `app-shell/src/renderer/src/shell/AppearanceSettings.svelte`.
+- Moved theme selector state, markup, and scoped theme-selector styles out of `SettingsPanel.svelte`.
+- Kept `SettingsPanel.svelte` as the modal shell with exported `toggle()`.
+- Kept editor, AI provider, OpenAI key save sequence, and generic secrets CRUD in `SettingsPanel.svelte`.
+- Applied the Svelte autofixer's small existing editor-control cleanup in `SettingsPanel.svelte`: keyed option loops and read editor settings directly from the store instead of mirrored local state.
+- Deferred `EditorSettings.svelte`, `AiProviderSettings.svelte`, and `SecretsSettings.svelte` to later narrow Phase 7 passes.
+- Validation:
+  - Svelte autofixer clean for `AppearanceSettings.svelte`
+  - Svelte autofixer clean for `SettingsPanel.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase7-appearance-settings-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
