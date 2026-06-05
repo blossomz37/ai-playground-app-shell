@@ -6,6 +6,7 @@ import { maybeCaptureForEvidence } from './capture/evidence'
 import { initDb } from './core/db'
 import { events } from './core/events'
 import { createSettingsStore } from './core/settings'
+import { isThemeMode, themeStartupBackground, toNativeThemeSource } from './core/theme'
 import { workspaceService } from './core/workspaces'
 import { moduleRegistry } from './modules/registry'
 import { documentsModule } from './modules/documents'
@@ -17,6 +18,7 @@ import { aiChatModule } from './modules/aichat'
 import { webModule } from './modules/web'
 import { promptStudioModule } from './modules/promptstudio'
 import { registerIpcHandlers } from './ipc'
+import type { ThemeMode } from '@shared/module-contract'
 
 const APP_NAME = 'App Shell'
 app.setName(APP_NAME)
@@ -73,17 +75,20 @@ app.whenReady().then(async () => {
   const shellSettings = createSettingsStore('shell')
   const captureAiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
   const captureAiModel = process.env['SHELL_CAPTURE_AI_MODEL']
+  const captureTheme = process.env['SHELL_CAPTURE_THEME']
   if (process.env['SHELL_CAPTURE'] && captureAiProviderId) {
     shellSettings.set('ai.providerId', captureAiProviderId)
     if (captureAiModel) {
       shellSettings.set(`ai.model.${captureAiProviderId}`, captureAiModel)
     }
   }
-  const savedTheme = shellSettings.get<string>('theme') ?? 'system'
-  nativeTheme.themeSource = savedTheme as 'light' | 'dark' | 'system'
-  const isLight = savedTheme === 'light' ||
-    (savedTheme === 'system' && !nativeTheme.shouldUseDarkColors)
-  initialBgColor = isLight ? '#f5f3f0' : '#1e1e2e'
+  if (process.env['SHELL_CAPTURE'] && isThemeMode(captureTheme)) {
+    shellSettings.set('theme', captureTheme)
+  }
+  const savedThemeValue = shellSettings.get<string>('theme')
+  const savedTheme: ThemeMode = isThemeMode(savedThemeValue) ? savedThemeValue : 'system'
+  nativeTheme.themeSource = toNativeThemeSource(savedTheme)
+  initialBgColor = themeStartupBackground(savedTheme, nativeTheme.shouldUseDarkColors)
   const icon = appIconPath()
   if (process.platform === 'darwin' && existsSync(icon)) {
     app.dock?.setIcon(icon)

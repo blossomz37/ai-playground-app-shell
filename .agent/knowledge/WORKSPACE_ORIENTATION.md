@@ -1,6 +1,6 @@
 # Workspace Orientation - App Shell Project
 
-Last oriented: 2026-06-04
+Last oriented: 2026-06-05
 
 ## One-Line Summary
 
@@ -19,7 +19,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Phase 2 finalization added `app-shell/src/renderer/src/modules/module-state-registry.ts`; renderer adapters now resolve module slices by module id instead of constructing them locally. Assets import now uses native file selection, records durable `filePath`, can reveal imported files in Finder, stores image dimensions/thumbnails, and stores PDF page/title/author/thumbnail metadata.
 - Plan 21 landed on 2026-06-04: the shell has a persistent shell-owned context strip, full-width status bar, shared titlebar/context/body/status column tracks, and fresh-layout inspector default closed while preserving existing saved layout state.
 - App identity work landed on 2026-06-04: runtime/product/window name is `App Shell`, icon assets live in `app-shell/resources/`, and macOS dev runs generate `app-shell/.electron-dev/App Shell.app` through `app-shell/scripts/start-dev.mjs`.
-- Plan 24 landed on 2026-06-04: UX discoverability/accessibility hardening added measured contrast auditing, grouped Activity Rail More navigation, AI Chat starter prompts/context affordance, flat Documents inspector Snapshots language, and editorial document table tokens. No next numbered implementation slice has been selected yet; start from `session-handoffs/HANDOFF_21.md` and live repo evidence.
+- Plan 31 landed on 2026-06-05: Gray is now a fourth explicit persisted theme option, using the existing App Shell token system and a 12-step gray palette. Contrast auditing now covers Dark, Light, and Gray, and screenshot evidence lives in `implementation/screenshots/gray-theme-after-2026-06-05.png` plus `implementation/screenshots/gray-theme-settings-after-2026-06-05.png`. Start from the newest numbered handoff and live repo evidence.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 

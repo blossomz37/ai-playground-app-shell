@@ -13,6 +13,7 @@ import { aiOrchestrator } from './ai/orchestrator'
 import { metadataForImportedAsset } from './assets/metadata'
 import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
+import { themeStartupBackground, toNativeThemeSource } from './core/theme'
 import type {
   AiPromptTemplate,
   AppendAiMessageParams,
@@ -258,11 +259,9 @@ export function registerIpcHandlers(): void {
     // Persist
     shellSettings.set('theme', mode)
     // Sync Electron's native chrome (title bar, native dialogs)
-    nativeTheme.themeSource = mode
+    nativeTheme.themeSource = toNativeThemeSource(mode)
     // Update window background color to prevent flash on next cold launch
-    const bgColor = mode === 'light' || (mode === 'system' && !nativeTheme.shouldUseDarkColors)
-      ? '#f5f3f0'
-      : '#1e1e2e'
+    const bgColor = themeStartupBackground(mode, nativeTheme.shouldUseDarkColors)
     for (const win of BrowserWindow.getAllWindows()) {
       win.setBackgroundColor(bgColor)
     }

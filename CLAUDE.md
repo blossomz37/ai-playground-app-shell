@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-04, Plan 24's UX discoverability and accessibility pass has landed; no next numbered implementation plan has been selected yet.
+**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-05, Plan 31's Gray theme slice has landed as a fourth explicit theme option.
 
 **Committed stack:** Electron desktop shell + Svelte 5 UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* renderer components where practical (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
 
@@ -75,7 +75,8 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Layout Design Pass**~~ — ✅ **DONE** (2026-06-04; `implementation/plans/21-layout-design-pass.md`): Added the shell-owned context strip, moved the status bar to full shell width, aligned titlebar/context/body/status tracks as a layout contract, made the inspector closed by default for fresh layouts while preserving saved layout state, and lightly polished Documents for the new hierarchy without implementing the Jewel Box theme.
 - ~~**App icon and macOS dev display name**~~ — ✅ **DONE** (2026-06-04): Added app icon assets from `.ideas/icons`, wired runtime/product/window naming to `App Shell`, and made the macOS dev launcher generate `app-shell/.electron-dev/App Shell.app` so Dock identity no longer depends on Electron's default bundle name.
 - ~~**UX discoverability and accessibility pass**~~ — ✅ **DONE** (2026-06-04; `implementation/plans/24-ux-discoverability-accessibility-pass.md`): Added measured contrast auditing, rail grouping and keyboard discoverability, AI Chat first-use prompts/context affordance, flat Documents inspector Snapshots language, and quieter editorial table styling. No `ModuleContext`, IPC, persistence, or database schema changes.
-- **Next slice** — not selected. Start from `session-handoffs/HANDOFF_21.md` and live repo evidence before planning the next narrow hardening pass.
+- ~~**Gray theme**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/31-gray-theme.md`): Added Gray as a fourth explicit persisted theme option, mapped it through the existing token API, kept semantic status colors colored, extended capture support, and expanded contrast auditing to Dark, Light, and Gray. No dependency, `ModuleContext`, or database schema changes.
+- **Next slice** — not selected. Start from the newest numbered `session-handoffs/HANDOFF_NN.md` and live repo evidence before planning the next narrow hardening pass.
 
 ## Workspace Layout
 

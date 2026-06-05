@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { dirname } from 'path'
 import { mkdirSync, writeFileSync } from 'fs'
+import { isThemeMode } from '../core/theme'
 
 /**
  * Dev-only UI-evidence capture. Gated by the SHELL_CAPTURE env var.
@@ -168,10 +169,13 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
-      if (captureTheme === 'dark' || captureTheme === 'light') {
+      if (isThemeMode(captureTheme) && captureTheme !== 'system') {
         await win.webContents.executeJavaScript(
           `document.documentElement.setAttribute('data-theme', ${JSON.stringify(captureTheme)})`
         )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      } else if (captureTheme === 'system') {
+        await win.webContents.executeJavaScript('document.documentElement.removeAttribute("data-theme")')
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (showInspector) {

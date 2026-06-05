@@ -20,7 +20,7 @@ import type {
   RenameAiPromptTemplateParams
 } from './ai'
 
-export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark' | 'gray' | 'system'
 
 export interface ModuleManifest {
   id: string

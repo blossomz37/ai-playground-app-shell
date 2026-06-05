@@ -27,6 +27,18 @@ const tokenNames = [
   '--accent-nav',
   '--accent-editor',
   '--accent-inspector',
+  '--gray-1',
+  '--gray-2',
+  '--gray-3',
+  '--gray-4',
+  '--gray-5',
+  '--gray-6',
+  '--gray-7',
+  '--gray-8',
+  '--gray-9',
+  '--gray-10',
+  '--gray-11',
+  '--gray-12',
   '--jewel-emerald',
   '--jewel-sapphire',
   '--jewel-amethyst'
@@ -77,7 +89,8 @@ const nonTextPairs = [
 
 const themes = {
   dark: collectThemeTokens('dark'),
-  light: collectThemeTokens('light')
+  light: collectThemeTokens('light'),
+  gray: collectThemeTokens('gray')
 }
 
 let failures = 0
@@ -103,7 +116,7 @@ console.log('\nContrast audit passed: all measured token pairs meet targets.')
 
 function collectThemeTokens(themeName) {
   const rootTokens = readDeclarations(css.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? '')
-  const themeSelector = themeName === 'dark' ? '\\[data-theme="dark"\\]' : '\\[data-theme="light"\\]'
+  const themeSelector = `\\[data-theme="${themeName}"\\]`
   const themeTokens = readDeclarations(css.match(new RegExp(`${themeSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? '')
   return { ...rootTokens, ...themeTokens }
 }

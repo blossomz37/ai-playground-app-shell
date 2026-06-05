@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────
    File:        tokens.css
-   Description: Design tokens — dual-palette theming (dark default, light, system)
+   Description: Design tokens — multi-palette theming (dark default, light, gray, system)
    Version:     0.2.0
    Created:     2026-05-29
    Modified:    2026-05-29
@@ -167,6 +167,60 @@
   --editor-table-resize:   #315faa;
   --shadow-panel:          0 16px 38px rgb(30 30 46 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.78);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+/* ── Gray palette ─────────────────────────────────────────────────────────── */
+[data-theme="gray"] {
+  --gray-1:  #FCFCFC;
+  --gray-2:  #F9F9F9;
+  --gray-3:  #F0F0F0;
+  --gray-4:  #E8E8E8;
+  --gray-5:  #E0E0E0;
+  --gray-6:  #D9D9D9;
+  --gray-7:  #CECECE;
+  --gray-8:  #BBBBBB;
+  --gray-9:  #8D8D8D;
+  --gray-10: #838383;
+  --gray-11: #646464;
+  --gray-12: #202020;
+
+  --color-bg-base:     var(--gray-1);
+  --color-bg-surface:  var(--gray-2);
+  --color-bg-overlay:  var(--gray-3);
+  --color-bg-active:   var(--gray-4);
+  --color-fg-primary:  var(--gray-12);
+  --color-fg-secondary:var(--gray-11);
+  --color-fg-muted:    var(--gray-11);
+  --color-accent:      var(--gray-12);
+  --color-accent-dim:  var(--gray-4);
+  --color-border:      var(--gray-6);
+  --color-danger:      #c53d56;
+  --color-success:     #2d8a4e;
+  --color-warn:        #c47a2e;
+  --color-shell-topbar:    var(--gray-2);
+  --color-shell-rail:      var(--gray-3);
+  --color-shell-sidebar:   var(--gray-1);
+  --color-shell-main:      var(--gray-1);
+  --color-shell-inspector: var(--gray-2);
+  --color-shell-status:    var(--gray-3);
+  --color-hover:           rgb(32 32 32 / 0.06);
+  --color-border-strong:   var(--gray-8);
+  --color-panel-glint:     rgb(255 255 255 / 0.78);
+  --color-focus-ring:      var(--gray-12);
+  --color-focus-ring-offset:var(--gray-1);
+  --color-action-text:     var(--gray-12);
+  --editor-table-border:   var(--gray-10);
+  --editor-table-header-bg:var(--gray-4);
+  --editor-table-header-fg:var(--gray-12);
+  --editor-table-cell-bg:  var(--gray-1);
+  --editor-table-selection:var(--gray-11);
+  --editor-table-resize:   var(--gray-12);
+  --accent-nav:            var(--gray-12);
+  --accent-editor:         var(--gray-12);
+  --accent-inspector:      var(--gray-12);
+  --accent-status:         var(--gray-12);
+  --shadow-panel:          0 16px 38px rgb(32 32 32 / 0.13), 0 0 0 1px rgb(255 255 255 / 0.72);
+  --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 24%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 /* ── System mode fallback ─────────────────────────────────────────────────── *

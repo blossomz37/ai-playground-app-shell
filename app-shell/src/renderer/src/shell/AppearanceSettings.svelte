@@ -4,6 +4,7 @@
   const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [
     { mode: 'light', label: 'Light', icon: '☀️' },
     { mode: 'dark', label: 'Dark', icon: '🌙' },
+    { mode: 'gray', label: 'Gray', icon: '◼' },
     { mode: 'system', label: 'System', icon: '💻' }
   ]
 
