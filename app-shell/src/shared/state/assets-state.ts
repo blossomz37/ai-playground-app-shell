@@ -1,169 +1,161 @@
+import type {
+  AssetExportParams,
+  AssetExportResult,
+  AssetImportParams,
+  AssetListParams,
+  AssetRecord,
+  AssetUpdatePatch
+} from '../module-contract'
 import { ObservableSlice } from './observable'
-import type { AssetImportCandidate } from '../module-contract'
 
-export interface AssetItem {
-  id: string
-  name: string
-  type: 'image' | 'document'
-  kindLabel: string
-  size: string
-  dimensions: string
-  width: number | null
-  height: number | null
-  pageCount: number | null
-  title: string | null
-  author: string | null
-  thumbnailDataUrl: string | null
-  added: string
-  usage: string
-  filePath: string | null
+export type AssetItem = AssetRecord
+
+export interface AssetsPort {
+  list(params: AssetListParams): Promise<AssetRecord[]>
+  open(id: string): Promise<AssetRecord | null>
+  importFiles(params: AssetImportParams): Promise<AssetRecord[]>
+  update(id: string, patch: AssetUpdatePatch): Promise<AssetRecord>
+  archive(id: string): Promise<AssetRecord>
+  restore(id: string): Promise<AssetRecord>
+  delete(id: string): Promise<{ id: string }>
+  exportAssets(ids: string[], params?: AssetExportParams): Promise<AssetExportResult>
+  reveal(path: string): Promise<void>
 }
 
 export interface AssetsState {
-  assets: AssetItem[]
+  assets: AssetRecord[]
+  archivedAssets: AssetRecord[]
   selectedAssetId: string
-  selectedAsset: AssetItem | null
-}
-
-const initialAssets: AssetItem[] = [
-  { id: '1', name: 'hero-banner.png', type: 'image', kindLabel: 'PNG Image', size: '1.2 MB', dimensions: '1920 x 1080', width: 1920, height: 1080, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 2 documents', filePath: null },
-  { id: '2', name: 'character-ref.jpg', type: 'image', kindLabel: 'JPEG Image', size: '890 KB', dimensions: '1400 x 1800', width: 1400, height: 1800, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-29', usage: 'Referenced in 1 document', filePath: null },
-  { id: '3', name: 'map-sketch.png', type: 'image', kindLabel: 'PNG Image', size: '2.1 MB', dimensions: '2400 x 1600', width: 2400, height: 1600, pageCount: null, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-28', usage: 'Not referenced yet', filePath: null },
-  { id: '4', name: 'notes-scan.pdf', type: 'document', kindLabel: 'PDF Document', size: '450 KB', dimensions: '8 pages', width: null, height: null, pageCount: 8, title: null, author: null, thumbnailDataUrl: null, added: '2026-05-27', usage: 'Referenced in research notes', filePath: null }
-]
-
-export interface AssetsPersistenceSnapshot {
-  assets: AssetItem[]
-  selectedAssetId: string
+  selectedAsset: AssetRecord | null
 }
 
 export class AssetsStateSlice extends ObservableSlice<AssetsState> {
-  private assets = initialAssets
-  private selectedAssetId = '1'
+  private assets: AssetRecord[] = []
+  private archivedAssets: AssetRecord[] = []
+  private selectedAssetId = ''
+  private workspaceId: string | null = null
+
+  constructor(private readonly port: AssetsPort) {
+    super()
+  }
 
   getSnapshot(): AssetsState {
     return {
       assets: this.assets,
+      archivedAssets: this.archivedAssets,
       selectedAssetId: this.selectedAssetId,
       selectedAsset: this.selectedAsset()
     }
   }
 
+  async loadWorkspace(workspaceId: string): Promise<void> {
+    this.workspaceId = workspaceId
+    await this.refresh()
+    this.selectedAssetId = this.assets[0]?.id ?? this.archivedAssets[0]?.id ?? ''
+    this.emit()
+  }
+
   selectAsset(id: string): void {
-    if (!this.assets.some(asset => asset.id === id)) return
+    if (![...this.assets, ...this.archivedAssets].some(asset => asset.id === id)) return
     this.selectedAssetId = id
     this.emit()
   }
 
-  renameAsset(id: string, name: string): AssetItem | null {
-    const nextName = name.trim()
-    if (!nextName) return null
-
-    let renamed: AssetItem | null = null
-    this.assets = this.assets.map(asset => {
-      if (asset.id !== id) return asset
-      renamed = { ...asset, name: nextName }
-      return renamed
-    })
-
-    if (renamed) this.emit()
-    return renamed
+  async renameAsset(id: string, label: string): Promise<AssetRecord | null> {
+    const nextLabel = label.trim()
+    if (!nextLabel) return null
+    return this.updateAsset(id, { label: nextLabel })
   }
 
-  removeSelectedAsset(): AssetItem | null {
-    const removed = this.selectedAsset()
-    if (!removed) return null
-
-    this.assets = this.assets.filter(asset => asset.id !== removed.id)
-    this.selectedAssetId = this.assets[0]?.id ?? ''
+  async updateAsset(id: string, patch: AssetUpdatePatch): Promise<AssetRecord | null> {
+    const updated = await this.port.update(id, patch)
+    this.upsertAsset(updated)
     this.emit()
-    return removed
+    return updated
   }
 
-  importAssets(candidates: AssetImportCandidate[]): AssetItem[] {
-    if (candidates.length === 0) return []
-
-    const imported = candidates.map(candidate => this.assetFromImport(candidate))
-    const importedPaths = new Set(imported.map(asset => asset.filePath).filter(Boolean))
-    this.assets = [
-      ...imported,
-      ...this.assets.filter(asset => !asset.filePath || !importedPaths.has(asset.filePath))
-    ]
+  async importAssets(workspaceId: string, filePaths?: string[]): Promise<AssetRecord[]> {
+    const imported = await this.port.importFiles({ workspaceId, filePaths })
+    await this.refresh()
     this.selectedAssetId = imported[0]?.id ?? this.selectedAssetId
     this.emit()
     return imported
   }
 
-  hydrate(snapshot: AssetsPersistenceSnapshot | undefined): void {
-    if (!snapshot) {
-      this.emit()
-      return
-    }
+  async archiveAsset(id: string): Promise<AssetRecord | null> {
+    const archived = await this.port.archive(id)
+    await this.refresh()
+    this.selectedAssetId = this.assets[0]?.id ?? archived.id
+    this.emit()
+    return archived
+  }
 
-    this.assets = snapshot.assets.length > 0
-      ? snapshot.assets.map(asset => ({
-        ...asset,
-        width: asset.width ?? null,
-        height: asset.height ?? null,
-        pageCount: asset.pageCount ?? null,
-        title: asset.title ?? null,
-        author: asset.author ?? null,
-        thumbnailDataUrl: asset.thumbnailDataUrl ?? null,
-        filePath: asset.filePath ?? null
-      }))
-      : initialAssets
-    this.selectedAssetId = this.assets.some(asset => asset.id === snapshot.selectedAssetId)
-      ? snapshot.selectedAssetId
-      : this.assets[0]?.id ?? ''
+  async restoreAsset(id: string): Promise<AssetRecord | null> {
+    const restored = await this.port.restore(id)
+    await this.refresh()
+    this.selectedAssetId = restored.id
+    this.emit()
+    return restored
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    await this.port.delete(id)
+    await this.refresh()
+    if (this.selectedAssetId === id) {
+      this.selectedAssetId = this.assets[0]?.id ?? this.archivedAssets[0]?.id ?? ''
+    }
     this.emit()
   }
 
-  persistenceSnapshot(): AssetsPersistenceSnapshot {
-    return {
-      assets: this.assets,
-      selectedAssetId: this.selectedAssetId
+  async exportAssets(ids: string[], params?: AssetExportParams): Promise<AssetExportResult> {
+    return this.port.exportAssets(ids, params)
+  }
+
+  async reveal(path: string): Promise<void> {
+    return this.port.reveal(path)
+  }
+
+  private async refresh(): Promise<void> {
+    if (!this.workspaceId) return
+    const rows = await this.port.list({ workspaceId: this.workspaceId, includeArchived: true })
+    this.assets = rows.filter(asset => !asset.archivedAt)
+    this.archivedAssets = rows.filter(asset => asset.archivedAt)
+    if (this.selectedAssetId && !rows.some(asset => asset.id === this.selectedAssetId)) {
+      this.selectedAssetId = rows[0]?.id ?? ''
     }
   }
 
-  private selectedAsset(): AssetItem | null {
-    return this.assets.find(asset => asset.id === this.selectedAssetId) ?? this.assets[0] ?? null
+  private selectedAsset(): AssetRecord | null {
+    const rows = [...this.assets, ...this.archivedAssets]
+    return rows.find(asset => asset.id === this.selectedAssetId) ?? rows[0] ?? null
   }
 
-  private assetFromImport(candidate: AssetImportCandidate): AssetItem {
-    const extension = candidate.extension || 'file'
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)
-    const isPdf = extension === 'pdf'
-    const dimensions = candidate.image
-      ? `${candidate.image.width} x ${candidate.image.height}`
-      : candidate.pdf ? this.formatPageCount(candidate.pdf.pageCount)
-      : isImage ? 'Image metadata unavailable' : isPdf ? 'PDF metadata unavailable' : 'Imported file'
-    return {
-      id: `asset-${candidate.importedAt}-${candidate.filePath}`.replace(/[^a-zA-Z0-9_-]/g, '-'),
-      name: candidate.name,
-      type: isImage ? 'image' : 'document',
-      kindLabel: `${extension.toUpperCase()} ${isImage ? 'Image' : 'Document'}`,
-      size: this.formatBytes(candidate.sizeBytes),
-      dimensions,
-      width: candidate.image?.width ?? null,
-      height: candidate.image?.height ?? null,
-      pageCount: candidate.pdf?.pageCount ?? null,
-      title: candidate.pdf?.title ?? null,
-      author: candidate.pdf?.author ?? null,
-      thumbnailDataUrl: candidate.image?.thumbnailDataUrl ?? candidate.pdf?.thumbnailDataUrl ?? null,
-      added: candidate.importedAt.slice(0, 10),
-      usage: 'Not referenced yet',
-      filePath: candidate.filePath
+  private upsertAsset(asset: AssetRecord): void {
+    const target = asset.archivedAt ? this.archivedAssets : this.assets
+    const other = asset.archivedAt ? this.assets : this.archivedAssets
+    const index = target.findIndex(item => item.id === asset.id)
+    if (index >= 0) {
+      target[index] = asset
+    } else {
+      target.unshift(asset)
     }
+    const otherIndex = other.findIndex(item => item.id === asset.id)
+    if (otherIndex >= 0) other.splice(otherIndex, 1)
   }
+}
 
-  private formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  }
+export function formatAssetBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
-  private formatPageCount(pageCount: number | null): string {
-    if (pageCount === null) return 'PDF metadata unavailable'
-    return `${pageCount} page${pageCount === 1 ? '' : 's'}`
+export function primaryAssetMetadata(asset: AssetRecord): string {
+  if (asset.mediaType === 'image' && typeof asset.metadata.width === 'number' && typeof asset.metadata.height === 'number') {
+    return `${asset.metadata.width} x ${asset.metadata.height}`
   }
+  if (asset.mediaType === 'pdf' && typeof asset.metadata.pageCount === 'number') {
+    return `${asset.metadata.pageCount} page${asset.metadata.pageCount === 1 ? '' : 's'}`
+  }
+  return asset.extension ? asset.extension.toUpperCase() : asset.mediaType
 }

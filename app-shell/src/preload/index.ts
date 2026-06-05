@@ -66,7 +66,14 @@ const api: ShellApi = {
   },
 
   assets: {
-    importFiles: () => ipcRenderer.invoke('assets:importFiles'),
+    list: (params) => ipcRenderer.invoke('assets:list', params),
+    open: (id) => ipcRenderer.invoke('assets:open', { id }),
+    importFiles: (params) => ipcRenderer.invoke('assets:importFiles', params),
+    update: (id, patch) => ipcRenderer.invoke('assets:update', { id, patch }),
+    archive: (id) => ipcRenderer.invoke('assets:archive', { id }),
+    restore: (id) => ipcRenderer.invoke('assets:restore', { id }),
+    delete: (id) => ipcRenderer.invoke('assets:delete', { id }),
+    exportAssets: (ids, params) => ipcRenderer.invoke('assets:exportAssets', { ids, params }),
     reveal: (path) => ipcRenderer.invoke('assets:reveal', { path })
   },
 

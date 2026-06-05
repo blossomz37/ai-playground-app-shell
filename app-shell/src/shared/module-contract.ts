@@ -258,6 +258,52 @@ export interface LayoutState {
   zenMode: boolean
 }
 
+export type AssetMediaType = 'image' | 'pdf' | 'audio' | 'epub' | 'document' | 'other'
+
+export interface AssetMetadata {
+  width?: number
+  height?: number
+  pageCount?: number | null
+  title?: string | null
+  author?: string | null
+  [key: string]: unknown
+}
+
+export interface AssetWorkspaceLink {
+  workspaceId: string
+  role: string
+  createdAt: string
+}
+
+export interface AssetDocumentLink {
+  documentId: string
+  relationType: string
+  createdAt: string
+}
+
+export interface AssetRecord {
+  id: string
+  label: string
+  originalName: string
+  filePath: string | null
+  extension: string
+  mimeType: string
+  mediaType: AssetMediaType
+  sizeBytes: number
+  fileCreatedAt: string | null
+  fileModifiedAt: string | null
+  importedAt: string
+  updatedAt: string
+  archivedAt: string | null
+  checksum: string | null
+  thumbnailDataUrl: string | null
+  metadata: AssetMetadata
+  comments: string
+  tags: string[]
+  workspaceLinks: AssetWorkspaceLink[]
+  documentLinks: AssetDocumentLink[]
+}
+
 export interface AssetImportCandidate {
   name: string
   filePath: string
@@ -275,6 +321,39 @@ export interface AssetImportCandidate {
     author: string | null
     thumbnailDataUrl: string | null
   }
+}
+
+export interface AssetListParams {
+  workspaceId: string
+  includeArchived?: boolean
+}
+
+export interface AssetImportParams {
+  workspaceId: string
+  filePaths?: string[]
+}
+
+export interface AssetUpdatePatch {
+  label?: string
+  comments?: string
+  tags?: string[]
+}
+
+export interface AssetExportParams {
+  targetDir?: string
+}
+
+export interface AssetMissingFile {
+  assetId: string
+  filePath: string | null
+  reason: string
+}
+
+export interface AssetExportResult {
+  targetDir: string
+  filesWritten: string[]
+  manifestPath: string
+  missingFiles: AssetMissingFile[]
 }
 
 export interface ModuleContext {
@@ -408,7 +487,14 @@ export interface ShellApi {
     appendMessage(params: AppendAiMessageParams): Promise<AiChatMessage>
   }
   assets: {
-    importFiles(): Promise<AssetImportCandidate[]>
+    list(params: AssetListParams): Promise<AssetRecord[]>
+    open(id: string): Promise<AssetRecord | null>
+    importFiles(params: AssetImportParams): Promise<AssetRecord[]>
+    update(id: string, patch: AssetUpdatePatch): Promise<AssetRecord>
+    archive(id: string): Promise<AssetRecord>
+    restore(id: string): Promise<AssetRecord>
+    delete(id: string): Promise<{ id: string }>
+    exportAssets(ids: string[], params?: AssetExportParams): Promise<AssetExportResult>
     reveal(path: string): Promise<void>
   }
   journal: {
