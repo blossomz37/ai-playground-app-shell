@@ -139,6 +139,23 @@
   - Screenshot evidence:
     - `implementation/screenshots/refactor-phase7-appearance-settings-after-2026-06-05.png`
 
+**Phase 7B outcome (2026-06-05):** extracted the Settings editor section.
+
+- Added `app-shell/src/renderer/src/shell/EditorSettings.svelte`.
+- Moved editor font family, font size, spellcheck controls, option data, persistence helper, and toggle styles out of `SettingsPanel.svelte`.
+- Preserved the existing editor settings path: update `editorSettings` and persist through `window.shell.settings.set('editor.<key>', value)`.
+- Kept `SettingsPanel.svelte` as the modal shell with exported `toggle()`.
+- Kept AI provider, OpenAI key save sequence, and generic secrets CRUD in `SettingsPanel.svelte`.
+- Deferred `AiProviderSettings.svelte` and `SecretsSettings.svelte` to later narrow Phase 7 passes.
+- Validation:
+  - Svelte autofixer clean for `EditorSettings.svelte`
+  - Svelte autofixer clean for `SettingsPanel.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase7-editor-settings-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

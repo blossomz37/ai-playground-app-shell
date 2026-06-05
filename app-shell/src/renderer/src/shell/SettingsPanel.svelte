@@ -8,7 +8,6 @@
   ────────────────────────────────────────────── -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { editorSettings, type EditorSettings } from '../store'
   import {
     aiProviders,
     aiSecretNames,
@@ -22,6 +21,7 @@
     selectedAiTemperature
   } from '../store/ai'
   import AppearanceSettings from './AppearanceSettings.svelte'
+  import EditorSettings from './EditorSettings.svelte'
 
   let open = $state(false)
 
@@ -40,25 +40,6 @@
   let knownSecretNames = $derived(new Set([...$aiSecretNames, ...secretNames]))
   let aiProviderReady = $derived(!activeAiProvider?.secretName || knownSecretNames.has(activeAiProvider.secretName))
   let openAiKeyStored = $derived(knownSecretNames.has('OPENAI_API_KEY'))
-
-  const fontOptions = [
-    { label: 'System Serif', value: "var(--font-serif)" },
-    { label: 'System Sans', value: "var(--font-sans)" },
-    { label: 'Monospace', value: "var(--font-mono)" },
-  ]
-
-  const sizeOptions = [
-    { label: 'Small (14px)', value: 'var(--font-size-md)' },
-    { label: 'Medium (16px)', value: 'var(--font-size-lg)' },
-    { label: 'Large (20px)', value: 'var(--font-size-xl)' },
-    { label: 'Extra Large (24px)', value: 'var(--font-size-2xl)' },
-  ]
-
-  function apply(key: keyof EditorSettings, value: string | boolean) {
-    editorSettings.update(s => ({ ...s, [key]: value }))
-    // Persist via IPC
-    window.shell.settings.set(`editor.${key}`, value)
-  }
 
   // --- Secrets actions ---
   async function loadSecrets() {
@@ -160,54 +141,7 @@
 
       <div class="settings-body">
         <AppearanceSettings />
-
-        <!-- Editor section -->
-        <section class="section">
-          <h3 class="section-title">Editor</h3>
-
-          <div class="field">
-            <label class="field-label" for="settings-font">Font Family</label>
-            <select
-              id="settings-font"
-              class="field-select"
-              value={$editorSettings.fontFamily}
-              onchange={(event) => apply('fontFamily', event.currentTarget.value)}
-            >
-              {#each fontOptions as opt (opt.value)}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="settings-size">Font Size</label>
-            <select
-              id="settings-size"
-              class="field-select"
-              value={$editorSettings.fontSize}
-              onchange={(event) => apply('fontSize', event.currentTarget.value)}
-            >
-              {#each sizeOptions as opt (opt.value)}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="field field-row">
-            <label class="field-label" for="settings-spellcheck">Spellcheck</label>
-            <button
-              id="settings-spellcheck"
-              class="toggle-btn"
-              class:active={$editorSettings.spellcheck}
-              onclick={() => apply('spellcheck', !$editorSettings.spellcheck)}
-              role="switch"
-              aria-checked={$editorSettings.spellcheck}
-              aria-label="Toggle spellcheck"
-            >
-              <span class="toggle-knob"></span>
-            </button>
-          </div>
-        </section>
+        <EditorSettings />
 
         <!-- AI Provider section -->
         <section class="section">
@@ -498,12 +432,6 @@
     margin-bottom: var(--space-4);
   }
 
-  .field-row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
   .field-label {
     font-size: var(--font-size-sm);
     color: var(--color-fg-secondary);
@@ -536,40 +464,6 @@
   .field-select option {
     background: var(--color-bg-surface);
     color: var(--color-fg-primary);
-  }
-
-  /* Toggle switch */
-  .toggle-btn {
-    position: relative;
-    width: 40px;
-    height: 22px;
-    border-radius: 11px;
-    background: var(--color-bg-overlay);
-    border: 1px solid var(--color-border);
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-    flex-shrink: 0;
-  }
-
-  .toggle-btn.active {
-    background: var(--color-accent-dim);
-    border-color: var(--color-accent);
-  }
-
-  .toggle-knob {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--color-fg-muted);
-    transition: transform 0.2s, background 0.2s;
-  }
-
-  .toggle-btn.active .toggle-knob {
-    transform: translateX(18px);
-    background: var(--color-accent);
   }
 
   /* AI provider section */
