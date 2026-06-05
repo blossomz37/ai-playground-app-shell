@@ -1,11 +1,22 @@
 <script lang="ts">
-  import { activeDoc, versions, editorContent, countWords } from '../../store'
+  import { activeDoc, versions, editorContent, countWords, updateDoc } from '../../store'
+
+  const docKinds = ['folder', 'chapter', 'scene', 'plan']
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
       month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     })
+  }
+
+  async function onKindChange(event: Event): Promise<void> {
+    const doc = $activeDoc
+    if (!doc) return
+
+    const kind = (event.currentTarget as HTMLSelectElement).value
+    if (kind === doc.kind) return
+    await updateDoc(doc.id, { kind })
   }
 </script>
 
@@ -21,8 +32,12 @@
           <span class="value">{$activeDoc.title}</span>
         </div>
         <div class="field">
-          <span class="label">Kind</span>
-          <span class="value">{$activeDoc.kind}</span>
+          <label class="label" for="document-kind">Kind</label>
+          <select id="document-kind" class="kind-select" value={$activeDoc.kind} onchange={onKindChange}>
+            {#each docKinds as kind (kind)}
+              <option value={kind}>{kind}</option>
+            {/each}
+          </select>
         </div>
         <div class="field">
           <span class="label">Words</span>
@@ -127,6 +142,28 @@
     text-align: right;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .kind-select {
+    min-width: 110px;
+    max-width: 150px;
+    padding: 2px var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 24%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 48%, transparent);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+    text-align: right;
+  }
+
+  .kind-select:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .kind-select option {
+    background: var(--color-bg-surface);
+    color: var(--color-fg-primary);
   }
 
   .empty-text {

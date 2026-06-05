@@ -9,6 +9,7 @@ export interface DocumentsPort {
   list(workspaceId: string): Promise<Doc[]>
   open(id: string): Promise<Doc | undefined>
   save(id: string, content: string): Promise<void>
+  update(id: string, patch: { title?: string; kind?: string }): Promise<Doc>
   versions(id: string): Promise<DocVersion[]>
   onChanged(cb: (id: string) => void): void
 }
@@ -83,6 +84,13 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.emit()
   }
 
+  async updateDoc(id: string, patch: { title?: string; kind?: string }): Promise<void> {
+    const updated = await this.port.update(id, patch)
+    this.documents = this.documents.map(item => item.id === updated.id ? updated : item)
+
+    this.emit()
+  }
+
   setEditorContent(content: string, options: { dirty?: boolean } = {}): void {
     this.editorContent = content
     if (options.dirty ?? true) {
@@ -125,8 +133,9 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
     this.documents = this.documents.map(doc => doc.id === id ? updated : doc)
     if (this.activeDocId === id) {
-      this.editorContent = updated.content
-      this.isDirty = false
+      if (!this.isDirty) {
+        this.editorContent = updated.content
+      }
       this.versions = await this.port.versions(id)
     }
     this.emit()

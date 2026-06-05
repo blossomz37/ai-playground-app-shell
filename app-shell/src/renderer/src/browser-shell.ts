@@ -157,6 +157,17 @@ function createBrowserShell(): ShellApi {
           docs.set(id, { ...existing, content, updatedAt: new Date().toISOString() })
         }
       },
+      update: async (id, patch) => {
+        const existing = docs.get(id) ?? DEMO_DOCS[1]
+        const updated = {
+          ...existing,
+          title: patch.title?.trim() || existing.title,
+          kind: patch.kind?.trim() || existing.kind,
+          updatedAt: new Date().toISOString()
+        }
+        docs.set(id, updated)
+        return updated
+      },
       create: async (params) => {
         const doc: Doc = {
           id: `demo-${Date.now()}`,

@@ -13,13 +13,13 @@
     expanded.has(id) ? expanded.delete(id) : expanded.add(id)
   }
 
-  /** Collect all folder IDs from the tree. */
-  function allFolderIds(nodes: DocNode[]): string[] {
+  /** Collect all expandable IDs from the tree. */
+  function allExpandableIds(nodes: DocNode[]): string[] {
     const ids: string[] = []
     for (const n of nodes) {
-      if (n.kind === 'folder') {
+      if (n.children.length > 0) {
         ids.push(n.id)
-        ids.push(...allFolderIds(n.children))
+        ids.push(...allExpandableIds(n.children))
       }
     }
     return ids
@@ -27,7 +27,7 @@
 
   function expandAll() {
     expanded.clear()
-    for (const id of allFolderIds($docTree as DocNode[])) {
+    for (const id of allExpandableIds($docTree as DocNode[])) {
       expanded.add(id)
     }
   }
@@ -36,9 +36,37 @@
     expanded.clear()
   }
 
+  function findAncestorIds(nodes: DocNode[], targetId: string, ancestors: string[] = []): string[] | null {
+    for (const node of nodes) {
+      if (node.id === targetId) {
+        return ancestors
+      }
+
+      const childAncestors = findAncestorIds(
+        node.children,
+        targetId,
+        node.children.length > 0 ? [...ancestors, node.id] : ancestors
+      )
+      if (childAncestors) {
+        return childAncestors
+      }
+    }
+
+    return null
+  }
+
+  let activeAncestorIds = $derived.by(() => {
+    if (!$activeDocId) return []
+    return findAncestorIds($docTree as DocNode[], $activeDocId) ?? []
+  })
+
+  function isExpanded(id: string): boolean {
+    return expanded.has(id) || activeAncestorIds.includes(id)
+  }
+
   let allExpanded = $derived.by(() => {
-    const folderIds = allFolderIds($docTree as DocNode[])
-    return folderIds.length > 0 && folderIds.every(id => expanded.has(id))
+    const expandableIds = allExpandableIds($docTree as DocNode[])
+    return expandableIds.length > 0 && expandableIds.every(id => expanded.has(id))
   })
 
   function onTreeContextMenu(e: MouseEvent, node: DocNode) {
@@ -62,13 +90,13 @@
     style:padding-left="{12 + depth * 16}px"
     role="button"
     tabindex="0"
-    onclick={() => node.kind === 'folder' ? toggle(node.id) : selectDoc(node.id)}
-    onkeydown={(e) => e.key === 'Enter' && (node.kind === 'folder' ? toggle(node.id) : selectDoc(node.id))}
+    onclick={() => node.children.length > 0 ? toggle(node.id) : selectDoc(node.id)}
+    onkeydown={(e) => e.key === 'Enter' && (node.children.length > 0 ? toggle(node.id) : selectDoc(node.id))}
     oncontextmenu={(e) => onTreeContextMenu(e, node)}
   >
     <span class="glyph" class:is-folder={node.kind === 'folder'}>
-      {#if node.kind === 'folder'}
-        <span class="folder-chevron" class:open={expanded.has(node.id)}>▶</span>
+      {#if node.children.length > 0}
+        <span class="folder-chevron" class:open={isExpanded(node.id)}>▶</span>
       {:else if node.kind === 'chapter'}
         ◉
       {:else}
@@ -78,7 +106,7 @@
     <span class="title">{node.title}</span>
   </div>
 
-  {#if node.kind === 'folder' && expanded.has(node.id)}
+  {#if node.children.length > 0 && isExpanded(node.id)}
     <div transition:slide={{ duration: 150 }}>
       {#each node.children as child (child.id)}
         {@render treeNode(child, depth + 1)}
@@ -89,7 +117,7 @@
 
 <div class="nav-view">
   <header class="nav-header">
-    <span class="nav-title">Manuscript</span>
+    <span class="nav-title">Documents</span>
     <button
       class="collapse-btn"
       onclick={() => allExpanded ? collapseAll() : expandAll()}

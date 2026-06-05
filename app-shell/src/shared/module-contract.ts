@@ -279,6 +279,7 @@ export interface ShellApi {
     list(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: string): Promise<void>
+    update(id: string, patch: { title?: string; kind?: string }): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string }): Promise<Doc>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): void

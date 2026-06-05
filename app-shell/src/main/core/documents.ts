@@ -29,6 +29,21 @@ export const documents = {
     events.emit('documents:changed', id)
   },
 
+  update(id: string, patch: { title?: string; kind?: string }): Doc {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
+    if (!current) throw new Error(`Document not found: ${id}`)
+
+    const title = patch.title?.trim() || current.title
+    const kind = patch.kind?.trim() || current.kind
+
+    db.prepare('UPDATE documents SET title = ?, kind = ?, updatedAt = ? WHERE id = ?').run(title, kind, now, id)
+    events.emit('documents:changed', id)
+
+    return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
+  },
+
   create(params: {
     workspaceId: string
     kind: string

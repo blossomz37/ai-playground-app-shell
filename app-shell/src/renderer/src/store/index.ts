@@ -185,6 +185,10 @@ export async function selectDoc(id: string): Promise<void> {
   await documentsState.selectDoc(id)
 }
 
+export async function updateDoc(id: string, patch: { title?: string; kind?: string }): Promise<void> {
+  await documentsState.updateDoc(id, patch)
+}
+
 export function setEditorContent(content: string, options?: { dirty?: boolean }): void {
   documentsState.setEditorContent(content, options)
 }

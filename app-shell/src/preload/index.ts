@@ -6,6 +6,7 @@ const api: ShellApi = {
     list:     (workspaceId) => ipcRenderer.invoke('documents:list', { workspaceId }),
     open:     (id)          => ipcRenderer.invoke('documents:open', { id }),
     save:     (id, content) => ipcRenderer.invoke('documents:save', { id, content }),
+    update:   (id, patch)   => ipcRenderer.invoke('documents:update', { id, patch }),
     create:   (params)      => ipcRenderer.invoke('documents:create', params),
     versions: (id)          => ipcRenderer.invoke('documents:versions', { id }),
     onChanged: (cb) => {
