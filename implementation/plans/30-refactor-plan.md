@@ -93,6 +93,22 @@
     - `implementation/screenshots/refactor-phase6-document-tree-row-after-2026-06-05.png`
     - `implementation/screenshots/refactor-phase6-document-tree-row-selected-after-2026-06-05.png`
 
+**Phase 6B outcome (2026-06-05):** extracted the Documents tree recursive renderer.
+
+- Added `app-shell/src/renderer/src/modules/documents/DocumentTree.svelte`.
+- Moved recursive row rendering and child expansion markup out of `Documents/NavView.svelte`.
+- Kept expansion state, display-icon decisions, command registration, rename state, context menus, native drag/drop, pointer drag, archive, and create behavior in `NavView.svelte`.
+- Did not extract `documentTreeDrag.ts` in this sub-slice.
+- Validation:
+  - Svelte autofixer clean for `DocumentTree.svelte`
+  - Svelte autofixer clean for `NavView.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase6-document-tree-after-2026-06-05.png`
+    - `implementation/screenshots/refactor-phase6-document-tree-selected-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

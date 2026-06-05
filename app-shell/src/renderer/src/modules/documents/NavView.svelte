@@ -15,10 +15,9 @@
   import { showContextMenu, type ContextMenuItem } from '../../store/contextmenu'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
-  import { slide } from 'svelte/transition'
   import { SvelteSet } from 'svelte/reactivity'
   import { SortAscendingIcon } from 'phosphor-svelte'
-  import DocumentTreeRow from './DocumentTreeRow.svelte'
+  import DocumentTree from './DocumentTree.svelte'
   import type { Disposable } from '@shared/module-contract'
   import type { DocNode, DocumentDropPlacement, DocumentsSortMode } from '@shared/state/documents-state'
 
@@ -447,42 +446,6 @@
   })
 </script>
 
-{#snippet treeNode(node: DocNode, depth: number)}
-  <DocumentTreeRow
-    {node}
-    {depth}
-    active={$activeDocId === node.id}
-    dragging={draggingDocId === node.id}
-    isDropTarget={dragOverDocId === node.id}
-    dropPlacement={dragOverPlacement}
-    renaming={renamingDocId === node.id}
-    {renameValue}
-    icon={displayIcon(node)}
-    expanded={isExpanded(node.id)}
-    {focusRenameInput}
-    onActivateIcon={() => activateIcon(node)}
-    onActivateNode={() => activateNode(node)}
-    onContextMenu={(event) => onTreeContextMenu(event, node)}
-    onDragStart={(event) => onTreeDragStart(event, node)}
-    onDragOver={(event) => onTreeDragOver(event, node)}
-    onDragLeave={(event) => onTreeDragLeave(event, node)}
-    onDrop={(event) => onTreeDrop(event, node)}
-    onDragEnd={onTreeDragEnd}
-    onPointerDown={(event) => onTreePointerDown(event, node)}
-    onRenameInput={updateRenameValue}
-    onRenameKeydown={onRenameKeydown}
-    onRenameBlur={() => void commitRename()}
-  />
-
-  {#if node.children.length > 0 && isExpanded(node.id)}
-    <div transition:slide={{ duration: 150 }}>
-      {#each node.children as child (child.id)}
-        {@render treeNode(child, depth + 1)}
-      {/each}
-    </div>
-  {/if}
-{/snippet}
-
 <div class="nav-view">
   <header class="zone-header nav-header">
     <span class="zone-title nav-title">Documents</span>
@@ -531,9 +494,30 @@
     </div>
   </header>
   <div class="nav-tree" role="tree" aria-label="Documents tree">
-    {#each $docTree as node (node.id)}
-      {@render treeNode(node as DocNode, 0)}
-    {/each}
+    <DocumentTree
+      nodes={$docTree as DocNode[]}
+      activeDocId={$activeDocId}
+      {draggingDocId}
+      {dragOverDocId}
+      {dragOverPlacement}
+      {renamingDocId}
+      {renameValue}
+      {focusRenameInput}
+      {displayIcon}
+      {isExpanded}
+      onActivateIcon={activateIcon}
+      onActivateNode={activateNode}
+      onContextMenu={onTreeContextMenu}
+      onDragStart={onTreeDragStart}
+      onDragOver={onTreeDragOver}
+      onDragLeave={onTreeDragLeave}
+      onDrop={onTreeDrop}
+      onDragEnd={onTreeDragEnd}
+      onPointerDown={onTreePointerDown}
+      onRenameInput={updateRenameValue}
+      {onRenameKeydown}
+      onRenameBlur={() => void commitRename()}
+    />
   </div>
 </div>
 
