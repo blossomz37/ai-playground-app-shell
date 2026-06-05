@@ -274,7 +274,7 @@ function createBrowserShell(): ShellApi {
     },
     workspace: {
       get: async () => activeWorkspace,
-      list: async () => Array.from(workspaceRows.values()),
+      list: async (params) => Array.from(workspaceRows.values()).filter(workspace => params?.includeArchived || !workspace.archivedAt),
       create: async (params) => {
         const createdAt = new Date().toISOString()
         const workspace: Workspace = {
@@ -290,8 +290,75 @@ function createBrowserShell(): ShellApi {
         workspaceRows.set(workspace.id, workspace)
         return workspace
       },
+      importFolder: async (params = {}) => {
+        const createdAt = new Date().toISOString()
+        const workspace: Workspace = {
+          id: `ws-browser-import-${Date.now()}`,
+          name: params.name ?? 'Imported Folder',
+          type: params.type ?? 'authoring',
+          root: params.root ?? '/',
+          createdAt,
+          updatedAt: createdAt,
+          lastOpenedAt: createdAt,
+          archivedAt: null
+        }
+        workspaceRows.set(workspace.id, workspace)
+        return workspace
+      },
+      duplicate: async (id, params = {}) => {
+        const source = workspaceRows.get(id)
+        if (!source) throw new Error(`Workspace not found: ${id}`)
+        const createdAt = new Date().toISOString()
+        const workspace: Workspace = {
+          ...source,
+          id: `ws-browser-copy-${Date.now()}`,
+          name: params.name ?? `${source.name} Copy`,
+          createdAt,
+          updatedAt: createdAt,
+          lastOpenedAt: createdAt,
+          archivedAt: null
+        }
+        workspaceRows.set(workspace.id, workspace)
+        for (const doc of Array.from(docs.values()).filter(item => item.workspaceId === source.id)) {
+          const docId = `${doc.id}-copy-${Date.now()}`
+          docs.set(docId, { ...doc, id: docId, workspaceId: workspace.id, parentId: null, createdAt, updatedAt: createdAt })
+        }
+        return workspace
+      },
+      archive: async (id) => {
+        const workspace = workspaceRows.get(id)
+        if (!workspace) throw new Error(`Workspace not found: ${id}`)
+        const updated = { ...workspace, archivedAt: new Date().toISOString() }
+        workspaceRows.set(id, updated)
+        if (activeWorkspace.id === id) {
+          activeWorkspace = Array.from(workspaceRows.values()).find(item => !item.archivedAt && item.id !== id)
+            ?? await window.shell.workspace.create({ name: 'Browser Preview', type: 'authoring', root: '/' })
+        }
+        return activeWorkspace
+      },
+      restore: async (id) => {
+        const workspace = workspaceRows.get(id)
+        if (!workspace) throw new Error(`Workspace not found: ${id}`)
+        activeWorkspace = { ...workspace, archivedAt: null, updatedAt: new Date().toISOString() }
+        workspaceRows.set(id, activeWorkspace)
+        return activeWorkspace
+      },
+      delete: async (id) => {
+        const workspace = workspaceRows.get(id)
+        if (!workspace) throw new Error(`Workspace not found: ${id}`)
+        workspaceRows.delete(id)
+        for (const [docId, doc] of docs.entries()) {
+          if (doc.workspaceId === id) docs.delete(docId)
+        }
+        if (activeWorkspace.id === id) {
+          activeWorkspace = Array.from(workspaceRows.values()).find(item => !item.archivedAt)
+            ?? await window.shell.workspace.create({ name: 'Browser Preview', type: 'authoring', root: '/' })
+        }
+        return activeWorkspace
+      },
       switch: async (id) => {
-        activeWorkspace = workspaceRows.get(id) ?? activeWorkspace
+        const workspace = workspaceRows.get(id)
+        if (workspace && !workspace.archivedAt) activeWorkspace = workspace
         return activeWorkspace
       }
     },

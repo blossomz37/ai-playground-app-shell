@@ -132,6 +132,20 @@ export interface Workspace {
   archivedAt?: string | null
 }
 
+export interface WorkspaceListParams {
+  includeArchived?: boolean
+}
+
+export interface WorkspaceImportParams {
+  root?: string
+  name?: string
+  type?: string
+}
+
+export interface WorkspaceDuplicateParams {
+  name?: string
+}
+
 export type JobRunner = (payload: unknown, handle: JobHandle) => Promise<void>
 
 export interface JobHandle {
@@ -295,8 +309,13 @@ export interface ShellApi {
   }
   workspace: {
     get(): Promise<Workspace>
-    list(): Promise<Workspace[]>
+    list(params?: WorkspaceListParams): Promise<Workspace[]>
     create(params: { name: string; type?: string; root?: string }): Promise<Workspace>
+    importFolder(params?: WorkspaceImportParams): Promise<Workspace>
+    duplicate(id: string, params?: WorkspaceDuplicateParams): Promise<Workspace>
+    archive(id: string): Promise<Workspace>
+    restore(id: string): Promise<Workspace>
+    delete(id: string): Promise<Workspace>
     switch(id: string): Promise<Workspace>
   }
   settings: {

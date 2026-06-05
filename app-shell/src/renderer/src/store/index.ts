@@ -11,6 +11,7 @@ export type { ThemeMode }
 export const workspaceId   = writable<string>('ws-default')
 export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
+export const archivedWorkspaces = writable<Workspace[]>([])
 export const activeModuleId = writable<string | null>('shell.documents')
 
 export const documentsState = getModuleState<DocumentsStateSlice>('shell.documents', 'documents')
@@ -140,7 +141,7 @@ export async function initStore(): Promise<void> {
   const workspace = await window.shell.workspace.get()
   activeWorkspace.set(workspace)
   workspaceId.set(workspace.id)
-  workspaces.set(await window.shell.workspace.list())
+  await refreshWorkspaceLists()
   await loadWorkspaceDocuments(workspace.id)
   await loadJobs(workspace.id)
 
@@ -161,14 +162,20 @@ async function loadWorkspaceDocuments(wsId: string): Promise<void> {
   await documentsState.loadWorkspace(wsId)
 }
 
-export async function switchWorkspace(id: string): Promise<void> {
-  if (get(workspaceId) === id) return
-  if (get(isDirty)) await saveDoc()
+async function refreshWorkspaceLists(): Promise<void> {
+  const rows = await window.shell.workspace.list({ includeArchived: true })
+  workspaces.set(rows.filter(workspace => !workspace.archivedAt))
+  archivedWorkspaces.set(rows.filter(workspace => workspace.archivedAt))
+}
 
-  const workspace = await window.shell.workspace.switch(id)
+async function applyWorkspaceResult(workspace: Workspace): Promise<void> {
+  const previousWorkspaceId = get(workspaceId)
   activeWorkspace.set(workspace)
   workspaceId.set(workspace.id)
-  workspaces.set(await window.shell.workspace.list())
+  await refreshWorkspaceLists()
+
+  if (workspace.id === previousWorkspaceId) return
+
   await loadWorkspaceDocuments(workspace.id)
   await loadJobs(workspace.id)
 
@@ -176,10 +183,48 @@ export async function switchWorkspace(id: string): Promise<void> {
   if (moduleId) await window.shell.modules.activate(moduleId)
 }
 
+export async function switchWorkspace(id: string): Promise<void> {
+  if (get(workspaceId) === id) return
+  if (get(isDirty)) await saveDoc()
+
+  const workspace = await window.shell.workspace.switch(id)
+  await applyWorkspaceResult(workspace)
+}
+
 export async function createWorkspace(params: { name: string; type?: string; root?: string }): Promise<void> {
   const workspace = await window.shell.workspace.create(params)
-  workspaces.set(await window.shell.workspace.list())
+  await refreshWorkspaceLists()
   await switchWorkspace(workspace.id)
+}
+
+export async function importWorkspaceFolder(params?: { root?: string; name?: string; type?: string }): Promise<void> {
+  const workspace = await window.shell.workspace.importFolder(params)
+  await refreshWorkspaceLists()
+  await switchWorkspace(workspace.id)
+}
+
+export async function duplicateWorkspace(id: string, params?: { name?: string }): Promise<void> {
+  if (get(isDirty)) await saveDoc()
+  const workspace = await window.shell.workspace.duplicate(id, params)
+  await refreshWorkspaceLists()
+  await switchWorkspace(workspace.id)
+}
+
+export async function archiveWorkspace(id: string): Promise<void> {
+  if (get(isDirty)) await saveDoc()
+  const workspace = await window.shell.workspace.archive(id)
+  await applyWorkspaceResult(workspace)
+}
+
+export async function restoreWorkspace(id: string): Promise<void> {
+  const workspace = await window.shell.workspace.restore(id)
+  await applyWorkspaceResult(workspace)
+}
+
+export async function deleteWorkspace(id: string): Promise<void> {
+  if (get(isDirty)) await saveDoc()
+  const workspace = await window.shell.workspace.delete(id)
+  await applyWorkspaceResult(workspace)
 }
 
 export async function selectDoc(id: string): Promise<void> {

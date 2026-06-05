@@ -18,8 +18,13 @@ const api: ShellApi = {
 
   workspace: {
     get:    ()         => ipcRenderer.invoke('workspace:get'),
-    list:   ()         => ipcRenderer.invoke('workspace:list'),
+    list:   (params)   => ipcRenderer.invoke('workspace:list', params),
     create: (params)   => ipcRenderer.invoke('workspace:create', params),
+    importFolder: (params) => ipcRenderer.invoke('workspace:importFolder', params),
+    duplicate: (id, params) => ipcRenderer.invoke('workspace:duplicate', { id, params }),
+    archive: (id) => ipcRenderer.invoke('workspace:archive', { id }),
+    restore: (id) => ipcRenderer.invoke('workspace:restore', { id }),
+    delete: (id) => ipcRenderer.invoke('workspace:delete', { id }),
     switch: (id)       => ipcRenderer.invoke('workspace:switch', { id })
   },
 

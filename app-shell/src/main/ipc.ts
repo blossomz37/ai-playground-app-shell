@@ -1,5 +1,11 @@
 import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
-import type { AssetImportCandidate, ThemeMode } from '@shared/module-contract'
+import type {
+  AssetImportCandidate,
+  ThemeMode,
+  WorkspaceDuplicateParams,
+  WorkspaceImportParams,
+  WorkspaceListParams
+} from '@shared/module-contract'
 import { statSync } from 'fs'
 import path from 'path'
 import { documents } from './core/documents'
@@ -63,7 +69,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('workspace:get', () => workspaceService.getActive())
 
-  ipcMain.handle('workspace:list', () => workspaceService.list())
+  ipcMain.handle('workspace:list', (_e, params?: WorkspaceListParams) => workspaceService.list(params))
 
   ipcMain.handle('workspace:create', async (event, params: { name: string; type?: string; root?: string }) => {
     let root = params.root
@@ -79,6 +85,44 @@ export function registerIpcHandlers(): void {
       root = result.filePaths[0]
     }
     return workspaceService.create({ ...params, root })
+  })
+
+  ipcMain.handle('workspace:importFolder', async (event, params: WorkspaceImportParams = {}) => {
+    let root = params.root
+    if (!root) {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win ?? undefined, {
+        title: 'Import folder as project',
+        properties: ['openDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Folder import cancelled')
+      }
+      root = result.filePaths[0]
+    }
+    return workspaceService.importFolder({ ...params, root })
+  })
+
+  ipcMain.handle('workspace:duplicate', (_e, { id, params }: { id: string; params?: WorkspaceDuplicateParams }) =>
+    workspaceService.duplicate(id, params)
+  )
+
+  ipcMain.handle('workspace:archive', async (_e, { id }: { id: string }) => {
+    const workspace = workspaceService.archive(id)
+    await moduleRegistry.refreshWorkspace(workspace)
+    return workspace
+  })
+
+  ipcMain.handle('workspace:restore', async (_e, { id }: { id: string }) => {
+    const workspace = workspaceService.restore(id)
+    await moduleRegistry.refreshWorkspace(workspace)
+    return workspace
+  })
+
+  ipcMain.handle('workspace:delete', async (_e, { id }: { id: string }) => {
+    const workspace = workspaceService.delete(id)
+    await moduleRegistry.refreshWorkspace(workspace)
+    return workspace
   })
 
   ipcMain.handle('workspace:switch', async (_e, { id }: { id: string }) => {

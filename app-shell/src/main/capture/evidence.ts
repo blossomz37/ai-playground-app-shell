@@ -34,6 +34,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
+  const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
   const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
 
@@ -161,6 +162,49 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-document-markdown', { detail: ${JSON.stringify(documentMarkdown)} }))`
         )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (workspaceImportRoot) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const sourceRoot = ${JSON.stringify(workspaceImportRoot)}
+            const initialWorkspace = await window.shell.workspace.get()
+            const imported = await window.shell.workspace.importFolder({
+              root: sourceRoot,
+              name: 'Lifecycle Smoke Import',
+              type: 'authoring'
+            })
+            const importedDocs = await window.shell.documents.list(imported.id)
+            const duplicate = await window.shell.workspace.duplicate(imported.id)
+            const duplicateDocs = await window.shell.documents.list(duplicate.id)
+            await window.shell.workspace.archive(imported.id)
+            const archivedRows = await window.shell.workspace.list({ includeArchived: true })
+            await window.shell.workspace.restore(imported.id)
+            await window.shell.workspace.delete(imported.id)
+            await window.shell.workspace.delete(duplicate.id)
+            const afterDeleteRows = await window.shell.workspace.list({ includeArchived: true })
+            await window.shell.workspace.switch(initialWorkspace.id)
+
+            return {
+              importedWorkspaceId: imported.id,
+              duplicateWorkspaceId: duplicate.id,
+              importedDocCount: importedDocs.length,
+              duplicateDocCount: duplicateDocs.length,
+              folderTitles: importedDocs.filter((doc) => doc.kind === 'folder').map((doc) => doc.title).sort(),
+              fileTitles: importedDocs.filter((doc) => doc.kind === 'chapter').map((doc) => doc.title).sort(),
+              contentMatched: importedDocs.some((doc) => doc.title === 'alpha' && doc.content.includes('Imported markdown.'))
+                && importedDocs.some((doc) => doc.title === 'scene-note' && doc.content.includes('Scene note text.')),
+              unsupportedSkipped: !importedDocs.some((doc) => doc.title === 'unsupported'),
+              sourcePathCount: importedDocs.filter((doc) => doc.sourcePath).length,
+              checksumCount: importedDocs.filter((doc) => doc.sourceChecksum).length,
+              archivedAfterArchive: archivedRows.some((workspace) => workspace.id === imported.id && workspace.archivedAt),
+              deletedAfterDelete: !afterDeleteRows.some((workspace) => workspace.id === imported.id),
+              duplicateDeletedAfterSmoke: !afterDeleteRows.some((workspace) => workspace.id === duplicate.id),
+              restoredActiveWorkspaceId: initialWorkspace.id
+            }
+          })()
+        `)
+        console.log('[SHELL_CAPTURE_WORKSPACE_SMOKE]', JSON.stringify(result))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (openSettings) {

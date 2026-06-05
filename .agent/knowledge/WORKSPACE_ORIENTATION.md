@@ -20,6 +20,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Plan 21 landed on 2026-06-04: the shell has a persistent shell-owned context strip, full-width status bar, shared titlebar/context/body/status column tracks, and fresh-layout inspector default closed while preserving existing saved layout state.
 - App identity work landed on 2026-06-04: runtime/product/window name is `App Shell`, icon assets live in `app-shell/resources/`, and macOS dev runs generate `app-shell/.electron-dev/App Shell.app` through `app-shell/scripts/start-dev.mjs`.
 - Plan 31 landed on 2026-06-05: Gray is now a fourth explicit persisted theme option, using the existing App Shell token system and a 12-step gray palette. Contrast auditing now covers Dark, Light, and Gray, and screenshot evidence lives in `implementation/screenshots/gray-theme-after-2026-06-05.png` plus `implementation/screenshots/gray-theme-settings-after-2026-06-05.png`. Start from the newest numbered handoff and live repo evidence.
+- Plan 32 landed on 2026-06-05: Workspace/project lifecycle is now a shell-owned slice. `workspaceService` supports folder import, duplicate, archive, restore, database-only delete, and archived-aware listing. `window.shell.workspace` exposes those methods through IPC/preload/shared types, and `WorkspaceSwitcher.svelte` is now a compact project management popover. Screenshot evidence lives in `implementation/screenshots/project-import-lifecycle-after-2026-06-05.png`; the capture smoke hook can validate import/lifecycle with `SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT=<fixture>`.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 
@@ -57,6 +58,7 @@ For UI-visible changes, also capture screenshot evidence using the `SHELL_CAPTUR
 
 - `app-shell/src/main/core/` - shell-owned core services.
 - `app-shell/src/main/core/workspaces.ts` - active workspace/list/create/switch service.
+- `app-shell/src/main/core/workspaces.ts` - active workspace/list/create/switch plus import/duplicate/archive/restore/database-delete service.
 - `app-shell/src/main/core/jobs.ts` - persistent job run tracking and progress events.
 - `app-shell/src/main/ai/` - first-party AI orchestration layer; AI-specific behavior lives here, not shell core.
 - `app-shell/src/shared/state/` - framework-agnostic observable state slices; first concrete slice is Documents.

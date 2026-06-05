@@ -6,7 +6,7 @@ Add a shell-owned project management slice for folder import, duplicate, archive
 
 ## Key Changes
 
-- Read `implementation/plans/32-project-import-lifecycle.md` before implementation, anchored to the Workspace primitive and Plan 12’s unfinished duplicate/archive scope.
+- Read `implementation/plans/32-project-import-and-lifecycle.md` before implementation, anchored to the Workspace primitive and Plan 12’s unfinished duplicate/archive scope.
 - Extend `workspaceService` with:
   - `importFolder({ root, name?, type? })`: choose a folder, create a workspace, recursively import `.md`, `.markdown`, and `.txt` files into SQLite documents, and represent directories as `folder` documents.
   - `duplicate(id, { name? })`: copy documents plus workspace-scoped module settings; exclude jobs, AI runs/history, and transient run data.
@@ -48,3 +48,38 @@ Add a shell-owned project management slice for folder import, duplicate, archive
 - V1 imports Markdown/text only.
 - Delete is database-only and never removes files/folders from disk.
 - Sync/disconnect is explicitly deferred to a later slice or plugin.
+
+## Outcome - 2026-06-05
+
+Implemented.
+
+- Added shell-owned workspace lifecycle service methods for folder import, duplicate, archive, restore, database-only delete, and archived-aware listing.
+- Folder import maps directories to `folder` documents, imports `.md`, `.markdown`, and `.txt` files as `chapter` documents, stores file content in SQLite, records `sourcePath`, and stores SHA-256 checksums for imported files.
+- Duplicate copies workspace documents, document versions, and workspace-scoped module state keys; it intentionally does not copy jobs, AI runs/conversations/templates/providers, or other run history.
+- Delete removes workspace-owned SQLite/app rows and module state keys only. It does not delete root folders or source files. If the active or last non-archived workspace is removed, the service switches to another active workspace or creates a replacement default workspace.
+- Extended `window.shell.workspace` through shared types, preload, IPC, and the browser fallback.
+- Reworked `WorkspaceSwitcher.svelte` into a compact project management popover with active summary, active project switching, new/import actions, duplicate/archive/database-delete actions, and archived restore/delete controls.
+- Added capture-time workspace lifecycle smoke support via `SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT`; the hook uses the public preload API and cleans up generated smoke workspaces after validation.
+
+Validation:
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run audit:contrast`
+- Svelte autofixer clean for `WorkspaceSwitcher.svelte`.
+- Smoke fixture at `/tmp/app-shell-lifecycle-fixture.phPuXU` with nested folders, `.md`, `.markdown`, `.txt`, and unsupported `.json`.
+- Final smoke log:
+  - `importedDocCount: 7`
+  - `duplicateDocCount: 7`
+  - `folderTitles: ["Act One","Research","Scenes"]`
+  - `fileTitles: ["alpha","beta","note","scene-note"]`
+  - `contentMatched: true`
+  - `unsupportedSkipped: true`
+  - `sourcePathCount: 7`
+  - `checksumCount: 4`
+  - `archivedAfterArchive: true`
+  - `deletedAfterDelete: true`
+  - `duplicateDeletedAfterSmoke: true`
+- Confirmed no `Lifecycle Smoke%` workspace rows remained afterward and `shell.activeWorkspaceId` was restored to `ws-default`.
+- Confirmed fixture source files still existed after database delete.
+- Screenshot evidence: `implementation/screenshots/project-import-lifecycle-after-2026-06-05.png`.
