@@ -1,5 +1,6 @@
 import type {
   CommandCatalogEntry,
+  AssetRecord,
   Doc,
   DocVersion,
   JobSnapshot,
@@ -133,6 +134,7 @@ function createBrowserShell(): ShellApi {
     updatedAt: new Date().toISOString()
   }]
   const aiConversations: AiConversation[] = []
+  const assetRows: AssetRecord[] = []
 
   function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
     const doc = docs.get(activeDocumentId ?? 'demo-chapter-1') ?? DEMO_DOCS[1]
@@ -524,7 +526,70 @@ function createBrowserShell(): ShellApi {
       }
     },
     assets: {
-      importFiles: async () => [],
+      list: async (params) => assetRows.filter(asset =>
+        asset.workspaceLinks.some(link => link.workspaceId === params.workspaceId)
+          && (params.includeArchived || !asset.archivedAt)
+      ),
+      open: async (id) => assetRows.find(asset => asset.id === id) ?? null,
+      importFiles: async (params) => {
+        const now = new Date().toISOString()
+        const imported: AssetRecord[] = (params.filePaths ?? []).map((filePath, index) => ({
+          id: `browser-asset-${Date.now()}-${index}`,
+          label: filePath.split('/').pop() ?? 'Browser asset',
+          originalName: filePath.split('/').pop() ?? 'Browser asset',
+          filePath,
+          extension: filePath.split('.').pop() ?? '',
+          mimeType: 'application/octet-stream',
+          mediaType: 'other',
+          sizeBytes: 0,
+          fileCreatedAt: now,
+          fileModifiedAt: now,
+          importedAt: now,
+          updatedAt: now,
+          archivedAt: null,
+          checksum: null,
+          thumbnailDataUrl: null,
+          metadata: {},
+          comments: '',
+          tags: [],
+          workspaceLinks: [{ workspaceId: params.workspaceId, role: 'imported', createdAt: now }],
+          documentLinks: []
+        }))
+        assetRows.unshift(...imported)
+        return imported
+      },
+      update: async (id, patch) => {
+        const asset = assetRows.find(item => item.id === id)
+        if (!asset) throw new Error('Asset not found.')
+        asset.label = patch.label?.trim() || asset.label
+        asset.comments = patch.comments ?? asset.comments
+        asset.tags = patch.tags ?? asset.tags
+        asset.updatedAt = new Date().toISOString()
+        return asset
+      },
+      archive: async (id) => {
+        const asset = assetRows.find(item => item.id === id)
+        if (!asset) throw new Error('Asset not found.')
+        asset.archivedAt = new Date().toISOString()
+        return asset
+      },
+      restore: async (id) => {
+        const asset = assetRows.find(item => item.id === id)
+        if (!asset) throw new Error('Asset not found.')
+        asset.archivedAt = null
+        return asset
+      },
+      delete: async (id) => {
+        const index = assetRows.findIndex(item => item.id === id)
+        if (index >= 0) assetRows.splice(index, 1)
+        return { id }
+      },
+      exportAssets: async (_ids, params = {}) => ({
+        targetDir: params.targetDir ?? '/browser-preview-assets-export',
+        filesWritten: [],
+        manifestPath: `${params.targetDir ?? '/browser-preview-assets-export'}/assets-manifest.json`,
+        missingFiles: []
+      }),
       reveal: async () => {}
     },
     journal: {

@@ -55,7 +55,17 @@ registerModuleState('shell.aichat', 'aichat', new AiChatStateSlice({
 }))
 
 registerModuleState('shell.journal', 'journal', new JournalStateSlice())
-registerModuleState('shell.assets', 'assets', new AssetsStateSlice())
+registerModuleState('shell.assets', 'assets', new AssetsStateSlice({
+  list: (params) => window.shell.assets.list(params),
+  open: (id) => window.shell.assets.open(id),
+  importFiles: (params) => window.shell.assets.importFiles(params),
+  update: (id, patch) => window.shell.assets.update(id, patch),
+  archive: (id) => window.shell.assets.archive(id),
+  restore: (id) => window.shell.assets.restore(id),
+  delete: (id) => window.shell.assets.delete(id),
+  exportAssets: (ids, params) => window.shell.assets.exportAssets(ids, params),
+  reveal: (path) => window.shell.assets.reveal(path)
+}))
 registerModuleState('shell.web', 'web', new WebStateSlice())
 registerModuleState('shell.tableview', 'tableview', new TableViewStateSlice())
 registerModuleState('shell.workflow', 'workflow', new WorkflowStateSlice())
