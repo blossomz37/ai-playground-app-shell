@@ -8,6 +8,7 @@ export interface AiConversationView extends AiConversation {
 export interface AiChatPort {
   conversations(workspaceId: string): Promise<AiConversation[]>
   createConversation(params: { workspaceId: string; title?: string }): Promise<AiConversation>
+  renameConversation(params: { workspaceId: string; id: string; title: string }): Promise<AiConversation>
   appendMessage(params: {
     workspaceId: string
     conversationId: string
@@ -77,6 +78,19 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
     this.initializedWorkspaceId = workspaceId
     this.emit()
     return conversation.id
+  }
+
+  async renameConversation(workspaceId: string, id: string, title: string): Promise<void> {
+    const nextTitle = title.trim()
+    if (!nextTitle) return
+    const updated = await this.port.renameConversation({ workspaceId, id, title: nextTitle })
+    this.conversations = this.sortConversations(this.conversations.map(chat =>
+      chat.id === id ? this.toView({ ...updated, messages: chat.messages }) : chat
+    ))
+    if (this.conversations.some(chat => chat.id === id)) {
+      this.selectedConversationId = id
+    }
+    this.emit()
   }
 
   async appendMessage(

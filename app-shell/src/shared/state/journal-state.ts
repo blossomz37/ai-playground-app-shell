@@ -81,6 +81,26 @@ export class JournalStateSlice extends ObservableSlice<JournalState> {
     this.emit()
   }
 
+  renameEntry(id: string, title: string): JournalEntry | null {
+    const nextTitle = title.trim()
+    if (!nextTitle) return null
+
+    let renamed: JournalEntry | null = null
+    const modified = this.formatModifiedDate()
+    this.entries = this.entries.map(entry => {
+      if (entry.id !== id) return entry
+      renamed = {
+        ...entry,
+        title: nextTitle,
+        modified
+      }
+      return renamed
+    })
+
+    if (renamed) this.emit()
+    return renamed
+  }
+
   updateSelectedContent(content: string): void {
     const id = this.selectedEntryId
     this.entries = this.entries.map(entry =>
@@ -89,13 +109,7 @@ export class JournalStateSlice extends ObservableSlice<JournalState> {
             ...entry,
             content,
             preview: content.replace(/[#*_`\-[\]\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32) || entry.preview,
-            modified: new Date().toLocaleString(undefined, {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            })
+            modified: this.formatModifiedDate()
           }
         : entry
     )
@@ -128,5 +142,15 @@ export class JournalStateSlice extends ObservableSlice<JournalState> {
 
   private selectedEntry(): JournalEntry | null {
     return this.entries.find(entry => entry.id === this.selectedEntryId) ?? this.entries[0] ?? null
+  }
+
+  private formatModifiedDate(): string {
+    return new Date().toLocaleString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 }

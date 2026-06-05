@@ -131,6 +131,21 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     this.newTab(bookmark.url, bookmark.title)
   }
 
+  renameBookmark(id: string, title: string): WebBookmark | null {
+    const nextTitle = title.trim()
+    if (!nextTitle) return null
+
+    let renamed: WebBookmark | null = null
+    this.bookmarks = this.bookmarks.map(bookmark => {
+      if (bookmark.id !== id) return bookmark
+      renamed = { ...bookmark, title: nextTitle }
+      return renamed
+    })
+
+    if (renamed) this.emit()
+    return renamed
+  }
+
   navigateTo(input: string, explicitTitle?: string): void {
     const url = this.normalizeUrl(input)
     const title = explicitTitle ?? this.titleFromUrl(url)

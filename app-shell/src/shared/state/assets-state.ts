@@ -55,6 +55,21 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     this.emit()
   }
 
+  renameAsset(id: string, name: string): AssetItem | null {
+    const nextName = name.trim()
+    if (!nextName) return null
+
+    let renamed: AssetItem | null = null
+    this.assets = this.assets.map(asset => {
+      if (asset.id !== id) return asset
+      renamed = { ...asset, name: nextName }
+      return renamed
+    })
+
+    if (renamed) this.emit()
+    return renamed
+  }
+
   removeSelectedAsset(): AssetItem | null {
     const removed = this.selectedAsset()
     if (!removed) return null

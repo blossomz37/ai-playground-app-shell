@@ -18,6 +18,7 @@ export interface WorkflowState {
 }
 
 export interface WorkflowPersistenceSnapshot {
+  profiles?: WorkflowProfile[]
   selectedProfileId: string
   includeActiveDocument: boolean
   includeDescendants: boolean
@@ -72,6 +73,21 @@ export class WorkflowStateSlice extends ObservableSlice<WorkflowState> {
     this.emit()
   }
 
+  renameProfile(id: string, name: string): WorkflowProfile | null {
+    const nextName = name.trim()
+    if (!nextName) return null
+
+    let renamed: WorkflowProfile | null = null
+    this.profiles = this.profiles.map(profile => {
+      if (profile.id !== id) return profile
+      renamed = { ...profile, name: nextName }
+      return renamed
+    })
+
+    if (renamed) this.emit()
+    return renamed
+  }
+
   setIncludeActiveDocument(value: boolean): void {
     this.includeActiveDocument = value
     this.emit()
@@ -93,6 +109,7 @@ export class WorkflowStateSlice extends ObservableSlice<WorkflowState> {
       return
     }
 
+    this.profiles = this.mergeProfiles(snapshot.profiles)
     this.selectedProfileId = this.profiles.some(profile => profile.id === snapshot.selectedProfileId)
       ? snapshot.selectedProfileId
       : this.profiles[0]?.id ?? this.selectedProfileId
@@ -104,6 +121,7 @@ export class WorkflowStateSlice extends ObservableSlice<WorkflowState> {
 
   persistenceSnapshot(): WorkflowPersistenceSnapshot {
     return {
+      profiles: this.profiles,
       selectedProfileId: this.selectedProfileId,
       includeActiveDocument: this.includeActiveDocument,
       includeDescendants: this.includeDescendants,
@@ -113,5 +131,13 @@ export class WorkflowStateSlice extends ObservableSlice<WorkflowState> {
 
   private selectedProfile(): WorkflowProfile {
     return this.profiles.find(profile => profile.id === this.selectedProfileId) ?? this.profiles[0]
+  }
+
+  private mergeProfiles(profiles: WorkflowProfile[] | undefined): WorkflowProfile[] {
+    if (!profiles || profiles.length === 0) return initialProfiles
+    const profilesById = new Map(profiles.map(profile => [profile.id, profile]))
+    const mergedSeeds = initialProfiles.map(profile => profilesById.get(profile.id) ?? profile)
+    const extraProfiles = profiles.filter(profile => !initialProfiles.some(seed => seed.id === profile.id))
+    return [...mergedSeeds, ...extraProfiles]
   }
 }
