@@ -173,6 +173,23 @@
   - Screenshot evidence:
     - `implementation/screenshots/refactor-phase7-ai-provider-settings-after-2026-06-05.png`
 
+**Phase 7D outcome (2026-06-05):** extracted the Settings secrets section and completed Phase 7.
+
+- Added `app-shell/src/renderer/src/shell/SecretsSettings.svelte`.
+- Moved generic secrets list, edit, delete, add controls, local form state, CRUD actions, and secrets-scoped styles out of `SettingsPanel.svelte`.
+- Preserved generic secrets behavior: list names only, add named secret, edit selected secret value, delete selected secret, then refresh secrets and AI providers after mutations.
+- Kept `SettingsPanel.svelte` as the modal shell with exported `toggle()`.
+- Kept shared secret-name loading in `SettingsPanel.svelte` so `AiProviderSettings.svelte` and `SecretsSettings.svelte` stay synchronized.
+- Completed the planned Phase 7 section extraction: `AppearanceSettings.svelte`, `EditorSettings.svelte`, `AiProviderSettings.svelte`, and `SecretsSettings.svelte`.
+- Validation:
+  - Svelte autofixer clean for `SecretsSettings.svelte`
+  - Svelte autofixer clean for `SettingsPanel.svelte`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase7-secrets-settings-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
