@@ -65,6 +65,18 @@
   - `npm run audit:contrast`
   - Screenshot evidence: `implementation/screenshots/refactor-phase3-tableview-helper-after-2026-06-05.png`
 
+**Phase 3E outcome (2026-06-05):** migrated Web to the shared settings-backed persistence helper and completed Phase 3 module migrations.
+
+- Replaced Web's local load/hydrate/save boilerplate with `connectSettingsBackedPersistence`.
+- Kept the existing Web settings key: `modules.web.<workspaceId>.state`.
+- Preserved Web snapshot behavior for bookmarks, selected bookmark, tabs, active tab, global history, and v1-to-v2 migration.
+- Completed the planned settings-backed helper migrations for Journal, Assets, Workflow, Table View, and Web.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence: `implementation/screenshots/refactor-phase3-web-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

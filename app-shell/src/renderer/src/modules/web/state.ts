@@ -3,19 +3,17 @@ import {
   WebStateSlice,
   type WebBookmark,
   type WebHistoryItem,
-  type WebPersistenceSnapshot,
   type WebState,
   type WebTab
 } from '@shared/state/web-state'
 import { workspaceId } from '../../store'
 import { addToast } from '../../store/toasts'
 import { getModuleState } from '../module-state-registry'
+import { connectSettingsBackedPersistence } from '../settings-backed-persistence'
 
 export type { WebBookmark, WebHistoryItem, WebTab }
 
 const webState = getModuleState<WebStateSlice>('shell.web', 'web')
-let activeWorkspaceId = ''
-let persistenceReady = false
 
 function fromWebState<T>(selector: (state: WebState) => T) {
   return readable(selector(webState.getSnapshot()), (set) =>
@@ -106,20 +104,9 @@ function persistenceKey(wsId: string): string {
   return `modules.web.${wsId}.state`
 }
 
-async function loadWebPersistence(wsId: string): Promise<void> {
-  activeWorkspaceId = wsId
-  persistenceReady = false
-  const snapshot = await window.shell.settings.get(persistenceKey(wsId)) as WebPersistenceSnapshot | undefined
-  if (activeWorkspaceId !== wsId) return
-  persistenceReady = true
-  webState.hydrate(snapshot)
-}
-
-workspaceId.subscribe((wsId) => {
-  void loadWebPersistence(wsId)
-})
-
-webState.subscribe(() => {
-  if (!persistenceReady || !activeWorkspaceId) return
-  void window.shell.settings.set(persistenceKey(activeWorkspaceId), webState.persistenceSnapshot())
+connectSettingsBackedPersistence({
+  label: 'shell.web',
+  workspaceId,
+  slice: webState,
+  settingsKey: persistenceKey
 })
