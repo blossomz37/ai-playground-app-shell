@@ -18,11 +18,9 @@
   import { slide } from 'svelte/transition'
   import { SvelteSet } from 'svelte/reactivity'
   import { SortAscendingIcon } from 'phosphor-svelte'
+  import DocumentTreeRow from './DocumentTreeRow.svelte'
   import type { Disposable } from '@shared/module-contract'
-  import type { DocumentDropPlacement, DocumentsSortMode } from '@shared/state/documents-state'
-  import type { Doc } from '@shared/module-contract'
-
-  interface DocNode extends Doc { children: DocNode[] }
+  import type { DocNode, DocumentDropPlacement, DocumentsSortMode } from '@shared/state/documents-state'
 
   let expanded = new SvelteSet<string>()
   let renamingDocId = $state<string | null>(null)
@@ -254,6 +252,10 @@
     }
   }
 
+  function updateRenameValue(value: string) {
+    renameValue = value
+  }
+
   async function handleArchive(target?: unknown) {
     const id = commandTargetId(target)
     if (!id) {
@@ -446,65 +448,31 @@
 </script>
 
 {#snippet treeNode(node: DocNode, depth: number)}
-  <div
-    class="tree-row"
-    data-doc-id={node.id}
-    class:active={$activeDocId === node.id}
-    class:dragging={draggingDocId === node.id}
-    class:drop-before={dragOverDocId === node.id && dragOverPlacement === 'before'}
-    class:drop-after={dragOverDocId === node.id && dragOverPlacement === 'after'}
-    class:drop-inside={dragOverDocId === node.id && dragOverPlacement === 'inside'}
-    style:padding-left="{12 + depth * 16}px"
-    role="treeitem"
-    aria-level={depth + 1}
-    aria-selected={$activeDocId === node.id}
-    tabindex="-1"
-    draggable={renamingDocId !== node.id}
-    ondragstart={(event) => onTreeDragStart(event, node)}
-    ondragover={(event) => onTreeDragOver(event, node)}
-    ondragleave={(event) => onTreeDragLeave(event, node)}
-    ondrop={(event) => onTreeDrop(event, node)}
-    ondragend={onTreeDragEnd}
-    onpointerdown={(event) => onTreePointerDown(event, node)}
-  >
-    <button
-      type="button"
-      class="icon-button"
-      class:is-folder={node.kind === 'folder'}
-      aria-label={node.children.length > 0 ? `${isExpanded(node.id) ? 'Collapse' : 'Expand'} ${node.title}` : `Open ${node.title}`}
-      aria-expanded={node.children.length > 0 ? isExpanded(node.id) : undefined}
-      draggable={true}
-      ondragstart={(event) => onTreeDragStart(event, node)}
-      ondragend={onTreeDragEnd}
-      onclick={() => activateIcon(node)}
-      oncontextmenu={(e) => onTreeContextMenu(e, node)}
-    >
-      {displayIcon(node)}
-    </button>
-    {#if renamingDocId === node.id}
-      <input
-        class="rename-input"
-        bind:value={renameValue}
-        aria-label="Rename document"
-        {@attach focusRenameInput}
-        onkeydown={onRenameKeydown}
-        onblur={() => void commitRename()}
-      />
-    {:else}
-      <button
-        type="button"
-        class="title-button"
-        aria-label={node.kind === 'folder' ? `${isExpanded(node.id) ? 'Collapse' : 'Expand'} ${node.title}` : `Open ${node.title}`}
-        draggable={true}
-        ondragstart={(event) => onTreeDragStart(event, node)}
-        ondragend={onTreeDragEnd}
-        onclick={() => activateNode(node)}
-        oncontextmenu={(e) => onTreeContextMenu(e, node)}
-      >
-        <span class="title">{node.title}</span>
-      </button>
-    {/if}
-  </div>
+  <DocumentTreeRow
+    {node}
+    {depth}
+    active={$activeDocId === node.id}
+    dragging={draggingDocId === node.id}
+    isDropTarget={dragOverDocId === node.id}
+    dropPlacement={dragOverPlacement}
+    renaming={renamingDocId === node.id}
+    {renameValue}
+    icon={displayIcon(node)}
+    expanded={isExpanded(node.id)}
+    {focusRenameInput}
+    onActivateIcon={() => activateIcon(node)}
+    onActivateNode={() => activateNode(node)}
+    onContextMenu={(event) => onTreeContextMenu(event, node)}
+    onDragStart={(event) => onTreeDragStart(event, node)}
+    onDragOver={(event) => onTreeDragOver(event, node)}
+    onDragLeave={(event) => onTreeDragLeave(event, node)}
+    onDrop={(event) => onTreeDrop(event, node)}
+    onDragEnd={onTreeDragEnd}
+    onPointerDown={(event) => onTreePointerDown(event, node)}
+    onRenameInput={updateRenameValue}
+    onRenameKeydown={onRenameKeydown}
+    onRenameBlur={() => void commitRename()}
+  />
 
   {#if node.children.length > 0 && isExpanded(node.id)}
     <div transition:slide={{ duration: 150 }}>
@@ -671,144 +639,4 @@
     padding: var(--space-2) var(--space-2);
   }
 
-  .tree-row {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    height: 28px;
-    padding-right: var(--space-3);
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-sm);
-    user-select: none;
-    outline: none;
-    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .tree-row:hover  {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
-  }
-
-  .tree-row.active {
-    background: color-mix(in srgb, var(--accent-nav) 15%, var(--color-shell-sidebar));
-    color: var(--color-fg-primary);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 24%, transparent);
-  }
-
-  .tree-row.dragging {
-    opacity: 0.5;
-  }
-
-  .tree-row.drop-inside {
-    background: color-mix(in srgb, var(--accent-nav) 18%, var(--color-shell-sidebar));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 42%, transparent);
-  }
-
-  .tree-row.drop-before::after,
-  .tree-row.drop-after::after {
-    content: '';
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    height: 2px;
-    border-radius: 999px;
-    background: var(--color-focus-ring);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--color-focus-ring) 62%, transparent);
-  }
-
-  .tree-row.drop-before::after {
-    top: -1px;
-  }
-
-  .tree-row.drop-after::after {
-    bottom: -1px;
-  }
-
-  .tree-row.active::before {
-    content: '';
-    position: absolute;
-    left: 2px;
-    top: 6px;
-    bottom: 6px;
-    width: 3px;
-    border-radius: 999px;
-    background: linear-gradient(180deg, var(--accent-nav), var(--accent-inspector));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-nav) 50%, transparent);
-  }
-
-  .icon-button {
-    width: 24px;
-    height: 100%;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    padding: 0;
-    font-size: 14px;
-    line-height: 1;
-    transition: color 0.15s ease, background 0.15s ease;
-  }
-
-  .icon-button:hover,
-  .icon-button:focus-visible {
-    color: var(--color-fg-primary);
-    background: color-mix(in srgb, var(--accent-nav) 14%, transparent);
-  }
-
-  .icon-button:focus-visible,
-  .title-button:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
-  }
-
-  .title-button {
-    min-width: 0;
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    height: 100%;
-    border: none;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    padding: 0;
-    text-align: left;
-    font: inherit;
-  }
-
-  .icon-button.is-folder {
-    color: var(--accent-inspector);
-  }
-
-  .title {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .rename-input {
-    min-width: 0;
-    flex: 1;
-    height: 22px;
-    border: 1px solid color-mix(in srgb, var(--accent-nav) 48%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-surface);
-    color: var(--color-fg-primary);
-    font: inherit;
-    padding: 0 var(--space-2);
-    outline: none;
-  }
-
-  .rename-input:focus {
-    border-color: var(--color-focus-ring);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-focus-ring) 24%, transparent);
-  }
 </style>
