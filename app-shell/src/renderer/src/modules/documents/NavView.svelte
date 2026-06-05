@@ -146,7 +146,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 38px;
+    min-height: 42px;
     padding: 0 var(--space-3);
     border-bottom: var(--border-zone);
     flex-shrink: 0;
