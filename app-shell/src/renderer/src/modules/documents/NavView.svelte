@@ -120,7 +120,7 @@
     justify-content: space-between;
     min-height: 38px;
     padding: 0 var(--space-3);
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+    border-bottom: var(--border-zone);
     flex-shrink: 0;
   }
 

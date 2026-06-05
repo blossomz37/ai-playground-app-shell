@@ -59,7 +59,7 @@
     padding: 0 var(--space-2);
     gap: var(--space-3);
     background: linear-gradient(180deg, var(--color-shell-status), color-mix(in srgb, var(--color-shell-status) 86%, black));
-    border-top: 1px solid var(--color-border-strong);
+    border-top: var(--border-zone);
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent-status) 15%, var(--color-panel-glint));
     font-size: var(--font-size-xs);
     color: var(--color-fg-secondary);

@@ -4,9 +4,6 @@
 </script>
 
 <div class="nav-view">
-  <header class="nav-header">
-    <span class="nav-title">Journal</span>
-  </header>
   <div class="nav-list">
     {#each $journalEntries as entry (entry.id)}
       <button
@@ -25,8 +22,6 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
-  .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
   .nav-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
   .entry-item {
     display: flex; flex-direction: column; gap: 2px; width: 100%; padding: var(--space-2) var(--space-3);

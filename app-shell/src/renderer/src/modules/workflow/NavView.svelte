@@ -25,7 +25,7 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
+  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0; }
   .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
   .profile-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
   .profile-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); text-align: left; color: var(--color-fg-secondary); transition: background 0.1s; cursor: pointer; }

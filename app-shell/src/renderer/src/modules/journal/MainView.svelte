@@ -27,7 +27,7 @@
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
   .entry-header {
     display: flex; align-items: baseline; gap: var(--space-3);
-    padding: var(--space-5) var(--space-6) var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0;
+    padding: var(--space-5) var(--space-6) var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0;
   }
   .entry-date { font-size: var(--font-size-xl); font-weight: 600; color: var(--color-fg-primary); }
   .entry-badge {

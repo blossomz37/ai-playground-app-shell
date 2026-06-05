@@ -47,7 +47,7 @@
     display: flex;
     flex-direction: column;
     background: var(--color-shell-sidebar);
-    border-right: 1px solid var(--color-border-strong);
+    border-right: var(--border-zone);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 44%, transparent);
     overflow: hidden;
   }

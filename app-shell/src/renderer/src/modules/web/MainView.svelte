@@ -88,7 +88,6 @@
             onclick={() => selectTab(tab.id)}
           >
             <span class="tab-title">{tab.title}</span>
-            <span class="tab-url">{tab.url}</span>
           </button>
           <button
             class="tab-close"
@@ -165,7 +164,7 @@
     display: flex;
     align-items: stretch;
     min-height: 40px;
-    border-bottom: var(--border-subtle);
+    border-bottom: var(--border-zone);
     background: var(--color-bg-base);
     flex-shrink: 0;
   }
@@ -183,7 +182,7 @@
     width: 184px;
     min-width: 132px;
     max-width: 220px;
-    border-right: var(--border-subtle);
+    border-right: var(--border-zone);
     color: var(--color-fg-secondary);
     background: transparent;
   }
@@ -199,8 +198,7 @@
   }
 
   .tab-open {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
+    display: flex;
     align-items: center;
     width: 100%;
     height: 100%;
@@ -210,8 +208,7 @@
     cursor: pointer;
   }
 
-  .tab-title,
-  .tab-url {
+  .tab-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -221,11 +218,6 @@
   .tab-title {
     font-size: var(--font-size-sm);
     font-weight: 500;
-  }
-
-  .tab-url {
-    font-size: var(--font-size-xs);
-    color: var(--color-fg-muted);
   }
 
   .tab-close {
@@ -252,7 +244,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-subtle);
+    border-bottom: var(--border-zone);
     flex-shrink: 0;
     background: var(--color-bg-surface);
   }

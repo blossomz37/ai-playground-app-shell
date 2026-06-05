@@ -34,7 +34,7 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
+  .nav-header { display: flex; align-items: center; padding: var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0; }
   .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
   .controls { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
   .field { display: flex; flex-direction: column; gap: var(--space-1); }

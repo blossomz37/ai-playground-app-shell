@@ -55,6 +55,30 @@
     setShellContextDescriptor(buildDocumentContextDescriptor())
   }
 
+  function toggleBold(): void {
+    editor?.chain().focus().toggleBold().run()
+  }
+
+  function toggleItalic(): void {
+    editor?.chain().focus().toggleItalic().run()
+  }
+
+  function toggleStrike(): void {
+    editor?.chain().focus().toggleStrike().run()
+  }
+
+  function setParagraph(): void {
+    editor?.chain().focus().setParagraph().run()
+  }
+
+  function toggleHeading(level: 1 | 2): void {
+    editor?.chain().focus().toggleHeading({ level }).run()
+  }
+
+  function toggleBlockquote(): void {
+    editor?.chain().focus().toggleBlockquote().run()
+  }
+
   function editorHost(node: HTMLDivElement): void {
     element = node
   }
@@ -121,8 +145,18 @@
 
 <div class="main-view">
   {#if $activeDoc}
-    <header class="doc-header">
-      <h1 class="doc-title">{$activeDoc.title}</h1>
+    <header class="doc-toolbar" aria-label="Document editing toolbar">
+      <div class="toolbar-group" role="group" aria-label="Text style">
+        <button type="button" class="tool-btn" aria-label="Paragraph" disabled={!editor} onclick={setParagraph}>P</button>
+        <button type="button" class="tool-btn" aria-label="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>H1</button>
+        <button type="button" class="tool-btn" aria-label="Heading 2" disabled={!editor} onclick={() => toggleHeading(2)}>H2</button>
+      </div>
+      <div class="toolbar-group" role="group" aria-label="Formatting">
+        <button type="button" class="tool-btn" aria-label="Bold" disabled={!editor} onclick={toggleBold}><strong>B</strong></button>
+        <button type="button" class="tool-btn" aria-label="Italic" disabled={!editor} onclick={toggleItalic}><em>I</em></button>
+        <button type="button" class="tool-btn" aria-label="Strikethrough" disabled={!editor} onclick={toggleStrike}><s>S</s></button>
+        <button type="button" class="tool-btn" aria-label="Blockquote" disabled={!editor} onclick={toggleBlockquote}>&gt;</button>
+      </div>
     </header>
   {/if}
 
@@ -157,24 +191,48 @@
       var(--color-shell-main);
   }
 
-  .doc-header {
+  .doc-toolbar {
     display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-    padding: var(--space-4) clamp(var(--space-5), 6vw, 72px) var(--space-3);
-    border-bottom: 1px solid color-mix(in srgb, var(--accent-editor) 18%, var(--color-border));
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 42px;
+    padding: 0 clamp(var(--space-5), 6vw, 72px);
+    border-bottom: var(--border-zone);
     flex-shrink: 0;
     background: color-mix(in srgb, var(--color-shell-main) 88%, var(--color-panel-glint));
   }
 
-  .doc-title {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-right: var(--space-2);
+    border-right: var(--border-subtle);
+  }
+
+  .toolbar-group:last-child {
+    border-right: none;
+  }
+
+  .tool-btn {
+    min-width: 30px;
+    height: 28px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
+  .tool-btn:hover:not(:disabled) {
+    background: var(--color-hover);
     color: var(--color-fg-primary);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+
+  .tool-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .editor-area {

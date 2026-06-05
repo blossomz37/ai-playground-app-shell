@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { executeCommand } from '../store/commands'
+  import WorkspaceSwitcher from './WorkspaceSwitcher.svelte'
 
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
@@ -105,7 +106,7 @@
 </script>
 
 <nav class="activity-rail" aria-label="Module navigation">
-  <div class="rail-spacer"></div>
+  <WorkspaceSwitcher />
   {#each primaryModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
@@ -196,12 +197,10 @@
     align-items: center;
     padding-top: var(--space-2);
     background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-rail) 90%, var(--color-panel-glint)), var(--color-shell-rail));
-    border-right: 1px solid var(--color-border-strong);
+    border-right: var(--border-zone);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 54%, transparent);
     gap: 2px;
   }
-
-  .rail-spacer { flex: 0 0 var(--space-1); }
 
   .rail-btn {
     position: relative;

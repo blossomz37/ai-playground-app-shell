@@ -32,7 +32,7 @@
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .nav-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: var(--border-subtle); flex-shrink: 0; }
+  .nav-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: var(--border-zone); flex-shrink: 0; }
   .nav-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); }
   .import-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--color-fg-muted); font-size: 16px; cursor: pointer; transition: background 0.1s, color 0.1s; }
   .import-btn:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }

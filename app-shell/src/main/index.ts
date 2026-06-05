@@ -47,6 +47,7 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
+  const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
@@ -206,6 +207,12 @@ function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (openRailMore) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[data-rail-id="rail-more"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openWorkspaceMenu) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-haspopup="menu"][aria-label^="Project menu"]')?.click()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

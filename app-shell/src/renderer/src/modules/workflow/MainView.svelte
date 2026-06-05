@@ -55,7 +55,7 @@
 
 <style>
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .runner-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-6); border-bottom: var(--border-subtle); flex-shrink: 0; }
+  .runner-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-6); border-bottom: var(--border-zone); flex-shrink: 0; }
   .runner-title { font-size: var(--font-size-xl); font-weight: 600; color: var(--color-fg-primary); }
   .run-btn {
     padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: 500;

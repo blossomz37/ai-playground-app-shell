@@ -52,7 +52,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: var(--border-subtle);
+    border-bottom: var(--border-zone);
   }
 
   h2 {
