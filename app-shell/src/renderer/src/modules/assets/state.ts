@@ -2,18 +2,16 @@ import { readable } from 'svelte/store'
 import {
   AssetsStateSlice,
   type AssetItem,
-  type AssetsPersistenceSnapshot,
   type AssetsState
 } from '@shared/state/assets-state'
 import { workspaceId } from '../../store'
 import { addToast } from '../../store/toasts'
 import { getModuleState } from '../module-state-registry'
+import { connectSettingsBackedPersistence } from '../settings-backed-persistence'
 
 export type { AssetItem }
 
 const assetsState = getModuleState<AssetsStateSlice>('shell.assets', 'assets')
-let activeWorkspaceId = ''
-let persistenceReady = false
 
 function fromAssetsState<T>(selector: (state: AssetsState) => T) {
   return readable(selector(assetsState.getSnapshot()), (set) =>
@@ -62,20 +60,9 @@ function persistenceKey(wsId: string): string {
   return `modules.assets.${wsId}.state`
 }
 
-async function loadAssetsPersistence(wsId: string): Promise<void> {
-  activeWorkspaceId = wsId
-  persistenceReady = false
-  const snapshot = await window.shell.settings.get(persistenceKey(wsId)) as AssetsPersistenceSnapshot | undefined
-  if (activeWorkspaceId !== wsId) return
-  persistenceReady = true
-  assetsState.hydrate(snapshot)
-}
-
-workspaceId.subscribe((wsId) => {
-  void loadAssetsPersistence(wsId)
-})
-
-assetsState.subscribe(() => {
-  if (!persistenceReady || !activeWorkspaceId) return
-  void window.shell.settings.set(persistenceKey(activeWorkspaceId), assetsState.persistenceSnapshot())
+connectSettingsBackedPersistence({
+  label: 'shell.assets',
+  workspaceId,
+  slice: assetsState,
+  settingsKey: persistenceKey
 })

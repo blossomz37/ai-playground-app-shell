@@ -29,6 +29,18 @@
   - `npm run audit:contrast`
   - Screenshot evidence: `implementation/screenshots/refactor-phase3-journal-helper-after-2026-06-05.png`
 
+**Phase 3B outcome (2026-06-05):** migrated Assets to the shared settings-backed persistence helper.
+
+- Replaced Assets' local load/hydrate/save boilerplate with `connectSettingsBackedPersistence`.
+- Kept the existing Assets settings key: `modules.assets.<workspaceId>.state`.
+- Preserved Assets slice behavior for selected asset, asset labels, file paths, import metadata, reveal, copy path, and removal.
+- Deferred Workflow, Table View, and Web migration to later Phase 3 passes.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence: `implementation/screenshots/refactor-phase3-assets-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
