@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { executeCommand } from '../store/commands'
   import WorkspaceSwitcher from './WorkspaceSwitcher.svelte'
 
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
     PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
-    TableIcon, RobotIcon, GlobeSimpleIcon, GearSixIcon, TerminalIcon,
+    TableIcon, RobotIcon, GlobeSimpleIcon, TerminalIcon,
     DotsThreeVerticalIcon
   } from 'phosphor-svelte'
 
@@ -42,8 +41,7 @@
   const advancedActiveModule = $derived(advancedModules.find(mod => mod.id === moduleId) ?? null)
   const visibleControlIds = $derived([
     ...primaryModules.map(mod => mod.id),
-    ...(advancedModules.length ? ['rail-more'] : []),
-    'rail-settings'
+    ...(advancedModules.length ? ['rail-more'] : [])
   ])
   const tabStopId = $derived(focusedControlId ?? activeRailControlId())
   const moreLabel = $derived(advancedActiveModule ? `More modules, ${advancedActiveModule.label} active` : 'More modules')
@@ -63,10 +61,10 @@
     return [...items].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
   }
 
-  function activeRailControlId(): string {
+  function activeRailControlId(): string | null {
     if (moduleId && primaryModules.some(mod => mod.id === moduleId)) return moduleId
     if (advancedActiveModule) return 'rail-more'
-    return visibleControlIds[0] ?? 'rail-settings'
+    return visibleControlIds[0] ?? null
   }
 
   function focusRailControl(id: string): void {
@@ -170,22 +168,6 @@
       {/if}
     </div>
   {/if}
-
-  <div class="rail-bottom">
-    <button
-      class="rail-btn settings-btn"
-      title="Settings (Cmd+,)"
-      aria-label="Open settings"
-      data-rail-id="rail-settings"
-      tabindex={tabStopId === 'rail-settings' ? 0 : -1}
-      onfocus={() => focusedControlId = 'rail-settings'}
-      onkeydown={(event) => onRailKeydown(event, 'rail-settings')}
-      onclick={() => executeCommand('shell.settings')}
-    >
-      <GearSixIcon size={20} weight="light" />
-      <span class="rail-tooltip" aria-hidden="true">Settings</span>
-    </button>
-  </div>
 </nav>
 
 <style>
@@ -308,11 +290,5 @@
     background: color-mix(in srgb, var(--accent-nav) 14%, transparent);
     color: var(--color-fg-primary);
     box-shadow: inset 3px 0 0 var(--accent-nav);
-  }
-
-  /* Bottom utilities */
-  .rail-bottom {
-    margin-top: auto;
-    padding-bottom: var(--space-2);
   }
 </style>
