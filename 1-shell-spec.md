@@ -48,6 +48,7 @@ The `documents` and `document_versions` tables are the shell's `ctx.documents` p
 | `parentId` | nullable; the tree edge |
 | `kind` | text; value contributed by a module's `documentTypes` |
 | `title` | |
+| `icon` | nullable; optional per-document emoji/text override |
 | `sortOrder` | sibling ordering |
 | `content` | the live edited content (DB-as-truth) |
 | `contentFormat` | e.g. `markdown` |
