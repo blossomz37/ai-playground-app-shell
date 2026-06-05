@@ -1,4 +1,4 @@
-import type { Doc, DocVersion } from '../module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocVersion } from '../module-contract'
 import { ObservableSlice } from './observable'
 
 export interface DocNode extends Doc {
@@ -10,12 +10,15 @@ export type DocumentDropPlacement = 'before' | 'after' | 'inside'
 
 export interface DocumentsPort {
   list(workspaceId: string): Promise<Doc[]>
+  listArchived(workspaceId: string): Promise<Doc[]>
   open(id: string): Promise<Doc | undefined>
   save(id: string, content: string): Promise<void>
   update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
   create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
   move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
   archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
+  restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
+  exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
   versions(id: string): Promise<DocVersion[]>
   onChanged(cb: (id: string) => void): void
   getSortMode(): Promise<unknown>
@@ -24,12 +27,14 @@ export interface DocumentsPort {
 
 export interface DocumentsState {
   documents: Doc[]
+  archivedDocuments: Doc[]
   activeDocId: string | null
   activeDoc: Doc | null
   editorContent: string
   isDirty: boolean
   versions: DocVersion[]
   docTree: DocNode[]
+  archivedDocTree: DocNode[]
   sortMode: DocumentsSortMode
 }
 
@@ -38,7 +43,9 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivi
 
 export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   private documents: Doc[] = []
+  private archivedDocuments: Doc[] = []
   private activeDocId: string | null = null
+  private workspaceId: string | null = null
   private editorContent = ''
   private isDirty = false
   private versions: DocVersion[] = []
@@ -54,12 +61,14 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   getSnapshot(): DocumentsState {
     return {
       documents: this.documents,
+      archivedDocuments: this.archivedDocuments,
       activeDocId: this.activeDocId,
       activeDoc: this.activeDoc(),
       editorContent: this.editorContent,
       isDirty: this.isDirty,
       versions: this.versions,
-      docTree: this.buildTree(),
+      docTree: this.buildTree(this.documents),
+      archivedDocTree: this.buildTree(this.archivedDocuments),
       sortMode: this.sortMode
     }
   }
@@ -74,9 +83,11 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
   async loadWorkspace(workspaceId: string): Promise<void> {
     this.cancelAutoSave()
+    this.workspaceId = workspaceId
     this.drafts.clear()
     this.sortMode = normalizeSortMode(await this.port.getSortMode())
     this.documents = await this.port.list(workspaceId)
+    this.archivedDocuments = await this.port.listArchived(workspaceId)
     this.activeDocId = null
     this.editorContent = ''
     this.isDirty = false
@@ -141,7 +152,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       throw new Error('Cannot move a document inside itself.')
     }
 
-    const visibleTreeBeforeMove = this.buildTree()
+    const visibleTreeBeforeMove = this.buildTree(this.documents)
     if (this.sortMode !== 'manual') {
       this.sortMode = 'manual'
       await this.port.setSortMode('manual')
@@ -190,6 +201,9 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     const archivedSet = new Set(archivedIds.length > 0 ? archivedIds : affectedBeforeArchive)
 
     this.documents = this.documents.filter(doc => !archivedSet.has(doc.id))
+    if (this.workspaceId) {
+      this.archivedDocuments = await this.port.listArchived(this.workspaceId)
+    }
     for (const archivedId of archivedSet) {
       this.drafts.delete(archivedId)
     }
@@ -209,6 +223,24 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     }
 
     return { archivedIds: Array.from(archivedSet), nextActiveId }
+  }
+
+  async restoreDoc(id: string): Promise<Doc[]> {
+    const restored = await this.port.restore(id, { recursive: true })
+    if (restored.length === 0) return []
+
+    const restoredIds = new Set(restored.map(doc => doc.id))
+    this.archivedDocuments = this.archivedDocuments.filter(doc => !restoredIds.has(doc.id))
+    this.upsertDocuments(restored)
+    await this.selectDoc(id)
+    return restored
+  }
+
+  async exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult> {
+    if (this.activeDocId && this.isDirty) {
+      await this.saveDoc()
+    }
+    return this.port.exportSubtree(id, params)
   }
 
   setEditorContent(content: string, options: { dirty?: boolean } = {}): void {
@@ -255,6 +287,9 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       const archivedIds = this.collectDescendantIds(id)
       const archivedSet = new Set(archivedIds.length > 0 ? archivedIds : [id])
       this.documents = this.documents.filter(doc => !archivedSet.has(doc.id))
+      if (this.workspaceId) {
+        this.archivedDocuments = await this.port.listArchived(this.workspaceId)
+      }
       for (const archivedId of archivedSet) {
         this.drafts.delete(archivedId)
       }
@@ -315,15 +350,15 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     return this.documents.find(doc => doc.id === this.activeDocId) ?? null
   }
 
-  private buildTree(): DocNode[] {
-    const map = new Map(this.documents.map(doc => [doc.id, { ...doc, children: [] as DocNode[] }]))
+  private buildTree(documents: Doc[]): DocNode[] {
+    const map = new Map(documents.map(doc => [doc.id, { ...doc, children: [] as DocNode[] }]))
     const roots: DocNode[] = []
 
-    for (const doc of this.documents) {
+    for (const doc of documents) {
       const node = map.get(doc.id)
       if (!node) continue
 
-      if (doc.parentId === null) {
+      if (doc.parentId === null || !map.has(doc.parentId)) {
         roots.push(node)
       } else {
         map.get(doc.parentId)?.children.push(node)

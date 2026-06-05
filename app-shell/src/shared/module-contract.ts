@@ -107,9 +107,24 @@ export interface Doc {
   contentFormat: string
   sourcePath: string | null
   sourceChecksum: string | null
+  metadataJson: string | null
   createdAt: string
   updatedAt: string
   archivedAt: string | null
+}
+
+export interface DocumentSourceMetadata {
+  file?: string
+  description?: string
+  version?: string
+  created?: string
+  modified?: string
+  author?: string
+  status?: string
+  related?: string[]
+  word_count?: number
+  raw?: Record<string, unknown>
+  rawText?: string
 }
 
 export interface DocVersion {
@@ -119,6 +134,45 @@ export interface DocVersion {
   contentFormat: string
   createdAt: string
   label: string | null
+}
+
+export interface DocumentExportParams {
+  targetDir?: string
+}
+
+export interface DocumentExportResult {
+  rootDocumentId: string
+  targetDir: string
+  filesWritten: string[]
+  foldersWritten: string[]
+}
+
+export interface JournalEntry {
+  id: string
+  date: string
+  fullDate: string
+  title: string
+  preview: string
+  content: string
+  created: string
+  modified: string
+  mood: string
+  tags: string[]
+  archivedAt: string | null
+}
+
+export interface JournalImportCandidate {
+  entry: JournalEntry
+  sourcePath: string
+}
+
+export interface JournalExportParams {
+  targetDir?: string
+}
+
+export interface JournalExportResult {
+  targetDir: string
+  filesWritten: string[]
 }
 
 export interface Workspace {
@@ -267,12 +321,15 @@ export interface ModuleContext {
   }
 
   documents: {
+    listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: unknown): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
+    restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
+    exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): Disposable
   }
@@ -298,12 +355,15 @@ export interface Module {
 export interface ShellApi {
   documents: {
     list(workspaceId: string): Promise<Doc[]>
+    listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: string): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
+    restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
+    exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): void
   }
@@ -350,6 +410,10 @@ export interface ShellApi {
   assets: {
     importFiles(): Promise<AssetImportCandidate[]>
     reveal(path: string): Promise<void>
+  }
+  journal: {
+    pickImportFiles(filePaths?: string[]): Promise<JournalImportCandidate[]>
+    exportEntries(entries: JournalEntry[], params?: JournalExportParams): Promise<JournalExportResult>
   }
   layout: {
     get(): Promise<LayoutState>
