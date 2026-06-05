@@ -39,12 +39,16 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('documents:update', (_e, { id, patch }: {
-    id: string; patch: { title?: string; kind?: string }
+    id: string; patch: { title?: string; kind?: string; icon?: string | null }
   }) => documents.update(id, patch))
 
   ipcMain.handle('documents:create', (_e, params: {
-    workspaceId: string; kind: string; title: string; parentId?: string
+    workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number
   }) => documents.create(params))
+
+  ipcMain.handle('documents:archive', (_e, { id, options }: {
+    id: string; options?: { recursive?: boolean }
+  }) => documents.archive(id, options))
 
   ipcMain.handle('documents:versions', (_e, { id }: { id: string }) =>
     documents.versions(id)

@@ -29,7 +29,7 @@ export const documents = {
     events.emit('documents:changed', id)
   },
 
-  update(id: string, patch: { title?: string; kind?: string }): Doc {
+  update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Doc {
     const db = getDb()
     const now = new Date().toISOString()
     const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
@@ -37,8 +37,13 @@ export const documents = {
 
     const title = patch.title?.trim() || current.title
     const kind = patch.kind?.trim() || current.kind
+    let icon = current.icon
+    if (Object.prototype.hasOwnProperty.call(patch, 'icon')) {
+      const nextIcon = patch.icon?.trim() ?? ''
+      icon = nextIcon === '' ? null : nextIcon
+    }
 
-    db.prepare('UPDATE documents SET title = ?, kind = ?, updatedAt = ? WHERE id = ?').run(title, kind, now, id)
+    db.prepare('UPDATE documents SET title = ?, kind = ?, icon = ?, updatedAt = ? WHERE id = ?').run(title, kind, icon, now, id)
     events.emit('documents:changed', id)
 
     return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
@@ -48,20 +53,78 @@ export const documents = {
     workspaceId: string
     kind: string
     title: string
-    parentId?: string
+    parentId?: string | null
     sortOrder?: number
   }): Doc {
     const db = getDb()
     const now = new Date().toISOString()
     const id = randomUUID()
+    const parentId = params.parentId ?? null
+    const sortOrder = params.sortOrder ?? (
+      db.prepare(`
+        SELECT COALESCE(MAX(sortOrder), -1) + 1 AS nextSortOrder
+        FROM documents
+        WHERE workspaceId = ? AND parentId IS ? AND archivedAt IS NULL
+      `).get(params.workspaceId, parentId) as { nextSortOrder: number }
+    ).nextSortOrder
 
-    db.prepare(`
-      INSERT INTO documents
-        (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, '', 'markdown', ?, ?)
-    `).run(id, params.workspaceId, params.parentId ?? null, params.kind, params.title, params.sortOrder ?? 0, now, now)
+    db.transaction(() => {
+      db.prepare(`
+        UPDATE documents
+        SET sortOrder = sortOrder + 1, updatedAt = ?
+        WHERE workspaceId = ?
+          AND parentId IS ?
+          AND archivedAt IS NULL
+          AND sortOrder >= ?
+      `).run(now, params.workspaceId, parentId, sortOrder)
+
+      db.prepare(`
+        INSERT INTO documents
+          (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, '', 'markdown', ?, ?)
+      `).run(id, params.workspaceId, parentId, params.kind, params.title, sortOrder, now, now)
+    })()
+
+    events.emit('documents:changed', id)
 
     return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
+  },
+
+  archive(id: string, options: { recursive?: boolean } = {}): string[] {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const current = db.prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL').get(id) as Doc | undefined
+    if (!current) return []
+
+    const rows = options.recursive
+      ? db.prepare(`
+        WITH RECURSIVE subtree(id) AS (
+          SELECT id FROM documents WHERE id = ? AND archivedAt IS NULL
+          UNION ALL
+          SELECT d.id
+          FROM documents d
+          JOIN subtree s ON d.parentId = s.id
+          WHERE d.archivedAt IS NULL
+        )
+        SELECT id FROM subtree
+      `).all(id) as Array<{ id: string }>
+      : [{ id }]
+
+    const affectedIds = rows.map(row => row.id)
+    if (affectedIds.length === 0) return []
+
+    const placeholders = affectedIds.map(() => '?').join(', ')
+    db.prepare(`
+      UPDATE documents
+      SET archivedAt = ?, updatedAt = ?
+      WHERE id IN (${placeholders})
+    `).run(now, now, ...affectedIds)
+
+    for (const affectedId of affectedIds) {
+      events.emit('documents:changed', affectedId)
+    }
+
+    return affectedIds
   },
 
   versions(id: string): DocVersion[] {

@@ -330,6 +330,12 @@ app.whenReady().then(async () => {
     })
   })
 
+  events.on('documents:changed', (id) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('documents:changed', id)
+    })
+  })
+
   events.on('jobs:changed', (job) => {
     BrowserWindow.getAllWindows().forEach(win => {
       win.webContents.send('jobs:changed', job)

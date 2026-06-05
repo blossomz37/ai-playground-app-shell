@@ -13,7 +13,7 @@
   function handleClick(item: ContextMenuItem) {
     if (item.disabled) return
     hideContextMenu()
-    void executeCommand(item.id)
+    void executeCommand(item.id, ...(item.args ?? []))
   }
 
   function onKeydown(e: KeyboardEvent) {

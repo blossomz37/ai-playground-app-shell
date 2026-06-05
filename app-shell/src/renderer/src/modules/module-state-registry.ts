@@ -35,6 +35,8 @@ registerModuleState('shell.documents', 'documents', new DocumentsStateSlice({
   open: (id) => window.shell.documents.open(id),
   save: (id, content) => window.shell.documents.save(id, content),
   update: (id, patch) => window.shell.documents.update(id, patch),
+  create: (params) => window.shell.documents.create(params),
+  archive: (id, options) => window.shell.documents.archive(id, options),
   versions: (id) => window.shell.documents.versions(id),
   onChanged: (cb) => window.shell.documents.onChanged(cb)
 }))

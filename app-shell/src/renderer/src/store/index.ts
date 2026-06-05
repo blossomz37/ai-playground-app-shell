@@ -185,8 +185,16 @@ export async function selectDoc(id: string): Promise<void> {
   await documentsState.selectDoc(id)
 }
 
-export async function updateDoc(id: string, patch: { title?: string; kind?: string }): Promise<void> {
+export async function updateDoc(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<void> {
   await documentsState.updateDoc(id, patch)
+}
+
+export async function createDoc(params: { workspaceId: string; kind: 'chapter' | 'scene' | 'folder'; targetId?: string | null }) {
+  return documentsState.createDoc(params)
+}
+
+export async function archiveDoc(id: string) {
+  return documentsState.archiveDoc(id)
 }
 
 export function setEditorContent(content: string, options?: { dirty?: boolean }): void {

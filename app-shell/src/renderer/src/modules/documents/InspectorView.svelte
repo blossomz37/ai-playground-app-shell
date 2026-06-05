@@ -18,6 +18,15 @@
     if (kind === doc.kind) return
     await updateDoc(doc.id, { kind })
   }
+
+  async function onIconChange(event: Event): Promise<void> {
+    const doc = $activeDoc
+    if (!doc) return
+
+    const icon = (event.currentTarget as HTMLInputElement).value.trim()
+    if (icon === (doc.icon ?? '')) return
+    await updateDoc(doc.id, { icon: icon === '' ? null : icon })
+  }
 </script>
 
 <div class="inspector-view">
@@ -38,6 +47,18 @@
               <option value={kind}>{kind}</option>
             {/each}
           </select>
+        </div>
+        <div class="field">
+          <label class="label" for="document-icon">Icon</label>
+          <input
+            id="document-icon"
+            class="icon-input"
+            type="text"
+            maxlength="8"
+            value={$activeDoc.icon ?? ''}
+            placeholder={$activeDoc.kind === 'folder' ? '📁' : '📄'}
+            onchange={onIconChange}
+          />
         </div>
         <div class="field">
           <span class="label">Words</span>
@@ -144,7 +165,8 @@
     text-overflow: ellipsis;
   }
 
-  .kind-select {
+  .kind-select,
+  .icon-input {
     min-width: 110px;
     max-width: 150px;
     padding: 2px var(--space-2);
@@ -156,7 +178,12 @@
     text-align: right;
   }
 
-  .kind-select:focus-visible {
+  .icon-input {
+    width: 110px;
+  }
+
+  .kind-select:focus-visible,
+  .icon-input:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
   }

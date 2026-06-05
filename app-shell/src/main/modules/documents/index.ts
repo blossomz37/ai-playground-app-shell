@@ -43,11 +43,23 @@ export const documentsModule: Module = {
     })
 
     ctx.commands.register('documents.newChapter', async () => {
-      ctx.notify({ level: 'info', message: 'New chapter — UI flow coming in a later slice.' })
+      ctx.notify({ level: 'info', message: 'New chapter is available from the Documents tree.' })
     })
 
     ctx.commands.register('documents.newScene', async () => {
-      ctx.notify({ level: 'info', message: 'New scene — UI flow coming in a later slice.' })
+      ctx.notify({ level: 'info', message: 'New scene is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.newFolder', async () => {
+      ctx.notify({ level: 'info', message: 'New folder is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.rename', async () => {
+      ctx.notify({ level: 'info', message: 'Rename is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.archive', async () => {
+      ctx.notify({ level: 'info', message: 'Archive is available from the Documents tree.' })
     })
 
     ctx.events.on('documents:changed', (id) => {

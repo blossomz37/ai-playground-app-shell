@@ -99,6 +99,7 @@ export interface Doc {
   parentId: string | null
   kind: string
   title: string
+  icon: string | null
   sortOrder: number
   content: string
   contentFormat: string
@@ -252,6 +253,9 @@ export interface ModuleContext {
   documents: {
     open(id: string): Promise<Doc>
     save(id: string, content: unknown): Promise<void>
+    update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): Disposable
   }
@@ -279,8 +283,9 @@ export interface ShellApi {
     list(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: string): Promise<void>
-    update(id: string, patch: { title?: string; kind?: string }): Promise<Doc>
-    create(params: { workspaceId: string; kind: string; title: string; parentId?: string }): Promise<Doc>
+    update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     versions(id: string): Promise<DocVersion[]>
     onChanged(cb: (id: string) => void): void
   }

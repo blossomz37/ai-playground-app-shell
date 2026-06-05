@@ -13,6 +13,7 @@ export interface ContextMenuItem {
   id: string
   label: string
   icon?: string
+  args?: unknown[]
   disabled?: boolean
   separator?: boolean
 }

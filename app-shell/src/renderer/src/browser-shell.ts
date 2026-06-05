@@ -40,6 +40,7 @@ const DEMO_DOCS: Doc[] = [
     parentId: null,
     kind: 'folder',
     title: 'Manuscript',
+    icon: null,
     sortOrder: 0,
     content: '',
     contentFormat: 'markdown',
@@ -55,6 +56,7 @@ const DEMO_DOCS: Doc[] = [
     parentId: 'demo-root',
     kind: 'chapter',
     title: 'Chapter 1 - The Arrival',
+    icon: '✨',
     sortOrder: 1,
     content: '# Chapter 1 - The Arrival\n\nShe stepped off the train into a city that had forgotten her name.',
     contentFormat: 'markdown',
@@ -159,10 +161,16 @@ function createBrowserShell(): ShellApi {
       },
       update: async (id, patch) => {
         const existing = docs.get(id) ?? DEMO_DOCS[1]
+        let icon = existing.icon
+        if (Object.prototype.hasOwnProperty.call(patch, 'icon')) {
+          const nextIcon = patch.icon?.trim() ?? ''
+          icon = nextIcon === '' ? null : nextIcon
+        }
         const updated = {
           ...existing,
           title: patch.title?.trim() || existing.title,
           kind: patch.kind?.trim() || existing.kind,
+          icon,
           updatedAt: new Date().toISOString()
         }
         docs.set(id, updated)
@@ -175,6 +183,7 @@ function createBrowserShell(): ShellApi {
           parentId: params.parentId ?? null,
           kind: params.kind,
           title: params.title,
+          icon: null,
           sortOrder: docs.size,
           content: '',
           contentFormat: 'markdown',
@@ -186,6 +195,28 @@ function createBrowserShell(): ShellApi {
         }
         docs.set(doc.id, doc)
         return doc
+      },
+      archive: async (id, options) => {
+        const now = new Date().toISOString()
+        const affected = new Set<string>([id])
+        if (options?.recursive) {
+          let changed = true
+          while (changed) {
+            changed = false
+            for (const doc of docs.values()) {
+              if (doc.parentId && affected.has(doc.parentId) && !affected.has(doc.id)) {
+                affected.add(doc.id)
+                changed = true
+              }
+            }
+          }
+        }
+
+        for (const docId of affected) {
+          const existing = docs.get(docId)
+          if (existing) docs.set(docId, { ...existing, archivedAt: now, updatedAt: now })
+        }
+        return Array.from(affected)
       },
       versions: async (): Promise<DocVersion[]> => [],
       onChanged: () => {}
