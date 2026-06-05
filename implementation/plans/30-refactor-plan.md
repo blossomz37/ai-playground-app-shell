@@ -190,6 +190,22 @@
   - Screenshot evidence:
     - `implementation/screenshots/refactor-phase7-secrets-settings-after-2026-06-05.png`
 
+**Phase 8 outcome (2026-06-05):** extracted the startup capture harness.
+
+- Added `app-shell/src/main/capture/evidence.ts`.
+- Moved `maybeCaptureForEvidence` out of `app-shell/src/main/index.ts`.
+- Kept `main/index.ts` responsible for creating the window and calling `maybeCaptureForEvidence(win)`.
+- Preserved all existing `SHELL_CAPTURE*` environment variable names.
+- Preserved all renderer event names dispatched by the capture harness, including `shell:capture-select-document`, `shell:capture-select-module`, `web:capture-navigate`, `shell:capture-open-jobs`, `shell:capture-ai-message`, `shell:capture-document-markdown`, and `shell:capture-open-settings`.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Normal `npm run start` reached `start electron app`; follow-up cleanup check confirmed no dev server remained on port `5183`.
+  - `SHELL_CAPTURE=../implementation/screenshots/refactor-phase8-capture-harness-after-2026-06-05.png npm run start`
+  - Screenshot evidence:
+    - `implementation/screenshots/refactor-phase8-capture-harness-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.

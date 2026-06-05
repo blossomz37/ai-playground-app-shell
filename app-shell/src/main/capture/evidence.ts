@@ -1,0 +1,219 @@
+import { app, BrowserWindow } from 'electron'
+import { dirname } from 'path'
+import { mkdirSync, writeFileSync } from 'fs'
+
+/**
+ * Dev-only UI-evidence capture. Gated by the SHELL_CAPTURE env var.
+ *
+ *   SHELL_CAPTURE=<png-path> [SHELL_CAPTURE_DELAY=<ms>] npm run start
+ *
+ * The app captures its own window via webContents.capturePage() — no macOS
+ * screen-recording permission needed — writes the PNG, then quits for a clean
+ * one-shot. Used to produce `implementation/screenshots/*.png` from a sandbox
+ * where `screencapture` (TCC-blocked) and the computer-use MCP (saves off-repo)
+ * can't deposit a file. See implementation/AGENTS.md › "Capturing UI evidence".
+ */
+export function maybeCaptureForEvidence(win: BrowserWindow): void {
+  const out = process.env['SHELL_CAPTURE']
+  if (!out) return
+  const delay = Number(process.env['SHELL_CAPTURE_DELAY'] ?? 3500)
+  const moduleId = process.env['SHELL_CAPTURE_MODULE']
+  const documentId = process.env['SHELL_CAPTURE_DOCUMENT']
+  const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
+  const aiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
+  const aiModel = process.env['SHELL_CAPTURE_AI_MODEL']
+  const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
+  const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
+  const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
+  const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
+  const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
+  const captureTheme = process.env['SHELL_CAPTURE_THEME']
+  const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
+  const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
+  const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
+  const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
+  const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
+  const interactionDelay = Number(process.env['SHELL_CAPTURE_INTERACTION_DELAY'] ?? 900)
+  const webviewTimeout = Number(process.env['SHELL_CAPTURE_WEBVIEW_TIMEOUT'] ?? 12000)
+
+  async function waitForWebviewRender(): Promise<void> {
+    if (moduleId !== 'shell.web') return
+
+    await win.webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        const startedAt = Date.now()
+        const timeout = ${JSON.stringify(webviewTimeout)}
+
+        function inspect() {
+          const webview = document.querySelector('webview.web-surface')
+          if (!webview) {
+            if (Date.now() - startedAt > timeout) return resolve('missing')
+            return setTimeout(inspect, 150)
+          }
+
+          const isLoading = typeof webview.isLoading === 'function' ? webview.isLoading() : false
+          const title = typeof webview.getTitle === 'function' ? webview.getTitle() : ''
+          const url = typeof webview.getURL === 'function' ? webview.getURL() : ''
+          const appStillLoading = Boolean(document.querySelector('.web-surface') && document.querySelector('.spinning'))
+
+          const inspectGuest = typeof webview.executeJavaScript === 'function'
+            ? webview.executeJavaScript(\`
+                (() => ({
+                  readyState: document.readyState,
+                  textLength: document.body?.innerText?.trim().length ?? 0,
+                  viewportHeight: window.innerHeight,
+                  scrollHeight: Math.max(
+                    document.body?.scrollHeight ?? 0,
+                    document.documentElement?.scrollHeight ?? 0
+                  )
+                }))()
+              \`).catch(() => null)
+            : Promise.resolve(null)
+
+          inspectGuest.then((guest) => {
+            const guestReady = guest &&
+              (guest.readyState === 'interactive' || guest.readyState === 'complete') &&
+              guest.textLength > 80 &&
+              guest.scrollHeight >= Math.max(300, guest.viewportHeight * 0.75)
+            if (!isLoading && !appStillLoading && (title || url) && guestReady) {
+              return setTimeout(() => resolve('ready'), 600)
+            }
+            if (Date.now() - startedAt > timeout) return resolve('timeout')
+            setTimeout(inspect, 200)
+          })
+        }
+
+        inspect()
+      })
+    `)
+  }
+
+  // Delay so async IPC-loaded data (document tree, active doc) has rendered.
+  setTimeout(async () => {
+    try {
+      if (documentId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (aiPrompt) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const contextCandidates = await window.shell.ai.collectContext({
+              workspaceId: workspace.id,
+              activeDocumentId: ${JSON.stringify(documentId ?? null)},
+              includeDescendants: true
+            })
+            await window.shell.ai.invoke({
+              workspaceId: workspace.id,
+              moduleId: ${JSON.stringify(moduleId ?? 'shell.aichat')},
+              originType: 'chat',
+              originId: 'capture-smoke',
+              prompt: ${JSON.stringify(aiPrompt)},
+              providerId: ${JSON.stringify(aiProviderId ?? undefined)},
+              model: ${JSON.stringify(aiModel ?? undefined)},
+              contextCandidates
+            })
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (moduleId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentId) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (webUrl) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('web:capture-navigate', { detail: ${JSON.stringify(webUrl)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (jobType) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            await window.shell.jobs.submit(${JSON.stringify(jobType)}, {
+              originId: 'capture-job',
+              prompt: 'Run a short capture workflow and report the current workspace context.'
+            })
+            window.dispatchEvent(new CustomEvent('shell:capture-open-jobs'))
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (markdownMessage) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-ai-message', { detail: ${JSON.stringify(markdownMessage)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentMarkdown) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-document-markdown', { detail: ${JSON.stringify(documentMarkdown)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openSettings) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-open-settings'))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (captureTheme === 'dark' || captureTheme === 'light') {
+        await win.webContents.executeJavaScript(
+          `document.documentElement.setAttribute('data-theme', ${JSON.stringify(captureTheme)})`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (showInspector) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-label="Show inspector"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (newAiConversation) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[title="New conversation"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openRailMore) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[data-rail-id="rail-more"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openWorkspaceMenu) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-haspopup="menu"][aria-label^="Project menu"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openAiContext) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-haspopup="dialog"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      await win.webContents.executeJavaScript('window.getSelection()?.removeAllRanges()')
+      await waitForWebviewRender()
+      const img = await win.webContents.capturePage()
+      mkdirSync(dirname(out), { recursive: true })
+      writeFileSync(out, img.toPNG())
+      console.log('[SHELL_CAPTURE] wrote', out)
+    } catch (err) {
+      console.error('[SHELL_CAPTURE] failed:', err)
+    } finally {
+      app.quit()
+    }
+  }, delay)
+}
