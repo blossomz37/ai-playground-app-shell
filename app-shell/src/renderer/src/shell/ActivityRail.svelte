@@ -5,8 +5,7 @@
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
     PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
-    TableIcon, RobotIcon, GlobeSimpleIcon, TerminalIcon,
-    DotsThreeVerticalIcon
+    TableIcon, RobotIcon, GlobeSimpleIcon, TerminalIcon
   } from 'phosphor-svelte'
 
   import type { Component } from 'svelte'
@@ -19,11 +18,18 @@
 
   let { moduleId, onSelect }: Props = $props()
   let modules = $state<RailItem[]>([])
-  let moreOpen = $state(false)
   let focusedControlId = $state<string | null>(null)
 
-  const primaryOrder = ['shell.tableview', 'shell.documents', 'shell.journal', 'shell.aichat', 'shell.assets']
-  const advancedOrder = ['shell.workflow', 'shell.web', 'shell.promptstudio']
+  const railOrder = [
+    'shell.tableview',
+    'shell.documents',
+    'shell.journal',
+    'shell.aichat',
+    'shell.assets',
+    'shell.workflow',
+    'shell.web',
+    'shell.promptstudio'
+  ]
 
   const iconMap: Record<string, Component> = {
     'shell.documents': PenNibIcon,
@@ -36,15 +42,9 @@
     'shell.promptstudio': TerminalIcon
   }
 
-  const primaryModules = $derived(sortModules(modules.filter(mod => primaryOrder.includes(mod.id)), primaryOrder))
-  const advancedModules = $derived(sortModules(modules.filter(mod => advancedOrder.includes(mod.id)), advancedOrder))
-  const advancedActiveModule = $derived(advancedModules.find(mod => mod.id === moduleId) ?? null)
-  const visibleControlIds = $derived([
-    ...primaryModules.map(mod => mod.id),
-    ...(advancedModules.length ? ['rail-more'] : [])
-  ])
+  const railModules = $derived(sortModules(modules.filter(mod => railOrder.includes(mod.id)), railOrder))
+  const visibleControlIds = $derived(railModules.map(mod => mod.id))
   const tabStopId = $derived(focusedControlId ?? activeRailControlId())
-  const moreLabel = $derived(advancedActiveModule ? `More modules, ${advancedActiveModule.label} active` : 'More modules')
 
   onMount(async () => {
     const list = await window.shell.modules.list()
@@ -62,8 +62,7 @@
   }
 
   function activeRailControlId(): string | null {
-    if (moduleId && primaryModules.some(mod => mod.id === moduleId)) return moduleId
-    if (advancedActiveModule) return 'rail-more'
+    if (moduleId && railModules.some(mod => mod.id === moduleId)) return moduleId
     return visibleControlIds[0] ?? null
   }
 
@@ -84,7 +83,6 @@
     if (event.key === 'ArrowUp') nextId = ids[(currentIndex - 1 + ids.length) % ids.length]
     if (event.key === 'Home') nextId = ids[0]
     if (event.key === 'End') nextId = ids[ids.length - 1]
-    if (event.key === 'Escape') moreOpen = false
 
     if (nextId) {
       event.preventDefault()
@@ -92,12 +90,7 @@
     }
   }
 
-  function toggleMore(): void {
-    moreOpen = !moreOpen
-  }
-
   async function selectModule(id: string): Promise<void> {
-    moreOpen = false
     focusedControlId = id
     await onSelect(id)
   }
@@ -105,7 +98,7 @@
 
 <nav class="activity-rail" aria-label="Module navigation">
   <WorkspaceSwitcher />
-  {#each primaryModules as mod (mod.id)}
+  {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
       class="rail-btn"
@@ -126,48 +119,6 @@
       <span class="rail-tooltip" aria-hidden="true">{mod.label}</span>
     </button>
   {/each}
-
-  {#if advancedModules.length}
-    <div class="more-wrap">
-      <button
-        class="rail-btn"
-        class:active={!!advancedActiveModule}
-        class:open={moreOpen}
-        title={moreLabel}
-        aria-label={moreLabel}
-        aria-haspopup="menu"
-        aria-expanded={moreOpen}
-        aria-current={advancedActiveModule ? 'page' : undefined}
-        data-rail-id="rail-more"
-        tabindex={tabStopId === 'rail-more' ? 0 : -1}
-        onfocus={() => focusedControlId = 'rail-more'}
-        onkeydown={(event) => onRailKeydown(event, 'rail-more')}
-        onclick={toggleMore}
-      >
-        <DotsThreeVerticalIcon size={20} weight={advancedActiveModule ? 'bold' : 'regular'} />
-        <span class="rail-tooltip" aria-hidden="true">{moreLabel}</span>
-      </button>
-
-      {#if moreOpen}
-        <div class="more-flyout" role="menu" tabindex="-1" aria-label="Advanced modules" onkeydown={(event) => event.key === 'Escape' && (moreOpen = false)}>
-          {#each advancedModules as mod (mod.id)}
-            {@const isActive = moduleId === mod.id}
-            <button
-              class="more-item"
-              class:active={isActive}
-              role="menuitem"
-              type="button"
-              aria-current={isActive ? 'page' : undefined}
-              onclick={() => selectModule(mod.id)}
-            >
-              <mod.icon size={16} weight={isActive ? 'fill' : 'regular'} />
-              <span>{mod.label}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  {/if}
 </nav>
 
 <style>
@@ -202,8 +153,7 @@
     background: var(--color-hover);
   }
 
-  .rail-btn.active,
-  .rail-btn.open {
+  .rail-btn.active {
     color: var(--accent-nav);
     background: color-mix(in srgb, var(--accent-nav) 16%, transparent);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-nav) 28%, transparent);
@@ -250,45 +200,4 @@
     transform: translateY(-50%) translateX(0);
   }
 
-  .more-wrap {
-    position: relative;
-  }
-
-  .more-flyout {
-    position: absolute;
-    left: calc(100% + var(--space-2));
-    top: 0;
-    z-index: 15;
-    min-width: 172px;
-    padding: var(--space-1);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-overlay);
-    box-shadow: var(--shadow-panel);
-  }
-
-  .more-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    min-height: 32px;
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-sm);
-    text-align: left;
-  }
-
-  .more-item:hover,
-  .more-item:focus-visible {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
-  }
-
-  .more-item.active {
-    background: color-mix(in srgb, var(--accent-nav) 14%, transparent);
-    color: var(--color-fg-primary);
-    box-shadow: inset 3px 0 0 var(--accent-nav);
-  }
 </style>
