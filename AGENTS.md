@@ -75,3 +75,22 @@ See `implementation/AGENTS.md` for screenshot naming and capture details.
 - Session carry-forward belongs in `session-handoffs/HANDOFF_NN.md`.
 - Plans belong in `implementation/plans/`.
 - Do not duplicate large architecture sections across files; link to the canonical source.
+
+## Code Bloat Quality Gate
+
+Before implementing, inspect the existing code paths and reuse established patterns unless there is a concrete reason not to.
+
+During implementation:
+- Keep the change limited to the stated plan. Do not add adjacent features, speculative hooks, new frameworks, or broad refactors.
+- Prefer editing existing components/services over creating new ones.
+- Add a new file, abstraction, helper, dependency, state slice, IPC channel, or schema field only if it is directly required by the acceptance criteria.
+- If adding an abstraction, state what duplication or complexity it removes. If it does not remove real complexity now, inline it.
+- Delete or avoid dead scaffolding, placeholder APIs, unused types, and “future-ready” options.
+- Keep public interfaces minimal: expose only what the UI or caller actually uses in this slice.
+- After implementation, do a bloat pass: list every new file/export/type/helper and remove anything not exercised by the feature or tests.
+
+Final response must include:
+1. Files changed.
+2. Any new abstractions and why they were necessary.
+3. Anything intentionally not built to avoid scope creep.
+4. Validation performed.
