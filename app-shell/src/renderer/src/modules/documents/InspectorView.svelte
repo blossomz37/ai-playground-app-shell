@@ -1,7 +1,10 @@
 <script lang="ts">
+  import type { DocumentSourceMetadata } from '@shared/module-contract'
   import { activeDoc, versions, editorContent, countWords, updateDoc } from '../../store'
 
   const docKinds = ['folder', 'chapter', 'scene', 'plan']
+
+  type SourceField = { label: string; value: string; title?: string }
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
@@ -27,6 +30,38 @@
     if (icon === (doc.icon ?? '')) return
     await updateDoc(doc.id, { icon: icon === '' ? null : icon })
   }
+
+  function parseSourceMetadata(metadataJson: string | null | undefined): DocumentSourceMetadata | null {
+    if (!metadataJson) return null
+    try {
+      const parsed = JSON.parse(metadataJson) as DocumentSourceMetadata
+      return parsed && typeof parsed === 'object' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  function field(label: string, value: unknown, title?: string): SourceField | null {
+    if (value === undefined || value === null || value === '') return null
+    return { label, value: String(value), title: title ?? String(value) }
+  }
+
+  function compact<T>(items: Array<T | null>): T[] {
+    return items.filter((item): item is T => item !== null)
+  }
+
+  let sourceMetadata = $derived(parseSourceMetadata($activeDoc?.metadataJson))
+  let sourceFields = $derived(compact([
+    field('Source file', sourceMetadata?.file ?? $activeDoc?.sourcePath, $activeDoc?.sourcePath ?? sourceMetadata?.file),
+    field('Description', sourceMetadata?.description),
+    field('Status', sourceMetadata?.status),
+    field('Version', sourceMetadata?.version),
+    field('Source created', sourceMetadata?.created),
+    field('Source modified', sourceMetadata?.modified),
+    field('Author', sourceMetadata?.author),
+    field('Imported words', sourceMetadata?.word_count),
+    sourceMetadata ? field('Current words', countWords($editorContent)) : null
+  ]))
 </script>
 
 <div class="inspector-view">
@@ -78,6 +113,32 @@
         </div>
       </div>
     </section>
+
+    {#if sourceMetadata}
+      <section class="section">
+        <div class="section-header">
+          <h3 class="section-title">Source Metadata</h3>
+        </div>
+        <div class="section-body">
+          {#each sourceFields as item (item.label)}
+            <div class="field">
+              <span class="label">{item.label}</span>
+              <span class="value" title={item.title}>{item.value}</span>
+            </div>
+          {/each}
+          {#if sourceMetadata.related && sourceMetadata.related.length > 0}
+            <div class="field stacked">
+              <span class="label">Related</span>
+              <ul class="related-list" aria-label="Related source paths">
+                {#each sourceMetadata.related as relatedPath (relatedPath)}
+                  <li title={relatedPath}>{relatedPath}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+        </div>
+      </section>
+    {/if}
 
     <section class="section">
       <div class="section-header">
@@ -150,6 +211,13 @@
     border-bottom: none;
   }
 
+  .field.stacked {
+    display: grid;
+    justify-content: stretch;
+    align-items: start;
+    gap: var(--space-2);
+  }
+
   .label {
     color: var(--color-fg-muted);
     flex-shrink: 0;
@@ -163,6 +231,23 @@
     text-align: right;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .related-list {
+    list-style: none;
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .related-list li {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    text-align: right;
   }
 
   .kind-select,

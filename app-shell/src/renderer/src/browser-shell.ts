@@ -46,6 +46,7 @@ const DEMO_DOCS: Doc[] = [
     contentFormat: 'markdown',
     sourcePath: null,
     sourceChecksum: null,
+    metadataJson: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     archivedAt: null
@@ -62,6 +63,7 @@ const DEMO_DOCS: Doc[] = [
     contentFormat: 'markdown',
     sourcePath: null,
     sourceChecksum: null,
+    metadataJson: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     archivedAt: null
@@ -151,7 +153,9 @@ function createBrowserShell(): ShellApi {
 
   return {
     documents: {
-      list: async () => Array.from(docs.values()),
+      list: async () => Array.from(docs.values()).filter(doc => !doc.archivedAt),
+      listArchived: async (workspaceId) => Array.from(docs.values())
+        .filter(doc => doc.workspaceId === workspaceId && Boolean(doc.archivedAt)),
       open: async (id) => docs.get(id) ?? DEMO_DOCS[1],
       save: async (id, content) => {
         const existing = docs.get(id)
@@ -189,6 +193,7 @@ function createBrowserShell(): ShellApi {
           contentFormat: 'markdown',
           sourcePath: null,
           sourceChecksum: null,
+          metadataJson: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           archivedAt: null
@@ -269,6 +274,45 @@ function createBrowserShell(): ShellApi {
         }
         return Array.from(affected)
       },
+      restore: async (id, options) => {
+        const now = new Date().toISOString()
+        const affected = new Set<string>([id])
+        const current = docs.get(id)
+        let parentId = current?.parentId ?? null
+        while (parentId) {
+          const parent = docs.get(parentId)
+          if (!parent) break
+          if (parent.archivedAt) affected.add(parent.id)
+          parentId = parent.parentId
+        }
+        if (options?.recursive ?? true) {
+          let changed = true
+          while (changed) {
+            changed = false
+            for (const doc of docs.values()) {
+              if (doc.parentId && affected.has(doc.parentId) && doc.archivedAt && !affected.has(doc.id)) {
+                affected.add(doc.id)
+                changed = true
+              }
+            }
+          }
+        }
+        const restored: Doc[] = []
+        for (const docId of affected) {
+          const existing = docs.get(docId)
+          if (!existing) continue
+          const updated = { ...existing, archivedAt: null, updatedAt: now }
+          docs.set(docId, updated)
+          restored.push(updated)
+        }
+        return restored
+      },
+      exportSubtree: async (id, params = {}) => ({
+        rootDocumentId: id,
+        targetDir: params.targetDir ?? '/browser-preview-export',
+        filesWritten: [],
+        foldersWritten: []
+      }),
       versions: async (): Promise<DocVersion[]> => [],
       onChanged: () => {}
     },
@@ -482,6 +526,13 @@ function createBrowserShell(): ShellApi {
     assets: {
       importFiles: async () => [],
       reveal: async () => {}
+    },
+    journal: {
+      pickImportFiles: async () => [],
+      exportEntries: async (_entries, params = {}) => ({
+        targetDir: params.targetDir ?? '/browser-preview-journal-export',
+        filesWritten: []
+      })
     },
     layout: {
       get: async () => ({ ...layout }),

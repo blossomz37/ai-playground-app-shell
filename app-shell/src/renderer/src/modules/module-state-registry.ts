@@ -32,12 +32,15 @@ export function getModuleState<T>(moduleId: string, key: ModuleStateKey): T {
 
 registerModuleState('shell.documents', 'documents', new DocumentsStateSlice({
   list: (workspaceId) => window.shell.documents.list(workspaceId),
+  listArchived: (workspaceId) => window.shell.documents.listArchived(workspaceId),
   open: (id) => window.shell.documents.open(id),
   save: (id, content) => window.shell.documents.save(id, content),
   update: (id, patch) => window.shell.documents.update(id, patch),
   create: (params) => window.shell.documents.create(params),
   move: (params) => window.shell.documents.move(params),
   archive: (id, options) => window.shell.documents.archive(id, options),
+  restore: (id, options) => window.shell.documents.restore(id, options),
+  exportSubtree: (id, params) => window.shell.documents.exportSubtree(id, params),
   versions: (id) => window.shell.documents.versions(id),
   onChanged: (cb) => window.shell.documents.onChanged(cb),
   getSortMode: () => window.shell.settings.get('documents.tree.sortMode'),

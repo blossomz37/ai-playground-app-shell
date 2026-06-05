@@ -2,12 +2,15 @@
   import { onDestroy, onMount } from 'svelte'
   import {
     docTree,
+    archivedDocTree,
     activeDocId,
     selectDoc,
     workspaceId,
     createDoc,
     updateDoc,
     archiveDoc,
+    restoreDoc,
+    exportDocSubtree,
     documentsSortMode,
     setDocumentsSortMode,
     moveDoc
@@ -41,6 +44,8 @@
   let dragOverPlacement = $state<DocumentDropPlacement>('inside')
   let pointerDrag = $state<DocumentTreePointerDrag | null>(null)
   let suppressClickDocId = $state<string | null>(null)
+  let archivedSectionOpen = $state(true)
+  let archivedExpanded = new SvelteSet<string>()
   let commandDisposables: Disposable[] = []
 
   const sortOptions: Array<{ mode: DocumentsSortMode; label: string }> = [
@@ -162,6 +167,10 @@
     return expanded.has(id) || activeAncestorIds.includes(id)
   }
 
+  function isArchivedExpanded(id: string): boolean {
+    return archivedExpanded.has(id)
+  }
+
   function sortModeLabel(mode: DocumentsSortMode): string {
     return sortOptions.find(option => option.mode === mode)?.label ?? 'Manual'
   }
@@ -184,6 +193,7 @@
       { id: 'documents.newFolder',  label: 'New Folder',  icon: '📂', args: [node.id] },
       { id: '_sep1', label: '', separator: true },
       { id: 'documents.rename',  label: 'Rename',  icon: '✎', args: [node.id], disabled: renamingDocId !== null && renamingDocId !== node.id },
+      { id: 'documents.export',  label: 'Export',  icon: '⇩', args: [node.id], disabled: renamingDocId !== null },
       { id: 'documents.archive', label: 'Archive', icon: '📦', args: [node.id], disabled: renamingDocId !== null },
     ]
     showContextMenu(e.clientX, e.clientY, items)
@@ -269,6 +279,35 @@
     }
 
     await archiveDoc(id)
+  }
+
+  async function handleRestoreArchived(id: string) {
+    try {
+      await restoreDoc(id)
+      expandPathTo(id)
+      addToast('info', 'Document restored.')
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Document could not be restored.')
+    }
+  }
+
+  async function handleExport(target?: unknown) {
+    const id = commandTargetId(target)
+    if (!id) {
+      addToast('warn', 'Select a document to export.')
+      return
+    }
+
+    try {
+      const result = await exportDocSubtree(id)
+      const count = result.filesWritten.length
+      addToast('info', `Exported ${count} Markdown file${count === 1 ? '' : 's'}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Document could not be exported.'
+      if (!message.toLowerCase().includes('cancelled')) {
+        addToast('warn', message)
+      }
+    }
   }
 
   function onTreeDragStart(event: DragEvent, node: DocNode) {
@@ -411,6 +450,7 @@
       registerCommand('documents.newScene', (target) => handleCreate('scene', target)),
       registerCommand('documents.newFolder', (target) => handleCreate('folder', target)),
       registerCommand('documents.rename', startRename),
+      registerCommand('documents.export', handleExport),
       registerCommand('documents.archive', handleArchive)
     ]
   })
@@ -423,6 +463,43 @@
     commandDisposables = []
   })
 </script>
+
+{#snippet archivedNode(node: DocNode, depth: number)}
+  {@const expanded = isArchivedExpanded(node.id)}
+  <div
+    class="archived-row"
+    style:padding-left="{12 + depth * 14}px"
+  >
+    <button
+      type="button"
+      class="archived-title"
+      onclick={() => {
+        if (node.children.length > 0) {
+          expanded ? archivedExpanded.delete(node.id) : archivedExpanded.add(node.id)
+        }
+      }}
+      aria-label={node.children.length > 0 ? `${expanded ? 'Collapse' : 'Expand'} archived ${node.title}` : `Archived ${node.title}`}
+      aria-expanded={node.children.length > 0 ? expanded : undefined}
+    >
+      <span class="archived-icon">{displayIcon(node)}</span>
+      <span class="archived-name">{node.title}</span>
+    </button>
+    <button
+      type="button"
+      class="restore-btn"
+      title="Restore"
+      aria-label={`Restore ${node.title}`}
+      onclick={() => handleRestoreArchived(node.id)}
+    >
+      ↩
+    </button>
+  </div>
+  {#if node.children.length > 0 && expanded}
+    {#each node.children as child (child.id)}
+      {@render archivedNode(child, depth + 1)}
+    {/each}
+  {/if}
+{/snippet}
 
 <div class="nav-view">
   <header class="zone-header nav-header">
@@ -497,6 +574,26 @@
       onRenameBlur={() => void commitRename()}
     />
   </div>
+  {#if $archivedDocTree.length > 0}
+    <section class="archived-section" aria-label="Archived documents">
+      <button
+        type="button"
+        class="archived-header"
+        onclick={() => archivedSectionOpen = !archivedSectionOpen}
+        aria-expanded={archivedSectionOpen}
+      >
+        <span>Archived</span>
+        <span class="archived-count">{$archivedDocTree.length}</span>
+      </button>
+      {#if archivedSectionOpen}
+        <div class="archived-list">
+          {#each $archivedDocTree as node (node.id)}
+            {@render archivedNode(node, 0)}
+          {/each}
+        </div>
+      {/if}
+    </section>
+  {/if}
 </div>
 
 <style>
@@ -599,6 +696,116 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--space-2) var(--space-2);
+  }
+
+  .archived-section {
+    flex: 0 0 auto;
+    border-top: 1px solid color-mix(in srgb, var(--accent-nav) 18%, var(--color-border));
+    padding: var(--space-2);
+  }
+
+  .archived-header {
+    width: 100%;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: color-mix(in srgb, var(--accent-nav) 58%, var(--color-fg-muted));
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+
+  .archived-header:hover,
+  .archived-header:focus-visible {
+    background: var(--color-hover);
+    color: var(--color-fg-primary);
+  }
+
+  .archived-header:focus-visible,
+  .restore-btn:focus-visible,
+  .archived-title:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  .archived-count {
+    color: var(--color-fg-muted);
+    font-weight: 600;
+  }
+
+  .archived-list {
+    max-height: 176px;
+    overflow-y: auto;
+    padding-top: var(--space-1);
+  }
+
+  .archived-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 28px;
+    border-radius: var(--radius-sm);
+  }
+
+  .archived-row:hover {
+    background: var(--color-hover);
+  }
+
+  .archived-title {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    text-align: left;
+  }
+
+  .archived-icon {
+    width: 20px;
+    flex: 0 0 auto;
+    text-align: center;
+    opacity: 0.72;
+  }
+
+  .archived-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .restore-btn {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .restore-btn:hover {
+    color: var(--color-fg-primary);
+    background: color-mix(in srgb, var(--accent-nav) 14%, transparent);
   }
 
 </style>
