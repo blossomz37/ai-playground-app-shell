@@ -22,8 +22,8 @@
   let moreOpen = $state(false)
   let focusedControlId = $state<string | null>(null)
 
-  const primaryOrder = ['shell.documents', 'shell.aichat', 'shell.journal', 'shell.assets']
-  const advancedOrder = ['shell.workflow', 'shell.tableview', 'shell.web', 'shell.promptstudio']
+  const primaryOrder = ['shell.tableview', 'shell.documents', 'shell.journal', 'shell.aichat', 'shell.assets']
+  const advancedOrder = ['shell.workflow', 'shell.web', 'shell.promptstudio']
 
   const iconMap: Record<string, Component> = {
     'shell.documents': PenNibIcon,

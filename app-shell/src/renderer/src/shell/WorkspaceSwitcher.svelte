@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CaretRightIcon, PlusIcon } from 'phosphor-svelte'
+  import { BookOpenIcon, PlusIcon } from 'phosphor-svelte'
   import {
     activeWorkspace,
     createWorkspace as createWorkspaceAction,
@@ -15,7 +15,6 @@
   let workspaceBusy = $state(false)
   let workspaceError = $state<string | null>(null)
 
-  let workspaceInitial = $derived(($activeWorkspace?.name ?? 'Workspace').trim().charAt(0).toUpperCase() || 'W')
   let switchableWorkspaces = $derived($workspaces.filter((workspace) => workspace.id !== $workspaceId))
 
   async function onWorkspaceSelect(id: string): Promise<void> {
@@ -52,10 +51,7 @@
     aria-haspopup="menu"
     onclick={() => menuOpen = !menuOpen}
   >
-    <span class="workspace-initial">{workspaceInitial}</span>
-    <span class="workspace-caret" aria-hidden="true">
-      <CaretRightIcon size={11} weight="bold" />
-    </span>
+    <BookOpenIcon size={20} weight="regular" />
   </button>
 
   {#if menuOpen}
@@ -146,19 +142,6 @@
     background: var(--color-hover);
     border-color: color-mix(in srgb, var(--accent-editor) 52%, var(--color-border));
     box-shadow: var(--shadow-active-glow);
-  }
-
-  .workspace-initial {
-    font-size: var(--font-size-sm);
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  .workspace-caret {
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    color: var(--color-fg-secondary);
   }
 
   .workspace-menu {
