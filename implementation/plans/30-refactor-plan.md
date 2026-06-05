@@ -15,6 +15,20 @@
   - `implementation/screenshots/refactor-phase0-baseline-settings-2026-06-05.png`
   - `implementation/screenshots/refactor-phase0-baseline-journal-2026-06-05.png`
 
+**Phase 3A outcome (2026-06-05):** added the shared settings-backed persistence helper and migrated Journal only.
+
+- Added `app-shell/src/renderer/src/modules/settings-backed-persistence.ts`.
+- Replaced Journal's local load/hydrate/save boilerplate with `connectSettingsBackedPersistence`.
+- Kept the existing Journal settings key: `modules.journal.<workspaceId>.state`.
+- Guarded async workspace-switch races with a load version and active workspace check.
+- Avoided saving until after the matching workspace snapshot has hydrated, so startup does not persist defaults before hydration completes.
+- Deferred Assets, Workflow, Table View, and Web migration to later Phase 3 passes.
+- Validation:
+  - `npm run typecheck`
+  - `npm run build`
+  - `npm run audit:contrast`
+  - Screenshot evidence: `implementation/screenshots/refactor-phase3-journal-helper-after-2026-06-05.png`
+
 **Phase 0: Baseline Safety Check**
 
 - Check current `git status`.
