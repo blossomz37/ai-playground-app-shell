@@ -1,0 +1,1 @@
+This directory is a mix of historical artifacts for mockups used during app-shell development.
