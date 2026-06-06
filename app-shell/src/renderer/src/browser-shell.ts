@@ -234,6 +234,68 @@ function createBrowserShell(): ShellApi {
         docs.set(id, updated)
         return updated
       },
+      duplicate: async (id, options = {}) => {
+        const source = docs.get(id)
+        if (!source || source.archivedAt) return []
+        const now = new Date().toISOString()
+        const affected = new Set<string>([id])
+        if (options.recursive) {
+          let changed = true
+          while (changed) {
+            changed = false
+            for (const doc of docs.values()) {
+              if (doc.parentId && affected.has(doc.parentId) && !doc.archivedAt && !affected.has(doc.id)) {
+                affected.add(doc.id)
+                changed = true
+              }
+            }
+          }
+        }
+
+        const sourceRows = Array.from(docs.values())
+          .filter(doc => affected.has(doc.id))
+          .sort((left, right) => left.id === id ? -1 : right.id === id ? 1 : left.sortOrder - right.sortOrder)
+        const idMap = new Map<string, string>()
+        const duplicated: Doc[] = []
+        for (const row of sourceRows) {
+          const copyId = `demo-copy-${Date.now()}-${duplicated.length}`
+          idMap.set(row.id, copyId)
+          const parentId = row.id === id ? row.parentId : idMap.get(row.parentId ?? '') ?? null
+          const copy: Doc = {
+            ...row,
+            id: copyId,
+            parentId,
+            title: row.id === id ? `${row.title} Copy` : row.title,
+            sortOrder: row.id === id ? row.sortOrder + 1 : row.sortOrder,
+            createdAt: now,
+            updatedAt: now,
+            archivedAt: null
+          }
+          docs.set(copy.id, copy)
+          duplicated.push(copy)
+        }
+        return duplicated
+      },
+      delete: async (id, options = {}) => {
+        const affected = new Set<string>([id])
+        if (options.recursive) {
+          let changed = true
+          while (changed) {
+            changed = false
+            for (const doc of docs.values()) {
+              if (doc.parentId && affected.has(doc.parentId) && !affected.has(doc.id)) {
+                affected.add(doc.id)
+                changed = true
+              }
+            }
+          }
+        }
+        const deletedIds = Array.from(affected).filter(docId => docs.has(docId))
+        for (const docId of deletedIds) {
+          docs.delete(docId)
+        }
+        return deletedIds
+      },
       create: async (params) => {
         const doc: Doc = {
           id: `demo-${Date.now()}`,

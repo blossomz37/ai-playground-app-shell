@@ -1,4 +1,4 @@
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentMetadataPatch, DocVersion } from '../module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocVersion } from '../module-contract'
 import { ObservableSlice } from './observable'
 
 export interface DocNode extends Doc {
@@ -15,6 +15,8 @@ export interface DocumentsPort {
   save(id: string, content: string): Promise<void>
   update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
   updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
+  duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
+  delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
   create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
   move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
   archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
@@ -238,10 +240,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   }
 
   async archiveDocs(ids: string[]): Promise<{ archivedIds: string[]; nextActiveId: string | null }> {
-    const selectedIds = new Set(ids)
-    const rootIds = this.documents
-      .filter(doc => selectedIds.has(doc.id) && !this.hasSelectedAncestor(doc, selectedIds))
-      .map(doc => doc.id)
+    const rootIds = this.selectedRootDocs(ids).map(doc => doc.id)
 
     if (rootIds.length === 0) return { archivedIds: [], nextActiveId: this.activeDocId }
 
@@ -298,6 +297,80 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     }
 
     return { archivedIds: Array.from(archivedSet), nextActiveId }
+  }
+
+  async duplicateDocs(ids: string[]): Promise<Doc[]> {
+    const rootDocs = this.selectedRootDocs(ids)
+    if (rootDocs.length === 0) return []
+
+    const duplicated: Doc[] = []
+    for (const doc of rootDocs) {
+      const copied = await this.port.duplicate(doc.id, { recursive: doc.kind === 'folder' })
+      duplicated.push(...copied)
+    }
+
+    if (this.workspaceId) {
+      this.documents = await this.port.list(this.workspaceId)
+    } else {
+      this.upsertDocuments(duplicated)
+    }
+
+    if (duplicated[0]) {
+      await this.selectDoc(duplicated[0].id)
+    } else {
+      this.emit()
+    }
+
+    return duplicated
+  }
+
+  async deleteDocs(ids: string[]): Promise<{ deletedIds: string[]; nextActiveId: string | null }> {
+    const rootDocs = this.selectedRootDocs(ids)
+    if (rootDocs.length === 0) return { deletedIds: [], nextActiveId: this.activeDocId }
+
+    const affectedSet = new Set<string>()
+    for (const doc of rootDocs) {
+      for (const affectedId of doc.kind === 'folder' ? this.collectDescendantIds(doc.id) : [doc.id]) {
+        affectedSet.add(affectedId)
+      }
+    }
+
+    const activeWillDelete = this.activeDocId !== null && affectedSet.has(this.activeDocId)
+    if (activeWillDelete && this.activeDocId && this.isDirty) {
+      await this.port.save(this.activeDocId, this.editorContent)
+      this.drafts.delete(this.activeDocId)
+      this.isDirty = false
+    }
+
+    const nextActiveId = activeWillDelete ? this.nextSelectionAfterArchive(this.activeDocId!, affectedSet) : this.activeDocId
+    const deletedSet = new Set<string>()
+    for (const doc of rootDocs) {
+      const deletedIds = await this.port.delete(doc.id, { recursive: doc.kind === 'folder' })
+      for (const deletedId of deletedIds) {
+        deletedSet.add(deletedId)
+      }
+    }
+
+    this.documents = this.documents.filter(doc => !deletedSet.has(doc.id))
+    for (const deletedId of deletedSet) {
+      this.drafts.delete(deletedId)
+    }
+
+    if (activeWillDelete) {
+      this.activeDocId = null
+      this.editorContent = ''
+      this.isDirty = false
+      this.versions = []
+      this.emit()
+
+      if (nextActiveId) {
+        await this.selectDoc(nextActiveId)
+      }
+    } else {
+      this.emit()
+    }
+
+    return { deletedIds: Array.from(deletedSet), nextActiveId }
   }
 
   async restoreDoc(id: string): Promise<Doc[]> {
@@ -530,6 +603,13 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
   private isDescendant(candidateId: string, ancestorId: string): boolean {
     return this.collectDescendantIds(ancestorId).includes(candidateId)
+  }
+
+  private selectedRootDocs(ids: string[]): Doc[] {
+    const selectedIds = new Set(ids)
+    return this.documents
+      .filter(doc => selectedIds.has(doc.id) && !this.hasSelectedAncestor(doc, selectedIds))
+      .sort(compareManualDocuments)
   }
 
   private hasSelectedAncestor(doc: Doc, selectedIds: Set<string>): boolean {

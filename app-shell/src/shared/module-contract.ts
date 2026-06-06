@@ -144,6 +144,10 @@ export interface DocumentExportParams {
   targetDir?: string
 }
 
+export interface DocumentLifecycleOptions {
+  recursive?: boolean
+}
+
 export interface DocumentExportResult {
   rootDocumentId: string
   targetDir: string
@@ -443,6 +447,8 @@ export interface ModuleContext {
     save(id: string, content: unknown): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
+    duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
+    delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
@@ -493,6 +499,8 @@ export interface ShellApi {
     save(id: string, content: string): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
+    duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
+    delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>

@@ -1,7 +1,7 @@
 <!-- Table View MainView — data table of documents -->
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { ArchiveIcon, XIcon } from 'phosphor-svelte'
+  import { ArchiveIcon, CheckIcon, CopyIcon, TrashIcon, XIcon } from 'phosphor-svelte'
 
   import {
     clearTableSelection,
@@ -35,12 +35,14 @@
   import {
     activeModuleId,
     archiveDocs,
+    deleteDocs,
+    duplicateDocs,
     selectDoc,
     updateDoc,
     updateDocMetadata
   } from '../../store'
   import { addToast } from '../../store/toasts'
-  import type { TableUpdatedRange } from '@shared/state/tableview-state'
+  import type { TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
 
   const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
   const baseKindOptions = ['chapter', 'scene', 'plan', 'folder']
@@ -55,6 +57,7 @@
   let bulkKind = $state('chapter')
   let bulkTargetWords = $state('')
   let bulkBusy = $state(false)
+  let confirmDeleteKey = $state<string | null>(null)
   let captureFilterListener: ((event: Event) => void) | null = null
   let captureBulkListener: ((event: Event) => void) | null = null
 
@@ -75,10 +78,12 @@
   const selectedCount = $derived($selectedTableDocIds.length)
   const selectedFileCount = $derived($selectedTableFileIds.length)
   const selectedFolderCount = $derived($selectedTableFolderIds.length)
+  const selectedKey = $derived($selectedTableDocIds.join('\0'))
   const folderSkipText = $derived(selectedFolderCount > 0
     ? `${selectedFolderCount} folder${selectedFolderCount === 1 ? '' : 's'} skipped for metadata`
     : ''
   )
+  const deleteConfirmationArmed = $derived(confirmDeleteKey === selectedKey && selectedCount > 0)
 
   async function openDocument(event: MouseEvent, id: string): Promise<void> {
     event.stopPropagation()
@@ -89,6 +94,7 @@
   }
 
   function toggleKind(kind: string): void {
+    confirmDeleteKey = null
     if ($tableKindFilterMode === 'all') {
       setTableSelectedKinds(kindOptions.filter(item => item !== kind))
       return
@@ -101,14 +107,17 @@
   }
 
   function selectAllKinds(): void {
+    confirmDeleteKey = null
     setTableAllKinds()
   }
 
   function selectNoKinds(): void {
+    confirmDeleteKey = null
     setTableSelectedKinds([])
   }
 
   function invertKinds(): void {
+    confirmDeleteKey = null
     const selected = $tableKindFilterMode === 'all' ? kindOptions : $tableSelectedKinds
     setTableSelectedKinds(kindOptions.filter(kind => !selected.includes(kind)))
   }
@@ -118,19 +127,48 @@
   }
 
   function clearSearch(): void {
+    confirmDeleteKey = null
     tableSearchQuery.set('')
   }
 
+  function setSearch(value: string): void {
+    confirmDeleteKey = null
+    tableSearchQuery.set(value)
+  }
+
   function clearKinds(): void {
+    confirmDeleteKey = null
     setTableAllKinds()
   }
 
   function clearWords(): void {
+    confirmDeleteKey = null
     setTableWordCountRange(undefined, undefined)
   }
 
   function clearUpdatedRange(): void {
+    confirmDeleteKey = null
     setTableUpdatedRange('all')
+  }
+
+  function setWordRange(min: number | undefined, max: number | undefined): void {
+    confirmDeleteKey = null
+    setTableWordCountRange(min, max)
+  }
+
+  function setUpdatedRange(value: TableUpdatedRange): void {
+    confirmDeleteKey = null
+    setTableUpdatedRange(value)
+  }
+
+  function setSortBy(value: TableSortBy): void {
+    confirmDeleteKey = null
+    tableSortBy.set(value)
+  }
+
+  function resetFilters(): void {
+    confirmDeleteKey = null
+    resetTableFilters()
   }
 
   function activeFilterChips(): Array<{ id: string; label: string; clear: () => void }> {
@@ -195,16 +233,28 @@
 
   function onSelectRow(event: MouseEvent, id: string): void {
     event.stopPropagation()
+    confirmDeleteKey = null
     toggleTableDocSelection(id, event.shiftKey)
+  }
+
+  function toggleVisibleSelection(): void {
+    confirmDeleteKey = null
+    toggleTableVisibleSelection()
+  }
+
+  function clearSelection(): void {
+    confirmDeleteKey = null
+    clearTableSelection()
   }
 
   async function archiveSelection(): Promise<void> {
     if (selectedCount === 0 || bulkBusy) return
     const selectedIds = [...$selectedTableDocIds]
+    confirmDeleteKey = null
     bulkBusy = true
     try {
       const result = await archiveDocs(selectedIds)
-      clearTableSelection()
+      clearSelection()
       addToast('info', `Archived ${result.archivedIds.length} document${result.archivedIds.length === 1 ? '' : 's'}.`)
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Selection could not be archived.')
@@ -219,12 +269,13 @@
       return
     }
     const fileIds = [...$selectedTableFileIds]
+    confirmDeleteKey = null
     bulkBusy = true
     try {
       for (const id of fileIds) {
         await updateDoc(id, { kind: bulkKind })
       }
-      clearTableSelection()
+      clearSelection()
       addToast('info', `Updated ${fileIds.length} file${fileIds.length === 1 ? '' : 's'}.`)
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'File kind could not be updated.')
@@ -244,15 +295,52 @@
       return
     }
     const fileIds = [...$selectedTableFileIds]
+    confirmDeleteKey = null
     bulkBusy = true
     try {
       for (const id of fileIds) {
         await updateDocMetadata(id, { targetWordCount: target })
       }
-      clearTableSelection()
+      clearSelection()
       addToast('info', `Set target words for ${fileIds.length} file${fileIds.length === 1 ? '' : 's'}.`)
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Target word count could not be updated.')
+    } finally {
+      bulkBusy = false
+    }
+  }
+
+  async function duplicateSelection(): Promise<void> {
+    if (selectedCount === 0 || bulkBusy) return
+    const selectedIds = [...$selectedTableDocIds]
+    confirmDeleteKey = null
+    bulkBusy = true
+    try {
+      const duplicated = await duplicateDocs(selectedIds)
+      clearSelection()
+      addToast('info', `Duplicated ${duplicated.length} document${duplicated.length === 1 ? '' : 's'}.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Selection could not be duplicated.')
+    } finally {
+      bulkBusy = false
+    }
+  }
+
+  async function deleteSelection(): Promise<void> {
+    if (selectedCount === 0 || bulkBusy) return
+    if (confirmDeleteKey !== selectedKey) {
+      confirmDeleteKey = selectedKey
+      return
+    }
+
+    const selectedIds = [...$selectedTableDocIds]
+    bulkBusy = true
+    try {
+      const result = await deleteDocs(selectedIds)
+      clearSelection()
+      addToast('info', `Deleted ${result.deletedIds.length} database record${result.deletedIds.length === 1 ? '' : 's'}.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Selection could not be deleted.')
     } finally {
       bulkBusy = false
     }
@@ -275,15 +363,16 @@
         reset?: boolean
       }>).detail
 
-      if (detail.reset) resetTableFilters()
-      if (detail.search !== undefined) tableSearchQuery.set(detail.search)
+      if (detail.reset) resetFilters()
+      if (detail.search !== undefined) setSearch(detail.search)
       if (detail.kinds !== undefined) {
+        confirmDeleteKey = null
         setTableSelectedKinds(detail.kinds)
       }
       if (detail.wordsMin !== undefined || detail.wordsMax !== undefined) {
-        setTableWordCountRange(detail.wordsMin, detail.wordsMax)
+        setWordRange(detail.wordsMin, detail.wordsMax)
       }
-      if (detail.updatedRange) setTableUpdatedRange(detail.updatedRange)
+      if (detail.updatedRange) setUpdatedRange(detail.updatedRange)
     }
     window.addEventListener('table:capture-set-filters', captureFilterListener)
 
@@ -294,15 +383,17 @@
         targetWords?: number
         applyKind?: boolean
         applyTargetWords?: boolean
+        confirmDelete?: boolean
       }>).detail
 
       const rows = $filteredTableDocuments.slice(0, Math.max(1, detail.count ?? 3))
-      clearTableSelection()
+      clearSelection()
       for (const row of rows) {
         toggleTableDocSelection(row.id)
       }
       if (detail.kind) bulkKind = detail.kind
       if (detail.targetWords !== undefined) bulkTargetWords = String(detail.targetWords)
+      if (detail.confirmDelete) confirmDeleteKey = rows.map(row => row.id).join('\0')
       if (detail.applyKind) void applyBulkKind()
       if (detail.applyTargetWords) void applyBulkTargetWords()
     }
@@ -329,7 +420,8 @@
           class="search-input"
           type="search"
           placeholder="Search"
-          bind:value={$tableSearchQuery}
+          value={$tableSearchQuery}
+          oninput={(event) => setSearch(event.currentTarget.value)}
           data-capture-table-search
         />
       </div>
@@ -375,9 +467,9 @@
           placeholder="Min words"
           value={$tableWordCountMin ?? ''}
           data-capture-table-words-min
-          onblur={(event) => setTableWordCountRange(parseWords(event.currentTarget.value), $tableWordCountMax)}
+          onblur={(event) => setWordRange(parseWords(event.currentTarget.value), $tableWordCountMax)}
           onkeydown={(event) => {
-            if (event.key === 'Enter') setTableWordCountRange(parseWords(event.currentTarget.value), $tableWordCountMax)
+            if (event.key === 'Enter') setWordRange(parseWords(event.currentTarget.value), $tableWordCountMax)
           }}
         />
         <input
@@ -387,15 +479,15 @@
           placeholder="Max words"
           value={$tableWordCountMax ?? ''}
           data-capture-table-words-max
-          onblur={(event) => setTableWordCountRange($tableWordCountMin, parseWords(event.currentTarget.value))}
+          onblur={(event) => setWordRange($tableWordCountMin, parseWords(event.currentTarget.value))}
           onkeydown={(event) => {
-            if (event.key === 'Enter') setTableWordCountRange($tableWordCountMin, parseWords(event.currentTarget.value))
+            if (event.key === 'Enter') setWordRange($tableWordCountMin, parseWords(event.currentTarget.value))
           }}
         />
       </div>
       <label class="toolbar-field" for="table-updated-filter">
         <span class="sr-only">Date range</span>
-        <select id="table-updated-filter" bind:value={$tableUpdatedRange} data-capture-table-updated-range>
+        <select id="table-updated-filter" value={$tableUpdatedRange} onchange={(event) => setUpdatedRange(event.currentTarget.value as TableUpdatedRange)} data-capture-table-updated-range>
           {#each updatedRangeOptions as option (option.value)}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -403,7 +495,7 @@
       </label>
       <label class="toolbar-field" for="table-sort">
         <span class="sr-only">Sort</span>
-        <select id="table-sort" bind:value={$tableSortBy}>
+        <select id="table-sort" value={$tableSortBy} onchange={(event) => setSortBy(event.currentTarget.value as TableSortBy)}>
           <option value="title">Title</option>
           <option value="updatedAt">Modified</option>
           <option value="createdAt">Created</option>
@@ -416,7 +508,7 @@
         disabled={!$tableHasActiveFilters}
         aria-label="Reset table filters"
         title="Reset filters"
-        onclick={resetTableFilters}
+        onclick={resetFilters}
       >
         <XIcon size={14} weight="bold" aria-hidden="true" />
       </button>
@@ -453,6 +545,27 @@
           <ArchiveIcon size={14} weight="bold" aria-hidden="true" />
           Archive
         </button>
+        <button class="bulk-btn" type="button" disabled={bulkBusy} onclick={duplicateSelection}>
+          <CopyIcon size={14} weight="bold" aria-hidden="true" />
+          Duplicate
+        </button>
+        <button
+          class="bulk-btn danger"
+          type="button"
+          title={deleteConfirmationArmed ? 'Confirm database delete' : 'Delete database records'}
+          aria-label={deleteConfirmationArmed ? 'Confirm database delete selected documents' : 'Delete selected database records'}
+          disabled={bulkBusy}
+          onclick={deleteSelection}
+          data-capture-table-delete
+        >
+          {#if deleteConfirmationArmed}
+            <CheckIcon size={14} weight="bold" aria-hidden="true" />
+            Confirm delete
+          {:else}
+            <TrashIcon size={14} weight="bold" aria-hidden="true" />
+            Delete from DB
+          {/if}
+        </button>
         <div class="bulk-group" aria-label="Change file kind">
           <select bind:value={bulkKind} disabled={bulkBusy || selectedFileCount === 0} data-capture-table-bulk-kind>
             {#each bulkKindOptions as kind (kind)}
@@ -476,7 +589,10 @@
         {#if folderSkipText}
           <span class="bulk-note">{folderSkipText}</span>
         {/if}
-        <button class="bulk-clear" type="button" disabled={bulkBusy} onclick={clearTableSelection}>Clear</button>
+        {#if deleteConfirmationArmed}
+          <span class="bulk-note danger-note">Source files and folders stay on disk.</span>
+        {/if}
+        <button class="bulk-clear" type="button" disabled={bulkBusy} onclick={clearSelection}>Clear</button>
       </section>
     {/if}
   </div>
@@ -494,7 +610,7 @@
               disabled={$filteredTableDocuments.length === 0}
               onclick={(event) => {
                 event.stopPropagation()
-                toggleTableVisibleSelection()
+                toggleVisibleSelection()
               }}
               data-capture-table-select-all
             >
@@ -774,6 +890,13 @@
   .bulk-clear:hover:not(:disabled) {
     background: var(--color-bg-active);
   }
+  .bulk-btn.danger {
+    border-color: color-mix(in srgb, var(--color-danger, #c2410c) 40%, var(--color-border));
+    color: var(--color-danger, #c2410c);
+  }
+  .bulk-btn.danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger, #c2410c) 12%, var(--color-bg-active));
+  }
   .bulk-btn:disabled,
   .bulk-clear:disabled,
   .bulk-number:disabled,
@@ -783,6 +906,9 @@
   }
   .bulk-note {
     color: var(--color-fg-muted);
+  }
+  .danger-note {
+    color: var(--color-danger, #c2410c);
   }
   .sr-only {
     position: absolute;

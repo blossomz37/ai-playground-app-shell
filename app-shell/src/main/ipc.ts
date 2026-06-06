@@ -9,6 +9,7 @@ import type {
   AssetWorkspaceLinkParams,
   AssetWorkspaceLinkUpdateParams,
   DocumentExportParams,
+  DocumentLifecycleOptions,
   DocumentMetadataPatch,
   JournalEntry,
   JournalExportParams,
@@ -71,6 +72,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('documents:updateMetadata', (_e, { id, patch }: {
     id: string; patch: DocumentMetadataPatch
   }) => documents.updateMetadata(id, patch))
+
+  ipcMain.handle('documents:duplicate', (_e, { id, options }: {
+    id: string; options?: DocumentLifecycleOptions
+  }) => documents.duplicate(id, options))
+
+  ipcMain.handle('documents:delete', (_e, { id, options }: {
+    id: string; options?: DocumentLifecycleOptions
+  }) => documents.delete(id, options))
 
   ipcMain.handle('documents:create', (_e, params: {
     workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number

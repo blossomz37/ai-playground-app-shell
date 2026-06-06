@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentMetadataPatch, DocVersion } from '@shared/module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocVersion } from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
 import { exportDocumentSubtree } from './document-export'
@@ -19,6 +19,39 @@ function parentRows(db: ReturnType<typeof getDb>, workspaceId: string, parentId:
       ORDER BY sortOrder, createdAt
     `)
     .all(workspaceId, parentId) as Doc[]
+}
+
+function liveSubtreeRows(db: ReturnType<typeof getDb>, id: string, recursive: boolean): Doc[] {
+  if (!recursive) {
+    const row = db.prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL').get(id) as Doc | undefined
+    return row ? [row] : []
+  }
+
+  return db.prepare(`
+    WITH RECURSIVE subtree(id) AS (
+      SELECT id FROM documents WHERE id = ? AND archivedAt IS NULL
+      UNION ALL
+      SELECT d.id
+      FROM documents d
+      JOIN subtree s ON d.parentId = s.id
+      WHERE d.archivedAt IS NULL
+    )
+    SELECT documents.*
+    FROM documents
+    JOIN subtree ON subtree.id = documents.id
+    ORDER BY documents.parentId IS NOT NULL, documents.parentId, documents.sortOrder, documents.createdAt
+  `).all(id) as Doc[]
+}
+
+function uniqueSiblingTitle(db: ReturnType<typeof getDb>, workspaceId: string, parentId: string | null, baseTitle: string): string {
+  const siblingTitles = new Set(parentRows(db, workspaceId, parentId).map(doc => doc.title.trim().toLowerCase()))
+  if (!siblingTitles.has(baseTitle.trim().toLowerCase())) return baseTitle
+
+  let suffix = 2
+  while (siblingTitles.has(`${baseTitle} ${suffix}`.trim().toLowerCase())) {
+    suffix += 1
+  }
+  return `${baseTitle} ${suffix}`
 }
 
 function parseMetadata(metadataJson: string | null): Record<string, unknown> {
@@ -109,6 +142,85 @@ export const documents = {
     events.emit('documents:changed', id)
 
     return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
+  },
+
+  duplicate(id: string, options: DocumentLifecycleOptions = {}): Doc[] {
+    const db = getDb()
+    const sourceRows = liveSubtreeRows(db, id, options.recursive ?? false)
+    if (sourceRows.length === 0) return []
+
+    const now = new Date().toISOString()
+    const root = sourceRows.find(doc => doc.id === id) ?? sourceRows[0]
+    const idMap = new Map<string, string>()
+    const copiedIds: string[] = []
+
+    db.transaction(() => {
+      const rootParentId = root.parentId
+      const rootSortOrder = root.sortOrder + 1
+      db.prepare(`
+        UPDATE documents
+        SET sortOrder = sortOrder + 1, updatedAt = ?
+        WHERE workspaceId = ?
+          AND parentId IS ?
+          AND archivedAt IS NULL
+          AND sortOrder >= ?
+      `).run(now, root.workspaceId, rootParentId, rootSortOrder)
+
+      const insertDoc = db.prepare(`
+        INSERT INTO documents
+          (id, workspaceId, parentId, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+
+      const rowsById = new Map(sourceRows.map(doc => [doc.id, doc]))
+      const sortedRows = [...sourceRows].sort((left, right) => {
+        if (left.id === root.id) return -1
+        if (right.id === root.id) return 1
+        return left.parentId === right.parentId
+          ? left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt)
+          : String(left.parentId ?? '').localeCompare(String(right.parentId ?? ''))
+      })
+
+      for (const source of sortedRows) {
+        const copyId = randomUUID()
+        idMap.set(source.id, copyId)
+        const parentId = source.id === root.id ? rootParentId : idMap.get(source.parentId ?? '') ?? null
+        if (source.id !== root.id && source.parentId && !rowsById.has(source.parentId)) continue
+        const title = source.id === root.id
+          ? uniqueSiblingTitle(db, root.workspaceId, rootParentId, `${source.title} Copy`)
+          : source.title
+        const sortOrder = source.id === root.id ? rootSortOrder : source.sortOrder
+        insertDoc.run(
+          copyId,
+          source.workspaceId,
+          parentId,
+          source.kind,
+          title,
+          source.icon,
+          sortOrder,
+          source.content,
+          source.contentFormat,
+          source.sourcePath,
+          source.sourceChecksum,
+          source.metadataJson,
+          now,
+          now
+        )
+        copiedIds.push(copyId)
+      }
+    })()
+
+    for (const copiedId of copiedIds) {
+      events.emit('documents:changed', copiedId)
+    }
+
+    const placeholders = copiedIds.map(() => '?').join(', ')
+    return db.prepare(`
+      SELECT *
+      FROM documents
+      WHERE id IN (${placeholders})
+      ORDER BY parentId IS NOT NULL, parentId, sortOrder, createdAt
+    `).all(...copiedIds) as Doc[]
   },
 
   create(params: {
@@ -261,6 +373,26 @@ export const documents = {
     }
 
     return affectedIds
+  },
+
+  delete(id: string, options: DocumentLifecycleOptions = {}): string[] {
+    const db = getDb()
+    const rows = liveSubtreeRows(db, id, options.recursive ?? false)
+    const deletedIds = rows.map(row => row.id)
+    if (deletedIds.length === 0) return []
+
+    const placeholders = deletedIds.map(() => '?').join(', ')
+    db.transaction(() => {
+      db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...deletedIds)
+      db.prepare(`DELETE FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`).run(...deletedIds)
+      db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...deletedIds)
+    })()
+
+    for (const deletedId of deletedIds) {
+      events.emit('documents:changed', deletedId)
+    }
+
+    return deletedIds
   },
 
   restore(id: string, options: { recursive?: boolean } = {}): Doc[] {

@@ -786,7 +786,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               detail: {
                 count: ${JSON.stringify(Number.isFinite(tableBulkCount) ? Math.max(1, Math.floor(tableBulkCount)) : 3)},
                 kind: ${JSON.stringify(tableBulkKind ?? (tableBulkState === 'kind' ? 'scene' : undefined))},
-                targetWords: ${JSON.stringify(tableBulkTargetWords !== undefined ? Number(tableBulkTargetWords) : tableBulkState === 'target' ? 1200 : undefined)}
+                targetWords: ${JSON.stringify(tableBulkTargetWords !== undefined ? Number(tableBulkTargetWords) : tableBulkState === 'target' ? 1200 : undefined)},
+                confirmDelete: ${JSON.stringify(tableBulkState === 'delete-confirm')}
               }
             }))
           })()

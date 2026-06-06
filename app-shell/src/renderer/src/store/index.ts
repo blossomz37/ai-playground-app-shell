@@ -272,6 +272,14 @@ export async function archiveDocs(ids: string[]) {
   return documentsState.archiveDocs(ids)
 }
 
+export async function duplicateDocs(ids: string[]) {
+  return documentsState.duplicateDocs(ids)
+}
+
+export async function deleteDocs(ids: string[]) {
+  return documentsState.deleteDocs(ids)
+}
+
 export async function restoreDoc(id: string) {
   return documentsState.restoreDoc(id)
 }
