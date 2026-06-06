@@ -2,6 +2,7 @@ import { readable } from 'svelte/store'
 import {
   TableViewStateSlice,
   type TableFilterKind,
+  type TableFolderOption,
   type TableSearchMode,
   type TableUpdatedRange,
   type TableSortBy,
@@ -50,6 +51,11 @@ export const tableSearchMode = writableTableField(
   state => state.searchMode,
   value => tableViewState.setSearchMode(value as TableSearchMode)
 )
+export const tableFolderFilterId = writableTableField(
+  state => state.folderFilterId,
+  value => tableViewState.setFolderFilter(value)
+)
+export const tableFolderOptions = fromTableViewState<TableFolderOption[]>(state => state.folderOptions)
 export const tableWordCountMin = writableTableField(
   state => state.wordCountMin,
   value => tableViewState.setWordCountRange(value, tableViewState.getSnapshot().wordCountMax)

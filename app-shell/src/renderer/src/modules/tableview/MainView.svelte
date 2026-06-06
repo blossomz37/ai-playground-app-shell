@@ -28,6 +28,8 @@
     tableAllVisibleSelected,
     tableDocuments,
     tableHasActiveFilters,
+    tableFolderFilterId,
+    tableFolderOptions,
     tableSelectedKinds,
     tableKindFilterMode,
     tableFilterSummary,
@@ -53,7 +55,7 @@
     updateDocMetadata
   } from '../../store'
   import { addToast } from '../../store/toasts'
-  import type { TableSearchMode, TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
+  import type { TableFolderOption, TableSearchMode, TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
 
   const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
   const baseKindOptions = [
@@ -71,6 +73,8 @@
   let bulkTargetWords = $state('')
   let bulkBusy = $state(false)
   let confirmDeleteKey = $state<string | null>(null)
+  let folderInputOverride = $state<string | null>(null)
+  let folderOptionsOpen = $state(false)
   let captureFilterListener: ((event: Event) => void) | null = null
   let captureBulkListener: ((event: Event) => void) | null = null
 
@@ -91,6 +95,11 @@
   })
 
   const bulkKindOptions = $derived(kindOptions.filter(option => option.value !== STRUCTURAL_FOLDER_KIND_VALUE))
+  const selectedFolderOption = $derived(
+    $tableFolderOptions.find(option => option.id === $tableFolderFilterId) ?? null
+  )
+  const folderInputValue = $derived(folderInputOverride ?? selectedFolderOption?.path ?? '')
+  const matchingFolderOptions = $derived(folderMatches(folderInputValue, $tableFolderOptions).slice(0, 8))
 
   const kindButtonLabel = $derived(
     $tableKindFilterMode === 'all'
@@ -167,6 +176,51 @@
     tableSearchMode.set(value)
   }
 
+  function setFolderFilter(id: string | null): void {
+    confirmDeleteKey = null
+    tableFolderFilterId.set(id)
+  }
+
+  function setFolderInput(value: string): void {
+    confirmDeleteKey = null
+    folderInputOverride = value
+    folderOptionsOpen = true
+
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setFolderFilter(null)
+      return
+    }
+
+    const exact = $tableFolderOptions.find(option => option.path.toLowerCase() === trimmed.toLowerCase())
+    if (exact) {
+      folderInputOverride = null
+      setFolderFilter(exact.id)
+      return
+    }
+
+    if (selectedFolderOption && selectedFolderOption.path !== value) {
+      setFolderFilter(null)
+    }
+  }
+
+  function chooseFolderOption(option: TableFolderOption): void {
+    folderInputOverride = null
+    folderOptionsOpen = false
+    setFolderFilter(option.id)
+  }
+
+  function clearFolderFilter(): void {
+    folderInputOverride = null
+    folderOptionsOpen = false
+    setFolderFilter(null)
+  }
+
+  function selectFirstFolderMatch(): void {
+    const first = matchingFolderOptions[0]
+    if (first) chooseFolderOption(first)
+  }
+
   function clearKinds(): void {
     confirmDeleteKey = null
     setTableAllKinds()
@@ -199,6 +253,8 @@
 
   function resetFilters(): void {
     confirmDeleteKey = null
+    folderInputOverride = null
+    folderOptionsOpen = false
     resetTableFilters()
   }
 
@@ -208,6 +264,10 @@
     if (query) {
       const prefix = $tableSearchMode === 'regex' ? 'Regex' : 'Search'
       chips.push({ id: 'search', label: `${prefix}: ${query}`, clear: clearSearch })
+    }
+
+    if (selectedFolderOption) {
+      chips.push({ id: 'folder', label: `Folder: ${selectedFolderOption.path}`, clear: clearFolderFilter })
     }
 
     if ($tableKindFilterMode !== 'all') {
@@ -272,6 +332,17 @@
   function tableKindLabel(doc: { nodeType: string; kind: string | null }): string {
     if (doc.nodeType === 'folder') return STRUCTURAL_FOLDER_KIND_LABEL
     return labelForDocumentKind(doc.kind, $documentKindOptions)
+  }
+
+  function folderMatches(query: string, options: TableFolderOption[]): TableFolderOption[] {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return options
+    return options.filter(option => option.path.toLowerCase().includes(normalized))
+  }
+
+  function setFolderFilterByPath(path: string): void {
+    const option = $tableFolderOptions.find(item => item.path.toLowerCase() === path.trim().toLowerCase())
+    if (option) chooseFolderOption(option)
   }
 
   function parseTargetWords(value: string): number | null {
@@ -409,11 +480,15 @@
         wordsMax?: number
         updatedRange?: TableUpdatedRange
         searchMode?: TableSearchMode
+        folderId?: string | null
+        folderPath?: string
         reset?: boolean
       }>).detail
 
       if (detail.reset) resetFilters()
       if (detail.searchMode !== undefined) setSearchMode(detail.searchMode)
+      if (detail.folderId !== undefined) setFolderFilter(detail.folderId)
+      if (detail.folderPath !== undefined) setFolderFilterByPath(detail.folderPath)
       if (detail.search !== undefined) setSearch(detail.search)
       if (detail.kinds !== undefined) {
         confirmDeleteKey = null
@@ -495,6 +570,56 @@
         >
           Regex
         </button>
+      </div>
+      <div class="folder-filter">
+        <label class="sr-only" for="table-folder-filter">Folder filter</label>
+        <input
+          id="table-folder-filter"
+          class="folder-input"
+          type="text"
+          role="combobox"
+          placeholder="Folder"
+          value={folderInputValue}
+          aria-expanded={folderOptionsOpen}
+          aria-controls="table-folder-options"
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          data-capture-table-folder
+          onfocus={() => folderOptionsOpen = true}
+          oninput={(event) => setFolderInput(event.currentTarget.value)}
+          onkeydown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              selectFirstFolderMatch()
+            }
+            if (event.key === 'Escape') {
+              folderOptionsOpen = false
+            }
+          }}
+          onblur={() => {
+            window.setTimeout(() => {
+              folderOptionsOpen = false
+            }, 120)
+          }}
+        />
+        {#if folderOptionsOpen && (folderInputValue.trim() || $tableFolderOptions.length > 0)}
+          <div id="table-folder-options" class="folder-popover" role="listbox">
+            {#each matchingFolderOptions as option (option.id)}
+              <button
+                type="button"
+                role="option"
+                aria-selected={option.id === $tableFolderFilterId}
+                title={option.path}
+                onmousedown={(event) => event.preventDefault()}
+                onclick={() => chooseFolderOption(option)}
+              >
+                {option.path}
+              </button>
+            {:else}
+              <span>No folders</span>
+            {/each}
+          </div>
+        {/if}
       </div>
       <div class="kind-filter">
         <button
@@ -753,6 +878,7 @@
   }
   .search-field { flex: 1 1 130px; min-width: 0; }
   .search-input,
+  .folder-input,
   .toolbar-field select,
   .kind-filter-btn,
   .number-input {
@@ -767,6 +893,53 @@
     outline: none;
   }
   .search-input { padding: 0 var(--space-3); }
+  .folder-filter {
+    position: relative;
+    flex: 0 1 160px;
+    min-width: 126px;
+  }
+  .folder-input {
+    padding: 0 var(--space-3);
+  }
+  .folder-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    display: grid;
+    gap: 2px;
+    width: min(320px, 70vw);
+    max-height: 220px;
+    overflow: auto;
+    padding: var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-surface);
+    box-shadow: var(--shadow-panel);
+  }
+  .folder-popover button,
+  .folder-popover span {
+    min-width: 0;
+    min-height: 28px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .folder-popover button:hover,
+  .folder-popover button[aria-selected="true"] {
+    background: var(--color-bg-active);
+    color: var(--color-fg-primary);
+  }
+  .folder-popover span {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-fg-muted);
+  }
   .search-mode {
     display: inline-grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -869,6 +1042,8 @@
     font-weight: 500;
   }
   .search-input:focus-visible,
+  .folder-input:focus-visible,
+  .folder-popover button:focus-visible,
   .search-mode button:focus-visible,
   .toolbar-field select:focus-visible,
   .kind-filter-btn:focus-visible,

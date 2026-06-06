@@ -8,11 +8,20 @@ export type TableKindFilterMode = 'all' | 'custom'
 export type TableSearchMode = 'text' | 'regex'
 export type TableUpdatedRange = 'all' | 'today' | '7d' | '30d'
 
+export interface TableFolderOption {
+  id: string
+  title: string
+  path: string
+  depth: number
+}
+
 export interface TableViewState {
   documents: Doc[]
   filterKind: TableFilterKind
   kindFilterMode: TableKindFilterMode
   selectedKinds: string[]
+  folderFilterId: string | null
+  folderOptions: TableFolderOption[]
   searchQuery: string
   searchMode: TableSearchMode
   wordCountMin?: number
@@ -36,6 +45,7 @@ export interface TableViewPersistenceSnapshot {
   filterKind?: TableFilterKind
   kindFilterMode?: TableKindFilterMode
   selectedKinds?: string[]
+  folderFilterId?: string | null
   searchQuery?: string
   searchMode?: TableSearchMode
   wordCountMin?: number
@@ -49,6 +59,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   private documents: Doc[] = []
   private kindFilterMode: TableKindFilterMode = 'all'
   private selectedKinds: string[] = []
+  private folderFilterId: string | null = null
   private searchQuery = ''
   private searchMode: TableSearchMode = 'text'
   private wordCountMin: number | undefined
@@ -64,11 +75,14 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     const filterKind = this.filterKind()
     const selectedDocs = this.documents.filter(doc => this.selectedDocIds.has(doc.id))
     const visibleSelectedCount = filteredDocuments.filter(doc => this.selectedDocIds.has(doc.id)).length
+    const folderOptions = buildFolderOptions(this.documents)
     return {
       documents: this.documents,
       filterKind,
       kindFilterMode: this.kindFilterMode,
       selectedKinds: [...this.selectedKinds],
+      folderFilterId: this.folderFilterId,
+      folderOptions,
       searchQuery: this.searchQuery,
       searchMode: this.searchMode,
       wordCountMin: this.wordCountMin,
@@ -91,6 +105,9 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
 
   setDocuments(documents: Doc[]): void {
     this.documents = documents
+    if (this.folderFilterId && !this.documents.some(doc => doc.id === this.folderFilterId && doc.nodeType === 'folder')) {
+      this.folderFilterId = null
+    }
     this.ensureVisibleSelection()
     this.pruneSelectionToFiltered()
     this.emit()
@@ -140,6 +157,15 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.emit()
   }
 
+  setFolderFilter(folderFilterId: string | null): void {
+    this.folderFilterId = folderFilterId && this.documents.some(doc => doc.id === folderFilterId && doc.nodeType === 'folder')
+      ? folderFilterId
+      : null
+    this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
+    this.emit()
+  }
+
   setSortBy(sortBy: TableSortBy): void {
     this.sortBy = sortBy
     this.ensureVisibleSelection()
@@ -166,6 +192,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   resetFilters(): void {
     this.kindFilterMode = 'all'
     this.selectedKinds = []
+    this.folderFilterId = null
     this.searchQuery = ''
     this.searchMode = 'text'
     this.wordCountMin = undefined
@@ -260,6 +287,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     const migrated = migrateSnapshot(snapshot)
     this.kindFilterMode = migrated.kindFilterMode
     this.selectedKinds = migrated.selectedKinds
+    this.folderFilterId = typeof snapshot.folderFilterId === 'string' ? snapshot.folderFilterId : null
     this.searchQuery = snapshot.searchQuery ?? ''
     this.searchMode = isSearchMode(snapshot.searchMode) ? snapshot.searchMode : 'text'
     const normalizedRange = normalizeWordCountRange(snapshot.wordCountMin, snapshot.wordCountMax)
@@ -279,6 +307,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     return {
       kindFilterMode: this.kindFilterMode,
       selectedKinds: [...this.selectedKinds],
+      folderFilterId: this.folderFilterId,
       searchQuery: this.searchQuery,
       searchMode: this.searchMode,
       wordCountMin: this.wordCountMin,
@@ -291,9 +320,10 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
 
   private filteredDocuments(): Doc[] {
     const query = this.searchQuery.trim()
+    const folderFiltered = this.folderFilteredDocuments()
     const kindFiltered = this.kindFilterMode === 'all'
-      ? [...this.documents]
-      : this.documents.filter(doc => this.selectedKinds.includes(tableKindValue(doc)))
+      ? folderFiltered
+      : folderFiltered.filter(doc => this.selectedKinds.includes(tableKindValue(doc)))
 
     const searchFiltered = this.searchFilteredDocuments(kindFiltered, query)
 
@@ -321,6 +351,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
 
   private hasActiveFilters(): boolean {
     return this.kindFilterMode !== 'all'
+      || this.folderFilterId !== null
       || this.searchQuery.trim() !== ''
       || this.wordCountMin !== undefined
       || this.wordCountMax !== undefined
@@ -345,6 +376,14 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       doc.title.toLowerCase().includes(normalizedQuery)
       || doc.content.toLowerCase().includes(normalizedQuery)
     )
+  }
+
+  private folderFilteredDocuments(): Doc[] {
+    const folderFilterId = this.folderFilterId
+    if (!folderFilterId) return [...this.documents]
+
+    const docsById = new Map(this.documents.map(doc => [doc.id, doc]))
+    return this.documents.filter(doc => isInFolderSubtree(doc, folderFilterId, docsById))
   }
 }
 
@@ -381,6 +420,50 @@ function isUpdatedRange(value: unknown): value is TableUpdatedRange {
 
 function isSearchMode(value: unknown): value is TableSearchMode {
   return value === 'text' || value === 'regex'
+}
+
+function isInFolderSubtree(doc: Doc, folderId: string, docsById: Map<string, Doc>): boolean {
+  if (doc.id === folderId) return true
+  let parentId = doc.parentId
+  const seen = new Set<string>()
+  while (parentId) {
+    if (parentId === folderId) return true
+    if (seen.has(parentId)) return false
+    seen.add(parentId)
+    parentId = docsById.get(parentId)?.parentId ?? null
+  }
+  return false
+}
+
+function buildFolderOptions(documents: Doc[]): TableFolderOption[] {
+  const docsById = new Map(documents.map(doc => [doc.id, doc]))
+  return documents
+    .filter(doc => doc.nodeType === 'folder')
+    .map(doc => {
+      const segments = folderPathSegments(doc, docsById)
+      return {
+        id: doc.id,
+        title: doc.title,
+        path: segments.join('/'),
+        depth: Math.max(0, segments.length - 1)
+      }
+    })
+    .sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id))
+}
+
+function folderPathSegments(doc: Doc, docsById: Map<string, Doc>): string[] {
+  const segments = [doc.title]
+  let parentId = doc.parentId
+  const seen = new Set<string>([doc.id])
+  while (parentId) {
+    if (seen.has(parentId)) break
+    seen.add(parentId)
+    const parent = docsById.get(parentId)
+    if (!parent) break
+    segments.unshift(parent.title)
+    parentId = parent.parentId
+  }
+  return segments
 }
 
 function migrateSnapshot(snapshot: TableViewPersistenceSnapshot): {
