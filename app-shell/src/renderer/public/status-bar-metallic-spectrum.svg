@@ -11,37 +11,42 @@
       <stop offset="0.88" stop-color="#8c4df0"/>
       <stop offset="1" stop-color="#c33fb0"/>
     </linearGradient>
-    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.72"/>
-      <stop offset="0.10" stop-color="#ffffff" stop-opacity="0.24"/>
-      <stop offset="0.24" stop-color="#05050a" stop-opacity="0.18"/>
-      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.10"/>
-      <stop offset="0.70" stop-color="#05050a" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.62"/>
+    <!-- Glossy light model: bright crown, specular falloff, mid shadow, a secondary
+         reflection band lower down, then a deep base. No hard edge lines. -->
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="0.05" stop-color="#ffffff" stop-opacity="0.50"/>
+      <stop offset="0.14" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="0.34" stop-color="#05050a" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#05050a" stop-opacity="0.20"/>
+      <stop offset="0.74" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="0.86" stop-color="#000000" stop-opacity="0.22"/>
+      <stop offset="1"    stop-color="#000000" stop-opacity="0.52"/>
     </linearGradient>
-    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.88"/>
-      <stop offset="0.03" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.92" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.82"/>
+    <!-- Tight specular hotspot for the wet-glass pop -->
+    <radialGradient id="shine" cx="50%" cy="-8%" r="72%">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.60"/>
+      <stop offset="0.30" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Thin polished glaze sweeping across the crown -->
+    <linearGradient id="glaze" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.4"  stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
     <filter id="brushed" x="-4%" y="-40%" width="108%" height="180%">
       <feTurbulence type="fractalNoise" baseFrequency="0.018 0.64" numOctaves="2" seed="42" result="noise"/>
       <feColorMatrix in="noise" type="saturate" values="0"/>
       <feComponentTransfer>
-        <feFuncA type="table" tableValues="0 0.18"/>
+        <feFuncA type="table" tableValues="0 0.14"/>
       </feComponentTransfer>
       <feBlend in="SourceGraphic" mode="overlay"/>
     </filter>
-    <radialGradient id="shine" cx="50%" cy="0%" r="62%">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.38"/>
-      <stop offset="0.34" stop-color="#ffffff" stop-opacity="0.10"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
   </defs>
-  <rect width="1600" height="120" fill="#07070d"/>
-  <rect y="14" width="1600" height="88" rx="0" fill="url(#spectrum)" filter="url(#brushed)"/>
-  <rect y="14" width="1600" height="88" fill="url(#metal)"/>
-  <rect y="14" width="1600" height="88" fill="url(#shine)"/>
-  <rect y="12" width="1600" height="92" fill="url(#edge)"/>
+  <!-- Full-bleed spectrum: fills the whole viewBox, so no dark frame anywhere -->
+  <rect width="1600" height="120" fill="url(#spectrum)" filter="url(#brushed)"/>
+  <rect width="1600" height="120" fill="url(#gloss)"/>
+  <rect width="1600" height="120" fill="url(#shine)"/>
+  <rect width="1600" height="30"  fill="url(#glaze)"/>
 </svg>
