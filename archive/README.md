@@ -6,6 +6,10 @@ If you're a new agent orienting to this workspace: you can safely skip this fold
 
 ## Contents
 
+**Agent implementation plans and screenshot evidence of completion:**
+`plans-1-through-29.zip`
+`screenshots-20260529-20260605.zip`
+
 **Decision record (how the stack was chosen):**
 - `decision-questionnaire.md` — the 11-question framework, with leans and rationale
 - `decision-questionnaire.html` — the interactive form Carlo filled in (auto-save, export)
