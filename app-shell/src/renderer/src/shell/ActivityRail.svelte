@@ -191,6 +191,9 @@
 </script>
 
 <nav class="activity-rail" aria-label="Module navigation">
+  <div class="rail-logo" aria-hidden="true">
+    <img class="rail-logo-mark" src="/app-shell-logo.png" alt="" />
+  </div>
   {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
@@ -246,6 +249,23 @@
     border-right: 1px solid color-mix(in srgb, var(--color-border-strong) 80%, transparent);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 46%, transparent);
     gap: 2px;
+  }
+
+  .rail-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 34px;
+    margin-bottom: var(--space-1);
+    border-radius: var(--radius-md);
+  }
+
+  .rail-logo-mark {
+    display: block;
+    width: 26px;
+    height: 26px;
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.22));
   }
 
   .rail-btn {
