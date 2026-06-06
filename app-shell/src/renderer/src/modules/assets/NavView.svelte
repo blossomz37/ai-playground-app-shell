@@ -60,6 +60,7 @@
           <button
             type="button"
             class="asset-open"
+            data-media-type={asset.mediaType}
             aria-pressed={$selectedAssetId === asset.id}
             onclick={() => selectAsset(asset.id)}
           >

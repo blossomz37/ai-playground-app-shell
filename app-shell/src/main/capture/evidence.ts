@@ -32,6 +32,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
   const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
+  const openAssetImagePreview = process.env['SHELL_CAPTURE_OPEN_ASSET_IMAGE_PREVIEW'] === '1'
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
@@ -45,6 +46,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const journalImportDir = join(journalSmokeDir, 'import')
   const journalExportDir = join(journalSmokeDir, 'export')
   const assetsDbSmoke = process.env['SHELL_CAPTURE_ASSETS_DB_SMOKE'] === '1'
+  const selectAssetMediaType = process.env['SHELL_CAPTURE_SELECT_ASSET_MEDIA_TYPE']
   const assetsImportDir = process.env['SHELL_CAPTURE_ASSETS_IMPORT_DIR']
     ?? join(process.cwd(), '..', 'sample-assets-import')
   const assetsExportDir = process.env['SHELL_CAPTURE_ASSETS_EXPORT_DIR']
@@ -531,6 +533,36 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (openWorkspaceMenu) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[aria-haspopup="menu"][aria-label^="Project menu"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (selectAssetMediaType) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.assets' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const selector = '.asset-open[data-media-type=' + CSS.escape(${JSON.stringify(selectAssetMediaType)}) + ']'
+            const assetRow = document.querySelector(selector)
+            if (!assetRow) throw new Error('No ${selectAssetMediaType} asset row available for capture.')
+            assetRow.click()
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openAssetImagePreview) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.assets' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const imageRows = Array.from(document.querySelectorAll('.asset-open[data-media-type="image"]'))
+            const imageAsset = imageRows.find((row) => row.textContent?.includes('600 x 900')) ?? imageRows[0]
+            if (!imageAsset) throw new Error('No image asset row available for preview capture.')
+            imageAsset.click()
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const trigger = document.querySelector('button.asset-preview-trigger')
+            if (!trigger) throw new Error('Image preview trigger is not available.')
+            trigger.click()
+          })()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
