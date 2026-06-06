@@ -88,3 +88,49 @@ Only explore these if Carlo approves or asks later:
 - Existing fixed-zone shell architecture remains the source of truth.
 - The first implementation should prefer token value edits and small chrome CSS adjustments over new abstractions.
 - If a durable repo artifact is requested, use plan number `42`.
+
+## Outcome Notes
+
+Implemented 2026-06-06.
+
+- Renamed the durable plan artifact from `42-token-chrome-css-first-pass.md` to the expected `42-token-chrome-css-pass.md`.
+- Adjusted existing token values only; no new public theme token names were added.
+- Softened strong border and table-border token values in dark, light, gray, and system-light palettes.
+- Restored restrained sapphire action/focus/selected/active states in the gray theme while preserving neutral surfaces.
+- Normalized shared chrome gradients and glints across topbar, context strip, activity rail, status bar, and shared zone headers.
+- Made the activity rail active state lighter, with emphasis on the left accent indicator instead of a heavier filled box.
+- Kept `--shell-zone-header-h` unchanged.
+
+Validation performed from `app-shell/`:
+
+```bash
+npm run typecheck
+npm run build
+git diff --check
+```
+
+Additional validation:
+
+- Svelte autofixer clean for `AppShell.svelte`.
+- Svelte autofixer clean for `ContextStrip.svelte`.
+- Svelte autofixer clean for `ActivityRail.svelte`.
+- Svelte autofixer clean for `StatusBar.svelte`.
+- Before/after screenshots captured:
+  - `workspace-agents/implementation/screenshots/token-chrome-gray-table-before-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/token-chrome-gray-table-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/token-chrome-light-settings-before-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/token-chrome-light-settings-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/token-chrome-dark-assets-before-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/token-chrome-dark-assets-after-2026-06-06.png`
+
+Capture notes:
+
+- `token-chrome-gray-table-after-2026-06-06.png` used `SHELL_CAPTURE_TABLE_RESET=1` so the Table View grid rendered in a populated state.
+- `token-chrome-light-settings-before-2026-06-06.png` was refreshed from baseline with `SHELL_CAPTURE_DELAY=5000` so the Settings modal was present.
+- Dark Assets before/after captures created temporary asset/document smoke data and logged cleanup for both runs.
+
+Out of scope preserved:
+
+- No module-specific UI restyling.
+- No layout defaults, persisted layout state, IPC, schema, preload, module contract, or main-process behavior changes.
+- No new dependencies, helpers, or abstractions.

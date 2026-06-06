@@ -288,7 +288,7 @@
     height: 100vh;
     overflow: hidden;
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 80%, transparent), transparent 180px),
+      linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 70%, transparent), transparent 180px),
       var(--color-shell-main);
     position: relative;
     /* Smooth panel slide transitions */
@@ -315,10 +315,10 @@
   .topbar {
     grid-area: topbar;
     position: relative;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 92%, var(--color-panel-glint)), var(--color-shell-topbar));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 84%, var(--color-panel-glint)), var(--color-shell-topbar));
     -webkit-app-region: drag;
-    border-bottom: var(--border-zone);
-    box-shadow: inset 0 1px 0 var(--color-panel-glint);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border-strong) 78%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 68%, transparent);
   }
 
   /* In zen mode, make the topbar transparent so the content feels full-bleed */

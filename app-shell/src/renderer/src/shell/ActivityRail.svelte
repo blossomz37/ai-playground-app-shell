@@ -231,9 +231,9 @@
     flex-direction: column;
     align-items: center;
     padding-top: var(--space-2);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-rail) 90%, var(--color-panel-glint)), var(--color-shell-rail));
-    border-right: var(--border-zone);
-    box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 54%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-rail) 84%, var(--color-panel-glint)), var(--color-shell-rail));
+    border-right: 1px solid color-mix(in srgb, var(--color-border-strong) 80%, transparent);
+    box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 46%, transparent);
     gap: 2px;
   }
 
@@ -261,8 +261,8 @@
 
   .rail-btn.active {
     color: var(--accent-nav);
-    background: color-mix(in srgb, var(--accent-nav) 16%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-nav) 28%, transparent);
+    background: color-mix(in srgb, var(--accent-nav) 8%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 18%, transparent);
   }
 
   .rail-btn.dragging {
@@ -274,12 +274,12 @@
     content: '';
     position: absolute;
     left: 0;
-    top: 6px;
-    bottom: 6px;
+    top: 5px;
+    bottom: 5px;
     width: 3px;
     border-radius: 0 2px 2px 0;
-    background: linear-gradient(180deg, var(--accent-nav), var(--accent-editor));
-    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-nav) 48%, transparent);
+    background: var(--accent-nav);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-nav) 42%, transparent);
   }
 
   .rail-btn.drop-before::after,

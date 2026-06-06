@@ -129,9 +129,9 @@
     display: grid;
     grid-template-columns: var(--_rail-col) minmax(180px, var(--_sidebar-col)) minmax(0, 1fr) var(--_inspector-col);
     min-height: var(--_context-h);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 74%, var(--color-panel-glint)), var(--color-shell-topbar));
-    border-bottom: var(--border-zone);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 54%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-topbar) 82%, var(--color-panel-glint)), var(--color-shell-topbar));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border-strong) 78%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 58%, transparent);
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     overflow: visible;
@@ -177,7 +177,7 @@
   }
 
   .icon-button[aria-pressed='true'] {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-inspector) 30%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-inspector) 24%, transparent);
   }
 
   .icon-button:disabled {
