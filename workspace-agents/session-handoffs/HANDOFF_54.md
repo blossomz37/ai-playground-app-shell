@@ -4,7 +4,7 @@ _Session: 2026-06-06 - Slice: Required/Core/Custom module policy and settings_
 
 ## What Changed
 
-- Implemented `implementation/plans/39-core-and-custom-modules.md`.
+- Implemented `workspace-agents/implementation/plans/39-core-and-custom-modules.md`.
 - Added shared module policy:
   - Required: `shell.tableview`; always enabled and visible.
   - Core: `shell.documents`, `shell.journal`, `shell.assets`, `shell.web`; hideable from navigation, never disabled.
@@ -26,17 +26,17 @@ _Session: 2026-06-06 - Slice: Required/Core/Custom module policy and settings_
 - Svelte autofixer clean for `ModulePluginSettings.svelte`, `ActivityRail.svelte`, `AppShell.svelte`, `MainPane.svelte`, `Sidebar.svelte`, `Inspector.svelte`, and `SettingsPanel.svelte`.
 - `CommandPalette.svelte` has no autofixer issues after the escaped snippet fix; remaining autofixer output is advisory against the pre-existing effect-based search flow.
 - Screenshots:
-  - `implementation/screenshots/core-custom-modules-settings-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-settings-search-custom-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-core-hidden-rail-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-custom-disabled-rail-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-command-palette-disabled-custom-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-browser-preview-state-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-reenabled-custom-render-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-settings-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-settings-search-custom-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-core-hidden-rail-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-custom-disabled-rail-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-command-palette-disabled-custom-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-browser-preview-state-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-reenabled-custom-render-after-2026-06-06.png`
 
 ## Known Notes
 
-- Screenshot files remain ignored under `implementation/screenshots/`.
+- Screenshot files remain ignored under `workspace-agents/implementation/screenshots/`.
 - Capture-only module state overrides are transient in memory and do not write user module preferences.
 - Browser preview was validated on the assigned App Shell port `5183`; the server bound to IPv6 localhost during validation, so Playwright used `http://localhost:5183/`.
 - The re-enabled Prompt Studio capture rendered correctly but logged existing local database foreign-key warnings from AI template/context default seeding. Treat that as a future AI data-integrity cleanup if it reproduces outside Carlo's current local DB.

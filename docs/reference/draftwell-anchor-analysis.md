@@ -5,7 +5,7 @@
 
 ## TL;DR — draftwell *is* the argument for the shell
 
-draftwell is a working local-first author workbench, and its `apps/web/src/App.tsx` is **~2,470 lines with ~40 `useState` hooks**, feeding a single `RoomSidePanel` component that takes **~100 props**. Every "room" is hardwired into one monolithic component; adding a feature means editing the mega-file. This is exactly the cohesion problem Carlo described ("apps lack shape; design is an afterthought"). **The shell's job is to decompose this**: the shell owns the chrome and the zones; each room becomes a module that fills them. draftwell already contains, in embryo, every primitive in `0-shell-platform-spec.md` — it just has no boundary enforcing them.
+draftwell is a working local-first author workbench, and its `apps/web/src/App.tsx` is **~2,470 lines with ~40 `useState` hooks**, feeding a single `RoomSidePanel` component that takes **~100 props**. Every "room" is hardwired into one monolithic component; adding a feature means editing the mega-file. This is exactly the cohesion problem Carlo described ("apps lack shape; design is an afterthought"). **The shell's job is to decompose this**: the shell owns the chrome and the zones; each room becomes a module that fills them. draftwell already contains, in embryo, every primitive in `docs/architecture/shell-platform-spec.md` — it just has no boundary enforcing them.
 
 ---
 
@@ -65,7 +65,7 @@ sourcePath, sourceChecksum, importId, wordCount, timestamps
 Plus `document_versions` (history), and entities for manuscripts, diary, planning materials, calendar items, today plans/tasks, assets, ai runs/proposals/prompt-chain-steps/tool-calls, tags, entity relations, export jobs/profiles.
 
 - **Hybrid evidence:** `sourcePath` + `sourceChecksum` link each doc back to its origin file; import copies a folder "without changing the original files."
-- **Flag A — truth-source tension (Q6): RESOLVED 2026-05-29.** After import, editing/saving happens against the **SQLite copy** (`content` column + version history), with the original file kept only as provenance. Decision: the shell adopts **DB-as-truth + file provenance** (draftwell's model), superseding the initial files-as-truth lean. SQLite is the source of truth; files are import provenance + export targets. Spec updated (§12 Q6, §8, `1-shell-spec.md` §3).
+- **Flag A — truth-source tension (Q6): RESOLVED 2026-05-29.** After import, editing/saving happens against the **SQLite copy** (`content` column + version history), with the original file kept only as provenance. Decision: the shell adopts **DB-as-truth + file provenance** (draftwell's model), superseding the initial files-as-truth lean. SQLite is the source of truth; files are import provenance + export targets. Spec updated (§12 Q6, §8, `docs/architecture/shell-spec.md` §3).
 
 ---
 

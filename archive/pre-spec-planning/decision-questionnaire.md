@@ -124,4 +124,4 @@ How does an app ship and update — manual, GitHub releases, auto-updater? *(Lea
 
 ## How to use the answers
 
-Once Tier 1 + Tier 2 are filled in, they replace the "Open questions" sections in `0-shell-platform-spec.md` and seed the detail in `1-shell-spec.md` (the shell contract) and `2-modules-overview.md` (the first module set, anchored to your Q1 answer).
+Once Tier 1 + Tier 2 are filled in, they replace the "Open questions" sections in `docs/architecture/shell-platform-spec.md` and seed the detail in `docs/architecture/shell-spec.md` (the shell contract) and `docs/architecture/modules-overview.md` (the first module set, anchored to your Q1 answer).

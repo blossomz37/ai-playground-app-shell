@@ -1,6 +1,6 @@
 # MODULE_CONTRACT — How a Plugin Plugs Into the Shell
 
-_The keystone. Defines the single contract by which an optional plugin contributes capability to the core shell. Anchors: `0-shell-platform-spec.md` §3/§5/§6, `reference/draftwell-anchor-analysis.md` §6. Decisions recorded in `implementation/plans/01-module-contract.md`._
+_The keystone. Defines the single contract by which an optional plugin contributes capability to the core shell. Anchors: `docs/architecture/shell-platform-spec.md` §3/§5/§6, `docs/reference/draftwell-anchor-analysis.md` §6. Decisions recorded in `workspace-agents/implementation/plans/01-module-contract.md`._
 
 > **Terminology.** This doc says **module**; Obsidian says *plugin*, VS Code says *extension* — same concept. Synonyms throughout. A global rename is cosmetic if ever wanted.
 
@@ -229,10 +229,10 @@ Every Write-room responsibility lands in a named slot. **The contract passes.**
 - **Externalizing logic for LAN/iPad (Q10).** The clean `ctx` + state-slice boundary (§4) is what makes this a relocation, not a rewrite. Not built in v1.
 - **Runtime / from-disk module loading.** Bundled at build time for now (Q8); the contract is kept clean enough that disk-loaded modules could be added without reshaping it.
 - **Status-bar zone (Flag B).** The `statusBar` contribution point is defined here; the zone's own visual/layout design is a separate slice.
-- **Managed persistent web-surface (for the Web module).** The current Web module uses an Electron `<webview>` with persistent partition `persist:app-shell-web`. A shell-level `ModuleContext` web-surface API is still deferred until a second consumer warrants it (`0-shell-platform-spec.md` §12 Q13).
+- **Managed persistent web-surface (for the Web module).** The current Web module uses an Electron `<webview>` with persistent partition `persist:app-shell-web`. A shell-level `ModuleContext` web-surface API is still deferred until a second consumer warrants it (`docs/architecture/shell-platform-spec.md` §12 Q13).
 
 ## 9. What this unblocks
 
 - **Plan `02-documents-module.md`** — the first real module, specced directly against §7.
-- `2-modules-overview.md` §4 (was blocked on this contract).
+- `docs/architecture/modules-overview.md` §4 (was blocked on this contract).
 - The shell-provided primitives draftwell lacks — command palette, keybindings, context menus — now have a clear job: they are the *UI/runtime* of the Commands primitive that modules register into via `ctx.commands`.

@@ -1,8 +1,8 @@
 # Documents Module
 
-_The first real module — draftwell's **Write** room (with **Plan** folded in, F2). Instantiates the three faces of `3-module-contract.md` to prove the contract on the hardest case (the worst of draftwell's `App.tsx` monolith). Plan + rationale: `implementation/plans/02-documents-module.md`._
+_The first real module — draftwell's **Write** room (with **Plan** folded in, F2). Instantiates the three faces of `docs/architecture/module-contract.md` to prove the contract on the hardest case (the worst of draftwell's `App.tsx` monolith). Plan + rationale: `workspace-agents/implementation/plans/02-documents-module.md`._
 
-> This is a **design spec**, not running code — the repo is unscaffolded. TS below is the target shape, not compiled.
+> This is a **design spec**, not running code. The runnable implementation now lives under `app-shell/`; TypeScript below records the target contract shape rather than compiled source.
 
 ---
 
@@ -148,7 +148,7 @@ const module: Module = {
 
 ## 5. Document schema note
 
-The `documents` + `document_versions` tables are **shell-owned** (the `ctx.documents` pipeline), defined in `1-shell-spec.md` §3. This module contributes only the `kind` values (`folder|chapter|scene|plan`). Authoring-specific grouping (draftwell's `manuscriptId`) stays **module-level**, not in the shell's universal document model — see §3 of the shell spec for the shell-universal vs. module-extension split.
+The `documents` + `document_versions` tables are **shell-owned** (the `ctx.documents` pipeline), defined in `docs/architecture/shell-spec.md` §3. This module contributes only the `kind` values (`folder|chapter|scene|plan`). Authoring-specific grouping (draftwell's `manuscriptId`) stays **module-level**, not in the shell's universal document model — see §3 of the shell spec for the shell-universal vs. module-extension split.
 
 ---
 

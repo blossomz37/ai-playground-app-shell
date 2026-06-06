@@ -4,7 +4,7 @@
 Add editable asset associations for Project and Document targets in the Assets inspector while keeping source and technical metadata read-only.
 
 ## Anchor
-- Assets module database foundation from `implementation/plans/36-assets-database-library-foundation.md`.
+- Assets module database foundation from `workspace-agents/implementation/plans/36-assets-database-library-foundation.md`.
 - Existing SQLite tables: `asset_workspace_links` and `asset_document_links`.
 - Module boundary stays intact: the shell API exposes asset link operations; the Assets inspector owns only the UI interaction.
 
@@ -34,9 +34,9 @@ Add editable asset associations for Project and Document targets in the Assets i
 - `app-shell/src/main/capture/evidence.ts`
 
 ## Evidence
-- `implementation/screenshots/asset-links-project-after-2026-06-06.png`
-- `implementation/screenshots/asset-links-document-typeahead-after-2026-06-06.png`
-- `implementation/screenshots/asset-links-linked-document-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/asset-links-project-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/asset-links-document-typeahead-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/asset-links-linked-document-after-2026-06-06.png`
 
 Capture smoke confirmed:
 - Project role persisted as `cover`.

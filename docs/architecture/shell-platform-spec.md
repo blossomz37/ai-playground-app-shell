@@ -191,9 +191,9 @@ These belong in modules, not in the shell. [cite:1][cite:5]
 - The shell owns a **secrets/credentials service** (core, not a module): user-named secret values like `OPENAI_API_KEY`.
 - Rationale: cross-cutting (AI Chat / Prompt Studio / Workflow Runner all need keys — a shared need is a shell primitive, not a module other modules secretly depend on); security-sensitive (stored via Electron `safeStorage`/OS keychain, never plaintext in SQLite, main-process only).
 - Surfaces: a manage-secrets UI in shell Settings (add/edit/delete named entries); `ctx.secrets.get(name)`/`list()` on the module contract, gated by the new `secrets.read` capability (declared, enforced later — Q3). `list()` returns names only, never values.
-- Recorded in `3-module-contract.md` (§5 `ctx.secrets`, §3 capability list).
+- Recorded in `docs/architecture/module-contract.md` (§5 `ctx.secrets`, §3 capability list).
 
 ### Q13 — Web browser (added 2026-05-29)
 - A **Web module** (first-party, bundled, **default-on in this build**) provides Chrome-like browsing with persistent sessions — mirroring Obsidian's *Web viewer*, which is itself a core *plugin*, not kernel. The browsing experience (address bar, tabs, history, bookmarks) is a feature → it lives in a module (§10), not the shell core.
 - The one genuinely shell-level piece — a **managed persistent web-surface** (Electron `session`/partition keeping cookies/logins across restarts; partition security is a main-process concern) — is added to the shell when the Web module is built and a second consumer warrants it, not speculatively now (avoids over-engineering a primitive ahead of need).
-- Recorded as a deferred hook in `3-module-contract.md` §8 and the module map in `2-modules-overview.md`.
+- Recorded as a deferred hook in `docs/architecture/module-contract.md` §8 and the module map in `docs/architecture/modules-overview.md`.

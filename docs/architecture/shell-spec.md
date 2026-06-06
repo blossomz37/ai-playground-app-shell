@@ -1,6 +1,6 @@
 # SHELL_SPEC — Platform Primitives & Shell-Side Contract
 
-Shell-side contract for platform primitives. Skeleton — future sessions flesh out concrete APIs. Records only what the 2026-05-29 decisions settled (see `0-shell-platform-spec.md` §12).
+Shell-side contract for platform primitives. Skeleton — future sessions flesh out concrete APIs. Records only what the 2026-05-29 decisions settled (see `docs/architecture/shell-platform-spec.md` §12).
 
 ## 1. Stack
 - Desktop runtime: Electron.
@@ -64,7 +64,7 @@ The `documents` and `document_versions` tables are the shell's `ctx.documents` p
 - `wordCount` — derived/cacheable, not source data; a module computes and caches it (Documents shows it in the status bar), not a shell column.
 - `importId` — batch-import provenance; shell-optional, added if/when a shell import pipeline needs it.
 
-This keeps the shell's document model reusable across non-authoring forks. See `modules/documents.md` §5.
+This keeps the shell's document model reusable across non-authoring forks. See `docs/modules/documents.md` §5.
 
 ## 4. Theming
 Documented token API — a published, module-facing contract, not a private stylesheet. Re-theming a fork propagates to every module.

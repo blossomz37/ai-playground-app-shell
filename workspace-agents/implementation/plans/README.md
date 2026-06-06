@@ -1,3 +1,5 @@
-This folder is for recent implementation plans which are still relevant for ongoing development.
+This folder is for recent implementation plans that are still relevant for ongoing development.
 
-To avoid accumulating clutter, they are periodically zipped and moved to `archive/` for provenance.
+Current visible range after the 2026-06-06 repository maintenance pass: plans 39-41.
+
+Older plans are periodically zipped and moved to `archive/workspace-agents/implementation/` for provenance.

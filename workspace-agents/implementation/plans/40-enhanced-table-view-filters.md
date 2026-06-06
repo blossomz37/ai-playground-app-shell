@@ -44,7 +44,7 @@ Enhance the existing Table View filters instead of rebuilding the table. This sl
 3. **Evidence, Docs, and Handoff Slice**
    - Update this plan artifact with implementation results and evidence paths.
    - Update orientation docs if behavior is durable enough to matter next session.
-   - Write `session-handoffs/HANDOFF_55.md`.
+   - Write `workspace-agents/session-handoffs/HANDOFF_55.md`.
    - Commit: `Document table filter enhancements`.
 
 ## Test Plan
@@ -65,16 +65,15 @@ Enhance the existing Table View filters instead of rebuilding the table. This sl
   - Reset clears every filter and preserves sort.
   - Opening a filtered row still routes to Documents.
 - Required screenshots:
-  - `implementation/screenshots/table-filters-default-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-range-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-empty-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-default-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-range-after-2026-06-06.png`
 
 ## Assumptions
 
 - Saved filter presets, custom date pickers, DB-backed full-text search, and cross-module filtering are out of scope for this v1.
 - Filtering remains in the existing framework-agnostic Table View state slice; no SQLite schema change is needed.
-- Screenshot files remain ignored evidence artifacts under `implementation/screenshots/`.
+- Screenshot files remain ignored evidence artifacts under `workspace-agents/implementation/screenshots/`.
 
 ## Implementation Results
 
@@ -115,7 +114,6 @@ Svelte autofixer:
 
 Screenshot evidence captured against the populated `dead-acre` workspace and restored to the previous workspace after each run:
 
-- `implementation/screenshots/table-filters-default-after-2026-06-06.png`
-- `implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
-- `implementation/screenshots/table-filters-range-after-2026-06-06.png`
-- `implementation/screenshots/table-filters-empty-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/table-filters-default-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
+- `workspace-agents/implementation/screenshots/table-filters-range-after-2026-06-06.png`

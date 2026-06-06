@@ -1,121 +1,119 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Durable project orientation for agents and developers working in this repository.
 
 ## Project Status
 
-**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-06, the shell defaults to no demo manuscript content and no mock AI fallback unless explicit Demo Mode is enabled.
+App Shell is a reusable local-first Electron desktop shell with a Svelte 5 renderer, SQLite persistence, and a module contract for building purpose-specific authoring/workflow apps.
 
-**Committed stack:** Electron desktop shell + Svelte 5 UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* renderer components where practical (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
+The runnable application lives in `app-shell/`. This repository also contains shared documentation, agent planning artifacts, validation evidence, and historical archives.
+
+As of 2026-06-06:
+
+- The foundational architecture decisions are resolved in `docs/architecture/shell-platform-spec.md` §12.
+- The app defaults to no demo manuscript content and no mock AI fallback unless Demo Mode is explicitly enabled.
+- The active handoff chain is under `workspace-agents/session-handoffs/`.
+- Recent active plans are under `workspace-agents/implementation/plans/`.
+- Older plans, handoffs, screenshots, mockups, and pre-spec material are archived under `archive/`.
 
 ## What This Is
 
-A **reusable desktop shell** — not a writing app, AI chat, or workflow tool. A stable platform with universal primitives that purpose-built modules can extend. The mental model mirrors Obsidian and VS Code: the shell is the host; apps are modules.
+This is a reusable desktop shell, not a single writing app. The shell owns universal primitives and lets modules contribute purpose-specific views, commands, document types, settings, jobs, and state.
 
-The same shell codebase can be forked and configured into different single-purpose apps by swapping which first-party (or custom) modules are active.
+The mental model is closer to Obsidian or VS Code than to a bespoke single-purpose tool: the shell is the host; apps are assembled from modules.
 
-## Core Architectural Constraints
+## Architecture Commitments
 
-These are committed (see `0-shell-platform-spec.md` §12 for the full Q1–Q11 resolution):
+- Shell owns primitives: workspace, documents, panels, commands, settings, jobs, and module registration.
+- Modules declare capabilities through manifests and activate through `ModuleContext`.
+- Modules must not patch shell internals or redefine the workspace contract.
+- Core logic belongs in framework-agnostic TypeScript where practical.
+- Svelte components should stay focused on UI.
+- SQLite is the source of truth for live documents and workspace data.
+- Files are import provenance and export targets, not the live editing source.
+- Local-first is a core constraint; no cloud dependency belongs in the shell core.
 
-- **Shell owns the primitives; modules contribute to them.** Shell owns: workspace lifecycle, document IDs and open/save pipeline, panel layout and docking, command registry, settings store, job queue. Modules may contribute views/commands/settings/document types/jobs — they may not patch shell internals or redefine the workspace contract.
-- **Module boundary = unit of optionality.** Feature flags are for rollout only, not permanent substitutes for module boundaries. Long-lived flags are debt.
-- **Lazy activation.** Modules activate by explicit user enablement, workspace type, file type, or command invocation — not at startup.
-- **Data layering.** Three tiers: shell-level (app settings, layout state, recent workspaces, module registry), workspace-level (documents, module workspace state, jobs/history, indexes/cache), module-level (namespaced settings/cache/artifacts). Modules write only within their namespace.
-- **Local-first.** No cloud dependency in the core shell.
+## Core Docs
 
-## The Seven Primitives
+- `docs/README.md` - developer-facing documentation map.
+- `docs/architecture/shell-platform-spec.md` - platform decisions and primitives.
+- `docs/architecture/shell-spec.md` - shell implementation/spec detail.
+- `docs/architecture/module-contract.md` - module boundary and API contract.
+- `docs/architecture/modules-overview.md` - first-party module map.
+- `docs/modules/documents.md` - Documents module design spec.
+- `docs/reference/` - prior art and anchor analysis.
 
-Defined in `0-shell-platform-spec.md`. Every architectural decision should trace back to one of these:
+## Current Workspace Layout
 
-1. **Workspace** — top-level project container
-2. **Documents** — file-backed or virtual content objects
-3. **Panels** — persistent UI regions (navigation, content, inspector, utilities)
-4. **Commands** — invokable actions addressable by ID, reachable through command palette
-5. **Settings** — typed, namespaced configuration
-6. **Jobs** — background/long-running tasks with managed queue and cancellation
-7. **Module registration** — manifest schema, lifecycle, compatibility checks
-
-## Module Contract
-
-Every module must declare: `id`, `name`, `version`, `required shell version`, `activation rules`, contributed commands/views/settings schema/document types/jobs, and permissions required.
-
-## Core Services
-
-Live code already includes the event bus, command registry/palette, layout persistence, settings store, job runner, notification/toast surface, workspace management, document persistence, asset import helpers, and theme/token CSS surface. Search/index and permission/capability policy remain future hardening areas.
-
-## What Belongs in Modules, Not the Shell
-
-- AI chat logic
-- Manuscript/writing workflow rules
-- Prompt runner execution
-- Graph editor semantics
-
-First-party starter modules planned: Documents, Journal, AI Chat, Prompt Studio, Workflow Runner, Table View, Web (bundled default-on; §12 Q13).
-
-## Open Design Work (decisions resolved; these still need design)
-
-The Q1–Q13 questions are resolved (§12). What remains is design, not decision:
-- ~~**Module contract**~~ — ✅ **DONE** (2026-05-29). The contract is `3-module-contract.md`; plan + rationale in `implementation/plans/01-module-contract.md`. Three faces: a module *declares* (manifest), *provides* (contributions + `activate()`), and *receives* (`ModuleContext`). Validated against draftwell's Write room (contract §7).
-- ~~**Documents module**~~ — ✅ **DONE** (2026-05-29). Spec: `modules/documents.md`; plan: `implementation/plans/02-documents-module.md`. Per-module specs live in `modules/`. Validated the contract end-to-end (no contract change needed).
-- ~~**Document schema**~~ — ✅ **DONE** (2026-05-29). Shell-owned, in `1-shell-spec.md` §3; app-neutral, with the shell-universal vs. module-extension split (`manuscriptId`/`wordCount` stay module-level).
-- ~~**Built-in primitives draftwell lacks**~~ — ✅ **ALL DONE** (2026-05-29): ~~command palette, keybindings~~ (`implementation/plans/05-command-palette.md`): Cmd+K palette + keybinding runtime. ~~Right-click context menus~~ (2026-05-29): shell-owned `ContextMenu.svelte` + `contextmenu.ts` store, wired to NavView tree. These are the UI/runtime of the Commands primitive modules register into via `ctx.commands`.
-- ~~**Status bar zone**~~ — ✅ **DONE** (2026-05-29; `implementation/plans/06-editor-statusbar-polish.md`): Three-zone layout (left: module items, center: reserved, right: shell info) with hover states, transitions, pulsing unsaved indicator.
-- ~~**Editor polish**~~ — ✅ **DONE** (2026-05-29; `implementation/plans/06-editor-statusbar-polish.md`): Floating bubble menu on text selection, debounced 3s auto-save, wired font/size/spellcheck settings.
-- ~~**Scaffold (Option B)**~~ — ✅ **DONE** (2026-05-29). `app-shell/` directory — Electron + Svelte 5 + SQLite running. All five zones render, Documents module activates through the `ModuleContext`, IPC pipeline wired. Screenshot validated. Plan: `implementation/plans/03-scaffold.md`.
-- ~~**Editor engine (F1)**~~ — ✅ **DONE** (2026-05-29). `<textarea>` stub replaced with **TipTap 3** WYSIWYG (`@tiptap/core` + `starter-kit` + `tiptap-markdown`) in a thin Svelte 5 wrapper (`MainView.svelte`). Engine chosen over Carta because draftwell (the anchor) uses TipTap. Content round-trips as markdown via `editor.storage.markdown` — store/IPC/schema/contract all unchanged. Plan: `implementation/plans/04-editor-engine.md`; evidence: `implementation/screenshots/editor-engine-after-2026-05-29.png`.
-- ~~**Remaining modules**~~ — ✅ **DONE** (2026-05-29). All six modules scaffolded: Journal (📓 daily entries), Assets (🖼 file gallery), Workflow Runner (⚡ export jobs), Table View (📊 data table), AI Chat (🤖 mock chat), Web (🌐 browser placeholder). Each has manifest + activate in main, three views (nav/main/inspector) in renderer. Shell chrome refactored to dynamic module routing. Screenshot: `implementation/screenshots/all-modules-after-2026-05-29.png`.
-- ~~**Toast/notification service**~~ — ✅ **DONE** (2026-05-29). Renderer sink for `shell:notify` events. `ToastContainer.svelte` + `store/toasts.ts`. Auto-dismiss timers, FIFO queue, glassmorphism styling.
-- ~~**Settings panel**~~ — ✅ **DONE** (2026-05-29). `SettingsPanel.svelte` modal via Cmd+,. Editor font/size/spellcheck with live preview + IPC persistence.
-- ~~**AI orchestration Phase 1**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/15-ai-orchestration-and-context.md`): Shared AI contracts, SQLite persistence tables, mock provider, context candidates/packs, run history, renderer AI bridge, and wiring across AI Chat, Prompt Studio, and Workflow Runner. AI-specific behavior lives under `app-shell/src/main/ai/`, not shell core.
-- ~~**OpenAI live provider adapter**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/16-openai-live-provider.md`): Added `openai-responses` provider support through the Responses API using `OPENAI_API_KEY` from encrypted Secrets, while preserving `mock-local`, shared context packs, and persisted run history.
-- ~~**Workspace switching/creation + Jobs visibility**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/17-workspace-jobs-shell-slice.md`): Added a shell workspace service, topbar switcher/create flow, persisted active workspace, module-context refresh on switch, persistent jobs table, renderer jobs panel, status-bar job indicator, and Workflow Runner submission through the shared jobs service.
-- ~~**Alpha hardening + current status cleanup**~~ — ✅ **DONE** (2026-05-30; `implementation/plans/18-alpha-hardening-current-status-cleanup.md`): Ran fresh mock and live AI acceptance passes, fixed capture-only provider/model status evidence, confirmed persisted completed AI rows/context packs, and reconciled stale roadmap/status docs for the next agent.
-- ~~**Phase 2 state/web/assets hardening**~~ — ✅ **DONE** (2026-05-31; `implementation/plans/14-state-architecture.md`, `implementation/plans/19-ui-clickthrough-hardening.md`, `implementation/plans/20-web-module-browser-tabs.md`, `implementation/plans/20-assets-pdf-audio-hardening-research.md`): Moved module state into framework-agnostic shared slices with Svelte adapters, added persistent Web tabs/history/bookmarks on Electron `<webview>`, and hardened Assets import metadata for real file paths, image dimensions/thumbnails, and PDF page/title/author/thumbnail metadata.
-- ~~**Layout Design Pass**~~ — ✅ **DONE** (2026-06-04; `implementation/plans/21-layout-design-pass.md`): Added the shell-owned context strip, moved the status bar to full shell width, aligned titlebar/context/body/status tracks as a layout contract, made the inspector closed by default for fresh layouts while preserving saved layout state, and lightly polished Documents for the new hierarchy without implementing the Jewel Box theme.
-- ~~**App icon and macOS dev display name**~~ — ✅ **DONE** (2026-06-04): Added app icon assets from `.ideas/icons`, wired runtime/product/window naming to `App Shell`, and made the macOS dev launcher generate `app-shell/.electron-dev/App Shell.app` so Dock identity no longer depends on Electron's default bundle name.
-- ~~**UX discoverability and accessibility pass**~~ — ✅ **DONE** (2026-06-04; `implementation/plans/24-ux-discoverability-accessibility-pass.md`): Added measured contrast auditing, rail grouping and keyboard discoverability, AI Chat first-use prompts/context affordance, flat Documents inspector Snapshots language, and quieter editorial table styling. No `ModuleContext`, IPC, persistence, or database schema changes.
-- ~~**Gray theme**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/31-gray-theme.md`): Added Gray as a fourth explicit persisted theme option, mapped it through the existing token API, kept semantic status colors colored, extended capture support, and expanded contrast auditing to Dark, Light, and Gray. No dependency, `ModuleContext`, or database schema changes.
-- ~~**Project import and lifecycle**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/32-project-import-and-lifecycle.md`): Added shell-owned folder import, duplicate, archive/restore, database-only delete, and archived-aware listing across `workspaceService`, IPC/preload/shared types, renderer store, and `WorkspaceSwitcher.svelte`. Import stores source provenance/checksums while SQLite remains source of truth; delete removes app rows only and never deletes source files.
-- ~~**Import frontmatter inspector**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/33-import-frontmatter-inspector.md`): Added document source metadata persistence for imported Markdown/text frontmatter, strips frontmatter from live editor content, preserves metadata on workspace duplicate, and surfaces source fields in the Documents inspector. Files remain provenance only; source metadata editing/sync is out of scope.
-- ~~**Document export and archive restore**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/34-document-export-archive-restore.md`): Added selected document/folder subtree export to Markdown folders, archived document listing, and restore controls in the Documents nav. Export writes from SQLite content, handles filename collisions, and keeps source files untouched.
-- ~~**Journal import/export and archive restore**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/35-journal-import-export-archive-restore.md`): Added Journal Markdown/frontmatter import and export through shell IPC/preload APIs, active/archived entry state, inline archived Journal nav restore controls, deterministic filename collision handling, and capture smoke cleanup back to the previous workspace journal snapshot.
-- ~~**Assets database library foundation**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/36-assets-database-library-foundation.md`): Moved Assets from settings snapshots into SQLite-backed global records with workspace/document links, comments/tags, archive/restore, database-only delete, selected export with `assets-manifest.json`, and sample import/export capture evidence.
-- ~~**Demo Mode and no-mock defaults**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/38-demo-mode-no-mock-defaults.md`): New installs seed only a neutral empty workspace, browser preview starts without demo manuscript content, Settings exposes shell-level Demo Mode, and AI tools no longer fall back to `mock-local` unless Demo Mode is enabled. Missing live credentials now show `Save an API key before using AI tools.`
-- ~~**Core & Custom module settings**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/39-core-and-custom-modules.md`): Added Required/Core/Custom module policy. Table View is required and always visible; Documents, Journal, Assets, and Web are Core modules that can be hidden from navigation but remain enabled; AI Chat, Prompt Studio, and Workflow Runner are Custom modules that can be disabled. Settings now exposes Core & Custom Plugins, rail/commands/browser preview honor module state, and renderer module views/state initialize lazily where practical.
-- ~~**Enhanced Table View filters**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/40-enhanced-table-view-filters.md`): Table View now supports multi-kind custom filtering with All/None/Invert, word-count min/max filters, modified-date quick ranges, visible filter chips, and result summaries while preserving legacy single-kind persisted state migration.
-- ~~**Assets project/document links**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/41-assets-project-document-links.md`): Assets inspector now supports editable current-project roles and document links through a current-workspace typeahead while source/technical metadata remains read-only.
-- **Next slice** — not selected. Start from the newest numbered `session-handoffs/HANDOFF_NN.md` and live repo evidence before planning the next narrow hardening pass.
-
-## Workspace Layout
-
-```
+```text
 app-shell-project/
-├── CLAUDE.md                 ← you are here (durable orientation)
-├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_56.md         ← latest = highest number; read it first
-├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
-├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
-├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map
-├── 3-module-contract.md      ← MODULE_CONTRACT: how a plugin plugs into the shell (the keystone)
-├── modules/                  ← per-module design specs (one file per module)
-│   └── documents.md          ← Documents module (Write + Plan); first real module
-├── reference/                ← material that informs the work ahead
-│   ├── draftwell-anchor-analysis.md          (reference app → shell zones/modules)
-│   ├── obsidian-vscode-extensibility-teardown.md  (prior-art for the module system)
-│   └── single-file-css.md                    (CSS technique for theming/chrome)
-├── implementation/           ← planning + validation (see implementation/AGENTS.md)
-│   ├── plans/                ← detailed plans, written before executing a slice
-│   └── screenshots/          ← UI validation evidence
-├── app-shell/                ← Electron + Svelte 5 + SQLite scaffold (Option B, 2026-05-29)
-│   ├── src/main/             ← Electron main: core services, module registry, IPC handlers
-│   ├── src/preload/          ← contextBridge (window.shell)
-│   └── src/renderer/         ← Svelte 5 UI: AppShell, zone components, Documents views
-└── archive/                  ← spent decision-phase artifacts; safe to skip (see archive/README.md)
+├── AGENTS.md
+├── CLAUDE.md
+├── docs/
+│   ├── README.md
+│   ├── architecture/
+│   ├── modules/
+│   ├── product/
+│   └── reference/
+├── workspace-agents/
+│   ├── implementation/
+│   │   ├── AGENTS.md
+│   │   ├── plans/
+│   │   ├── screenshots/
+│   │   └── user_feedback/
+│   └── session-handoffs/
+├── app-shell/
+├── .agent/
+├── .ideas/
+└── archive/
 ```
 
-**Implementation work:** ambitious slices get a plan in `implementation/plans/` before execution; UI changes get screenshot evidence in `implementation/screenshots/`. See `implementation/AGENTS.md` for the conventions.
+## Active Agent Artifacts
 
-**Handoffs:** session handoffs live in `session-handoffs/`, numbered `HANDOFF_NN.md` — one per session, accumulating (never overwrite). Read the highest-numbered first. Each handoff is a **lean, slice-focused** brief whose only job is to get the next agent up to speed fast: status of the slice just completed or in progress, decisions made this session, what's being carried forward, and the recommended next action. Include only what's relevant to *that* slice — keep it minimal so new-session load stays light. (Distinct from this file: CLAUDE.md is durable workspace/project orientation; a handoff is session-to-session status. `HANDOFF_01.md` is the founding handoff and is naturally heavier — later ones should be leaner.)
+Read the newest numbered handoff first:
 
-**Reading order for a fresh session:** `AGENTS.md` → this file → `.agent/knowledge/WORKSPACE_ORIENTATION.md` → latest `session-handoffs/HANDOFF_NN.md` → `0-shell-platform-spec.md` §12 → `3-module-contract.md` → `reference/` as needed.
+- `workspace-agents/session-handoffs/HANDOFF_56.md` is the latest handoff at the time of this cleanup.
+- `workspace-agents/session-handoffs/HANDOFF_54.md` and `HANDOFF_55.md` are retained for immediate recent context.
+- Older handoffs are archived in `archive/workspace-agents/session-handoffs/`.
+
+Visible recent plans:
+
+- `workspace-agents/implementation/plans/39-core-and-custom-modules.md`
+- `workspace-agents/implementation/plans/40-enhanced-table-view-filters.md`
+- `workspace-agents/implementation/plans/41-assets-project-document-links.md`
+
+Older plans are archived in `archive/workspace-agents/implementation/`.
+
+## Validation Baseline
+
+Run from `app-shell/` for app implementation work:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+For UI-visible changes, capture screenshot evidence with the hook documented in `workspace-agents/implementation/AGENTS.md`, usually:
+
+```bash
+SHELL_CAPTURE=../workspace-agents/implementation/screenshots/<slice>-after-YYYY-MM-DD.png npm run start
+```
+
+Repository maintenance work should also run:
+
+```bash
+git status --short --branch
+git diff --check
+```
+
+## Fresh Session Reading Order
+
+1. `AGENTS.md`
+2. `CLAUDE.md`
+3. `.agent/knowledge/WORKSPACE_ORIENTATION.md`
+4. Newest `workspace-agents/session-handoffs/HANDOFF_NN.md`
+5. `docs/architecture/shell-platform-spec.md` §12
+6. `docs/architecture/module-contract.md`
+7. `workspace-agents/implementation/AGENTS.md` when planning or validating implementation work
+
+If docs disagree, prefer live code and the newest handoff, then update the stale doc instead of carrying the mismatch forward.

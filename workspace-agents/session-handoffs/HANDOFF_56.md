@@ -4,7 +4,7 @@ _Session: 2026-06-06 - Slice: Editable asset project/document associations_
 
 ## What Changed
 
-- Implemented `implementation/plans/41-assets-project-document-links.md`.
+- Implemented `workspace-agents/implementation/plans/41-assets-project-document-links.md`.
 - Added editable Project and Document association controls to the Assets inspector.
 - Kept source/technical asset metadata read-only.
 - Added controlled relationship edits:
@@ -23,15 +23,15 @@ _Session: 2026-06-06 - Slice: Editable asset project/document associations_
 - `git diff --check`
 - Svelte autofixer clean for `InspectorView.svelte`.
 - Screenshots:
-  - `implementation/screenshots/asset-links-project-after-2026-06-06.png`
-  - `implementation/screenshots/asset-links-document-typeahead-after-2026-06-06.png`
-  - `implementation/screenshots/asset-links-linked-document-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/asset-links-project-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/asset-links-document-typeahead-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/asset-links-linked-document-after-2026-06-06.png`
 - Post-capture cleanup check returned `0` temp capture documents and `0` temp capture assets.
 
 ## Known Notes
 
-- Screenshot files remain ignored under `implementation/screenshots/`.
-- The original prompt file `implementation/plans/41-.md` was left untouched; the durable plan record is the correctly named `implementation/plans/41-assets-project-document-links.md`.
+- Screenshot files remain ignored under `workspace-agents/implementation/screenshots/`.
+- The original prompt file `workspace-agents/implementation/plans/41-.md` was left untouched; the durable plan record is the correctly named `workspace-agents/implementation/plans/41-assets-project-document-links.md`.
 - Existing `imported` workspace links remain visible if present, but new/edited Project roles use the V1 controlled role list.
 - No SQLite schema change was needed.
 

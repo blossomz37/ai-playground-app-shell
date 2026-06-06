@@ -11,7 +11,7 @@ This directory holds agent-facing project memory for this repo. It is intentiona
 
 - Root agent guide: `../AGENTS.md`
 - Durable project guide: `../CLAUDE.md`
-- Latest handoff: `../session-handoffs/HANDOFF_NN.md`
-- Implementation conventions: `../implementation/AGENTS.md`
+- Latest handoff: `../workspace-agents/session-handoffs/HANDOFF_NN.md`
+- Implementation conventions: `../workspace-agents/implementation/AGENTS.md`
 
 If this directory drifts from the project docs, update the stale file and keep the canonical source clear.

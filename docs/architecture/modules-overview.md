@@ -1,6 +1,6 @@
 # MODULES_OVERVIEW — First-Party Modules
 
-Skeleton. The draftwell analysis (`reference/draftwell-anchor-analysis.md`) has landed; this records the resulting module map. The precise contract per module is designed once the shell module contract exists (see CLAUDE.md "Open Design Work").
+Skeleton. The draftwell analysis (`docs/reference/draftwell-anchor-analysis.md`) has landed; this records the resulting module map. The precise contract per module is designed once the shell module contract exists (see CLAUDE.md "Open Design Work").
 
 ## 1. First module-set
 - The first real app is a local-first, AI-assisted authoring workbench.
@@ -21,15 +21,15 @@ draftwell's rooms are the candidate module boundaries. Mapping to first-party mo
 | Library | shell **Workspace** mgmt | Project list/open/duplicate/archive — folds into shell, not a module |
 | Settings | shell **Settings** | Folds into shell |
 
-**Beyond draftwell's rooms:** a **Web** module (bundled, default-on in this build) provides Chrome-like persistent browsing — mirroring Obsidian's *Web viewer* core plugin. Its one shell-level hook (a managed persistent web session/partition) is specced when the module is built. See `0-shell-platform-spec.md` §12 Q13.
+**Beyond draftwell's rooms:** a **Web** module (bundled, default-on in this build) provides Chrome-like persistent browsing — mirroring Obsidian's *Web viewer* core plugin. Its one shell-level hook (a managed persistent web session/partition) is specced when the module is built. See `docs/architecture/shell-platform-spec.md` §12 Q13.
 
 ## 3. What stays shell-owned (not modules)
-Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, secrets/credentials service (OS-keychain-backed — §12 Q12), the local API/service split. See `reference/draftwell-anchor-analysis.md` §6.
+Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, secrets/credentials service (OS-keychain-backed — §12 Q12), the local API/service split. See `docs/reference/draftwell-anchor-analysis.md` §6.
 
 ## 4. Current implementation status
-- ✅ Module contract designed — `3-module-contract.md`.
-- ✅ Documents (Write + Plan) specced against it — `modules/documents.md` (plan `implementation/plans/02-documents-module.md`). Per-module specs now live in `modules/`.
-- ✅ Document schema (shell-owned) designed — `1-shell-spec.md` §3.
+- ✅ Module contract designed — `docs/architecture/module-contract.md`.
+- ✅ Documents (Write + Plan) specced against it — `docs/modules/documents.md` (plan `workspace-agents/implementation/plans/02-documents-module.md`). Per-module specs now live in `docs/modules/`.
+- ✅ Document schema (shell-owned) designed — `docs/architecture/shell-spec.md` §3.
 - ✅ Runnable Electron + Svelte + SQLite scaffold exists in `app-shell/`.
 - ✅ First-party starter modules are scaffolded and registered: Documents, Journal, Assets, Workflow Runner, Table View, AI Chat, Prompt Studio, and Web.
 - ✅ Shared AI orchestration now supports both `mock-local` and `openai-responses`, with persisted runs/context packs and provider selectors in AI-facing modules.

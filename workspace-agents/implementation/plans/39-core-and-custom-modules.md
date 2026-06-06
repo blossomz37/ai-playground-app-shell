@@ -370,8 +370,8 @@ Document the new module policy and leave the implementation easy to continue.
 ## Documentation Updates
 
 - Update `CLAUDE.md` or `.agent/knowledge/WORKSPACE_ORIENTATION.md` after validation.
-- Add or update an implementation plan/status document under `implementation/plans/`.
-- Add a new numbered `session-handoffs/HANDOFF_NN.md`.
+- Add or update an implementation plan/status document under `workspace-agents/implementation/plans/`.
+- Add a new numbered `workspace-agents/session-handoffs/HANDOFF_NN.md`.
 - Mention that Table View is required, Core modules are hideable but not disabled, and Custom modules are disableable.
 
 ## Open Questions and Assumptions
@@ -402,14 +402,14 @@ Validation:
 - `git diff --check`
 - Svelte autofixer clean for new/touched module-settings, rail, shell, and pane components; `CommandPalette.svelte` has no autofixer issues after replacing an existing `{@html}` snippet with escaped text, though the autofixer still reports advisory suggestions against its pre-existing effect-based search flow.
 - Electron captures:
-  - `implementation/screenshots/core-custom-modules-settings-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-settings-search-custom-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-core-hidden-rail-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-custom-disabled-rail-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-command-palette-disabled-custom-after-2026-06-06.png`
-  - `implementation/screenshots/core-custom-modules-reenabled-custom-render-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-settings-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-settings-search-custom-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-core-hidden-rail-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-custom-disabled-rail-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-command-palette-disabled-custom-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-reenabled-custom-render-after-2026-06-06.png`
 - Browser preview capture:
-  - `implementation/screenshots/core-custom-modules-browser-preview-state-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/core-custom-modules-browser-preview-state-after-2026-06-06.png`
 
 Known notes:
 - Screenshot capture module enabled/visible overrides are transient in-memory overrides and do not persist to user settings.

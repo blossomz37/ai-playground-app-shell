@@ -1,5 +1,6 @@
+.DS_Store
+.playwright-mcp/
 .ideas/icons
-implementation/screenshots/
 sample-assets-import/
 sample-assets-export/
 more-mockups/screenshots/obsidian-plugins-screenshot.png

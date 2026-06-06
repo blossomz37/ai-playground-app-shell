@@ -4,7 +4,7 @@ _Session: 2026-06-06 - Slice: Table View filter model and UI_
 
 ## What Changed
 
-- Implemented `implementation/plans/40-enhanced-table-view-filters.md`.
+- Implemented `workspace-agents/implementation/plans/40-enhanced-table-view-filters.md`.
 - Replaced the single-kind Table View filter UI with a compact multi-kind popover.
 - Added kind controls for `All`, `None`, and `Invert`.
 - Added word-count min/max filters with normalization:
@@ -31,14 +31,13 @@ _Session: 2026-06-06 - Slice: Table View filter model and UI_
 - `git diff --check`
 - Svelte autofixer clean for `MainView.svelte`.
 - Screenshots:
-  - `implementation/screenshots/table-filters-default-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-range-after-2026-06-06.png`
-  - `implementation/screenshots/table-filters-empty-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-default-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-multi-kind-after-2026-06-06.png`
+  - `workspace-agents/implementation/screenshots/table-filters-range-after-2026-06-06.png`
 
 ## Known Notes
 
-- Screenshot files remain ignored under `implementation/screenshots/`.
+- Screenshot files remain ignored under `workspace-agents/implementation/screenshots/`.
 - The screenshot captures used `SHELL_CAPTURE_WORKSPACE_NAME=dead-acre` so the filter evidence shows populated results; cleanup restored the previous workspace after each capture.
 - Saved filter presets, custom date pickers, DB-backed full-text search, and cross-module filtering remain intentionally out of scope.
 - No SQLite schema change was needed.

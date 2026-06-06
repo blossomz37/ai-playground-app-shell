@@ -5,10 +5,10 @@ This folder is where implementation work is **planned and validated**. Two jobs:
 1. **`plans/`** — detailed plans written *before* execution.
 2. **`screenshots/`** — screenshot evidence captured *during* validation.
 
-For project orientation and committed decisions, see `../CLAUDE.md` and `../0-shell-platform-spec.md` §12. This file governs only how work gets planned and validated here.
+For project orientation and committed decisions, see `../../CLAUDE.md` and `../../docs/architecture/shell-platform-spec.md` §12. This file governs only how work gets planned and validated here.
 
 ```
-implementation/
+workspace-agents/implementation/
 ├── AGENTS.md          ← this file
 ├── plans/             ← one plan per slice, before you build it
 └── screenshots/       ← UI validation evidence
@@ -22,7 +22,7 @@ implementation/
 
 **A plan is a thinking artifact, not a status report.** It should let a fresh agent execute the slice without re-deriving the approach. Include:
 - **Goal & scope** — what this slice delivers, in one or two lines.
-- **Anchor** — which spec section / primitive / module it implements (e.g. `1-shell-spec.md` §2 layout, or the Documents module).
+- **Anchor** — which spec section / primitive / module it implements (e.g. `docs/architecture/shell-spec.md` §2 layout, or the Documents module).
 - **Approach** — the step-by-step build order, with the key design choices made explicit.
 - **Files / areas touched** — where the work lands.
 - **Risks & unknowns** — what might break or needs a decision mid-flight.
@@ -53,7 +53,7 @@ The app captures its own window — the reliable way to land a real PNG in this 
 
 ```bash
 cd app-shell
-SHELL_CAPTURE=../implementation/screenshots/<slice>-after-<YYYY-MM-DD>.png npm run start
+SHELL_CAPTURE=../workspace-agents/implementation/screenshots/<slice>-after-<YYYY-MM-DD>.png npm run start
 ```
 
 The app launches, waits for async IPC data to render, writes the PNG via `webContents.capturePage()`, logs `[SHELL_CAPTURE] wrote <path>`, and **quits on its own** (no `timeout` needed). Output is full Retina resolution.

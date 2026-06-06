@@ -5,10 +5,10 @@ This is the root operating guide for AI agents working in this workspace. Read t
 ## First Read
 
 1. `CLAUDE.md` - durable project orientation and committed architecture.
-2. Latest `session-handoffs/HANDOFF_NN.md` - current session-to-session state. Use the highest number, not the file named in older docs.
+2. Latest `workspace-agents/session-handoffs/HANDOFF_NN.md` - current session-to-session state. Use the highest number, not the file named in older docs.
 3. `.agent/knowledge/WORKSPACE_ORIENTATION.md` - concise current map for agents.
-4. `0-shell-platform-spec.md` section 12 - resolved platform decisions.
-5. `3-module-contract.md` - module boundary and API contract.
+4. `docs/architecture/shell-platform-spec.md` section 12 - resolved platform decisions.
+5. `docs/architecture/module-contract.md` - module boundary and API contract.
 
 If these disagree, prefer current code and the newest handoff, then update the stale doc instead of carrying the mismatch forward.
 
@@ -22,10 +22,11 @@ Key directories:
 - `app-shell/src/main/` - Electron main process, core services, module registry, IPC.
 - `app-shell/src/renderer/` - Svelte UI, shell chrome, module views.
 - `app-shell/src/shared/` - shared contracts and types.
-- `modules/` - module design specs.
-- `implementation/plans/` - execution plans for larger slices.
-- `implementation/screenshots/` - UI validation evidence.
-- `session-handoffs/` - numbered handoffs, one per session.
+- `docs/` - product, architecture, module, and reference documentation.
+- `docs/modules/` - module design specs.
+- `workspace-agents/implementation/plans/` - execution plans for larger slices.
+- `workspace-agents/implementation/screenshots/` - UI validation evidence.
+- `workspace-agents/session-handoffs/` - numbered handoffs, one per session.
 - `.agent/` - agent-facing workspace index, stable knowledge, and notes.
 - `archive/` - spent decision material; read only when needed.
 
@@ -42,9 +43,9 @@ Other agents may be working in the same tree.
 
 ## Implementation Rules
 
-- For ambitious slices, write or update a plan in `implementation/plans/` before implementation.
+- For ambitious slices, write or update a plan in `workspace-agents/implementation/plans/` before implementation.
 - For small direct fixes, skip the plan and keep the change focused.
-- UI-visible changes need screenshot evidence in `implementation/screenshots/`.
+- UI-visible changes need screenshot evidence in `workspace-agents/implementation/screenshots/`.
 - Preserve the architecture boundary: shell owns primitives; modules contribute through the module contract.
 - Keep core logic framework-agnostic TypeScript outside Svelte components when practical.
 - Module logic should use `ModuleContext`; modules must not patch shell internals.
@@ -63,17 +64,17 @@ npm run start
 For screenshot evidence:
 
 ```bash
-SHELL_CAPTURE=../implementation/screenshots/<slice>-after-YYYY-MM-DD.png npm run start
+SHELL_CAPTURE=../workspace-agents/implementation/screenshots/<slice>-after-YYYY-MM-DD.png npm run start
 ```
 
-See `implementation/AGENTS.md` for screenshot naming and capture details.
+See `workspace-agents/implementation/AGENTS.md` for screenshot naming and capture details.
 
 ## Documentation Expectations
 
 - Durable project orientation belongs in `CLAUDE.md`.
 - Agent-facing quick orientation belongs in `.agent/knowledge/WORKSPACE_ORIENTATION.md`.
-- Session carry-forward belongs in `session-handoffs/HANDOFF_NN.md`.
-- Plans belong in `implementation/plans/`.
+- Session carry-forward belongs in `workspace-agents/session-handoffs/HANDOFF_NN.md`.
+- Plans belong in `workspace-agents/implementation/plans/`.
 - Do not duplicate large architecture sections across files; link to the canonical source.
 
 ## Code Bloat Quality Gate
