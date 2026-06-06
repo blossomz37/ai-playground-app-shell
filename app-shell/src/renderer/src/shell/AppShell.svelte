@@ -276,7 +276,7 @@
   .app-shell {
     --_topbar-h: 36px;
     --_context-h: 34px;
-    --_status-h: 30px;
+    --_status-h: 24px;
 
     display: grid;
     grid-template-areas:

@@ -63,7 +63,7 @@
     background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell-status) 84%, var(--color-panel-glint)), var(--color-shell-status));
     border-top: 1px solid color-mix(in srgb, var(--color-border-strong) 78%, transparent);
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-panel-glint) 50%, transparent);
-    font-size: var(--font-size-xs);
+    font-size: 10px;
     color: var(--color-fg-secondary);
     overflow: hidden;
     user-select: none;
@@ -117,7 +117,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: 999px;
     background: color-mix(in srgb, var(--color-bg-overlay) 90%, black);
     box-shadow:
@@ -126,7 +126,7 @@
       0 1px 1px rgb(0 0 0 / 0.24);
     color: #ffffff;
     text-shadow: 0 1px 1px rgb(0 0 0 / 0.42);
-    transform: translateY(2px);
+    transform: translateY(1px);
     transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
@@ -163,7 +163,7 @@
 
   .save-icon {
     color: currentColor;
-    font-size: 9px;
+    font-size: 8px;
     line-height: 1;
     transition: transform 0.2s ease;
   }
