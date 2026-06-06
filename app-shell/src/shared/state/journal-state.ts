@@ -118,6 +118,28 @@ export class JournalStateSlice extends ObservableSlice<JournalState> {
     return renamed
   }
 
+  updateEntryMetadata(id: string, patch: Partial<Pick<JournalEntry, 'title' | 'mood' | 'tags'>>): JournalEntry | null {
+    let updated: JournalEntry | null = null
+    const modified = this.formatModifiedDate()
+    this.entries = this.entries.map(entry => {
+      if (entry.id !== id) return entry
+      const title = patch.title?.trim() || entry.title
+      const mood = patch.mood === undefined ? entry.mood : patch.mood.trim()
+      const tags = patch.tags === undefined ? entry.tags : this.normalizeTags(patch.tags)
+      updated = {
+        ...entry,
+        title,
+        mood,
+        tags,
+        modified
+      }
+      return updated
+    })
+
+    if (updated) this.emit()
+    return updated
+  }
+
   updateSelectedContent(content: string): void {
     const id = this.selectedEntryId
     this.entries = this.entries.map(entry =>
@@ -233,9 +255,22 @@ export class JournalStateSlice extends ObservableSlice<JournalState> {
       ...entry,
       preview: entry.preview || previewFromContent(entry.content),
       mood: entry.mood ?? '',
-      tags: Array.isArray(entry.tags) ? entry.tags : [],
+      tags: Array.isArray(entry.tags) ? this.normalizeTags(entry.tags) : [],
       archivedAt: entry.archivedAt ?? null
     }
+  }
+
+  private normalizeTags(tags: string[]): string[] {
+    const seen = new Set<string>()
+    const normalized: string[] = []
+    for (const tag of tags) {
+      const value = tag.trim()
+      const key = value.toLowerCase()
+      if (!value || seen.has(key)) continue
+      seen.add(key)
+      normalized.push(value)
+    }
+    return normalized
   }
 
   private uniqueTitle(baseTitle: string): string {

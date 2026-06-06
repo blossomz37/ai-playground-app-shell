@@ -22,6 +22,15 @@
     await updateDoc(doc.id, { kind })
   }
 
+  async function onTitleChange(event: Event): Promise<void> {
+    const doc = $activeDoc
+    if (!doc) return
+
+    const title = (event.currentTarget as HTMLInputElement).value.trim()
+    if (!title || title === doc.title) return
+    await updateDoc(doc.id, { title })
+  }
+
   async function onIconChange(event: Event): Promise<void> {
     const doc = $activeDoc
     if (!doc) return
@@ -72,8 +81,14 @@
       </div>
       <div class="section-body">
         <div class="field">
-          <span class="label">Title</span>
-          <span class="value">{$activeDoc.title}</span>
+          <label class="label" for="document-title">Title</label>
+          <input
+            id="document-title"
+            class="text-input"
+            type="text"
+            value={$activeDoc.title}
+            onchange={onTitleChange}
+          />
         </div>
         <div class="field">
           <label class="label" for="document-kind">Kind</label>
@@ -118,6 +133,7 @@
       <section class="section">
         <div class="section-header">
           <h3 class="section-title">Source Metadata</h3>
+          <span class="readonly-badge">Read-only</span>
         </div>
         <div class="section-body">
           {#each sourceFields as item (item.label)}
@@ -178,6 +194,8 @@
   .section-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
     width: 100%;
     min-height: 36px;
     padding: var(--space-3) var(--space-4) 0;
@@ -191,6 +209,11 @@
     text-transform: uppercase;
     color: color-mix(in srgb, var(--accent-inspector) 62%, var(--color-fg-muted));
     margin: 0;
+  }
+
+  .readonly-badge {
+    font-size: var(--font-size-xs);
+    color: var(--color-fg-muted);
   }
 
   .section-body {
@@ -251,6 +274,7 @@
   }
 
   .kind-select,
+  .text-input,
   .icon-input {
     min-width: 110px;
     max-width: 150px;
@@ -267,7 +291,12 @@
     width: 110px;
   }
 
+  .text-input {
+    width: 150px;
+  }
+
   .kind-select:focus-visible,
+  .text-input:focus-visible,
   .icon-input:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;

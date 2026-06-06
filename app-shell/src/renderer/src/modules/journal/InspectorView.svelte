@@ -1,8 +1,33 @@
 <!-- Journal InspectorView — entry metadata -->
 <script lang="ts">
-  import { countJournalWords, selectedJournalEntry } from './state'
+  import { countJournalWords, selectedJournalEntry, updateJournalEntryMetadata } from './state'
 
   let entry = $derived($selectedJournalEntry)
+
+  function tagsFromInput(value: string): string[] {
+    return value.split(',').map(tag => tag.trim()).filter(Boolean)
+  }
+
+  function saveTitle(value: string): void {
+    if (!entry) return
+    const title = value.trim()
+    if (!title || title === entry.title) return
+    updateJournalEntryMetadata(entry.id, { title })
+  }
+
+  function saveMood(value: string): void {
+    if (!entry) return
+    const mood = value.trim()
+    if (mood === entry.mood) return
+    updateJournalEntryMetadata(entry.id, { mood })
+  }
+
+  function saveTags(value: string): void {
+    if (!entry) return
+    const tags = tagsFromInput(value)
+    if (tags.join('|') === entry.tags.join('|')) return
+    updateJournalEntryMetadata(entry.id, { tags })
+  }
 </script>
 
 <div class="inspector-view">
@@ -10,20 +35,37 @@
     <section class="section">
       <h3 class="section-title">Entry Details</h3>
       <div class="meta-grid">
-        <span class="meta-label">Title</span><span class="meta-value">{entry.title}</span>
+        <label class="meta-label" for="journal-title">Title</label>
+        <input
+          id="journal-title"
+          class="field"
+          aria-label="Journal title"
+          value={entry.title}
+          onblur={(event) => saveTitle(event.currentTarget.value)}
+        />
         <span class="meta-label">Created</span><span class="meta-value">{entry.created}</span>
         <span class="meta-label">Modified</span><span class="meta-value">{entry.modified}</span>
         <span class="meta-label">Words</span><span class="meta-value">{countJournalWords(entry.content)}</span>
-        <span class="meta-label">Mood</span><span class="meta-value">{entry.mood}</span>
+        <label class="meta-label" for="journal-mood">Mood</label>
+        <input
+          id="journal-mood"
+          class="field"
+          aria-label="Journal mood"
+          value={entry.mood}
+          onblur={(event) => saveMood(event.currentTarget.value)}
+          placeholder="Focused"
+        />
       </div>
     </section>
     <section class="section">
       <h3 class="section-title">Tags</h3>
-      <div class="tags">
-        {#each entry.tags as tag (tag)}
-          <span class="tag">{tag}</span>
-        {/each}
-      </div>
+      <input
+        class="field"
+        aria-label="Journal tags"
+        value={entry.tags.join(', ')}
+        onblur={(event) => saveTags(event.currentTarget.value)}
+        placeholder="project, shell"
+      />
     </section>
   {/if}
 </div>
@@ -35,6 +77,16 @@
   .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-size-sm); }
   .meta-label { color: var(--color-fg-muted); }
   .meta-value { color: var(--color-fg-secondary); }
-  .tags { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-  .tag { font-size: var(--font-size-xs); color: var(--color-accent); background: var(--color-accent-dim); padding: 2px 8px; border-radius: var(--radius-sm); }
+  .field {
+    min-width: 0;
+    width: 100%;
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    padding: var(--space-1) var(--space-2);
+  }
+  .field:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 </style>

@@ -41,6 +41,10 @@ export function renameJournalEntry(id: string, title: string): void {
   journalState.renameEntry(id, title)
 }
 
+export function updateJournalEntryMetadata(id: string, patch: Partial<Pick<JournalEntry, 'title' | 'mood' | 'tags'>>): void {
+  journalState.updateEntryMetadata(id, patch)
+}
+
 export function updateSelectedJournalContent(content: string): void {
   journalState.updateSelectedContent(content)
 }
