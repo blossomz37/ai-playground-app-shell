@@ -10,7 +10,7 @@ import type {
   Workspace
 } from '@shared/module-contract'
 import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
-import { DEMO_MODE_SETTING_KEY } from '@shared/demo-mode'
+import { AI_API_KEY_REQUIRED_MESSAGE, DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -83,11 +83,15 @@ const DEFAULT_LAYOUT: LayoutState = {
 function createBrowserShell(): ShellApi {
   let layout = { ...DEFAULT_LAYOUT }
   const settings = readBrowserSettings()
-  const docs = new Map(DEMO_DOCS.map(doc => [doc.id, { ...doc }]))
+  const demoMode = isDemoModeEnabled(settings.get(DEMO_MODE_SETTING_KEY))
   const now = new Date().toISOString()
+  const initialDocs = demoMode
+    ? DEMO_DOCS.map(doc => ({ ...doc, createdAt: now, updatedAt: now }))
+    : []
+  const docs = new Map(initialDocs.map(doc => [doc.id, doc]))
   let activeWorkspace: Workspace = {
     id: 'ws-browser-preview',
-    name: 'Browser Preview',
+    name: demoMode ? 'Browser Preview' : 'Local Preview',
     type: 'authoring',
     root: '/',
     createdAt: now,
@@ -98,47 +102,52 @@ function createBrowserShell(): ShellApi {
   const workspaceRows = new Map<string, Workspace>([[activeWorkspace.id, activeWorkspace]])
   const jobRows: JobSnapshot[] = []
   const aiRuns: AiRun[] = []
-  const aiProviders: AiProvider[] = [
-    {
-      providerId: 'mock-local',
-      providerName: 'Mock Local Provider',
-      secretName: null,
-      baseUrl: null,
-      defaultModel: 'mock-durable-context-v1',
-      availableModels: ['mock-durable-context-v1'],
-      supportsStreaming: false,
-      supportsTools: false
-    },
-    {
-      providerId: 'openai-responses',
-      providerName: 'OpenAI Responses API',
-      secretName: 'OPENAI_API_KEY',
-      baseUrl: 'https://api.openai.com/v1/responses',
-      defaultModel: 'gpt-4.1-mini',
-      availableModels: ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'],
-      supportsStreaming: false,
-      supportsTools: false
-    }
-  ]
-  const aiTemplates: AiPromptTemplate[] = [{
-    id: 'browser-template-summary',
-    workspaceId: 'ws-browser-preview',
-    name: 'Summarize Document',
-    description: 'Browser preview template',
-    body: 'Summarize the included context in 3 useful bullet points.\n\n{{text}}',
-    variables: ['text'],
+  const mockProvider: AiProvider = {
+    providerId: 'mock-local',
+    providerName: 'Mock Local Provider',
+    secretName: null,
+    baseUrl: null,
     defaultModel: 'mock-durable-context-v1',
-    defaultTemperature: 0.7,
-    contextPolicy: { includeActiveDocument: true },
-    tags: ['starter', 'summary'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }]
+    availableModels: ['mock-durable-context-v1'],
+    supportsStreaming: false,
+    supportsTools: false
+  }
+  const openAiProvider: AiProvider = {
+    providerId: 'openai-responses',
+    providerName: 'OpenAI Responses API',
+    secretName: 'OPENAI_API_KEY',
+    baseUrl: 'https://api.openai.com/v1/responses',
+    defaultModel: 'gpt-4.1-mini',
+    availableModels: ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'],
+    supportsStreaming: false,
+    supportsTools: false
+  }
+  const aiProviders: AiProvider[] = demoMode ? [mockProvider, openAiProvider] : [openAiProvider]
+  const aiTemplates: AiPromptTemplate[] = demoMode
+    ? [{
+        id: 'browser-template-summary',
+        workspaceId: 'ws-browser-preview',
+        name: 'Summarize Document',
+        description: 'Browser preview template',
+        body: 'Summarize the included context in 3 useful bullet points.\n\n{{text}}',
+        variables: ['text'],
+        defaultModel: 'mock-durable-context-v1',
+        defaultTemperature: 0.7,
+        contextPolicy: { includeActiveDocument: true },
+        tags: ['starter', 'summary'],
+        createdAt: now,
+        updatedAt: now
+      }]
+    : []
   const aiConversations: AiConversation[] = []
   const assetRows: AssetRecord[] = []
 
   function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
-    const doc = docs.get(activeDocumentId ?? 'demo-chapter-1') ?? DEMO_DOCS[1]
+    const doc = activeDocumentId
+      ? docs.get(activeDocumentId)
+      : docs.get('demo-chapter-1') ?? Array.from(docs.values()).find(item => item.kind !== 'folder')
+    if (!doc) return []
+
     return [{
       id: `active-document:${doc.id}`,
       sourceType: 'active-document',
@@ -159,7 +168,11 @@ function createBrowserShell(): ShellApi {
       list: async () => Array.from(docs.values()).filter(doc => !doc.archivedAt),
       listArchived: async (workspaceId) => Array.from(docs.values())
         .filter(doc => doc.workspaceId === workspaceId && Boolean(doc.archivedAt)),
-      open: async (id) => docs.get(id) ?? DEMO_DOCS[1],
+      open: async (id) => {
+        const doc = docs.get(id)
+        if (!doc) throw new Error('Document not found.')
+        return doc
+      },
       save: async (id, content) => {
         const existing = docs.get(id)
         if (existing) {
@@ -167,7 +180,8 @@ function createBrowserShell(): ShellApi {
         }
       },
       update: async (id, patch) => {
-        const existing = docs.get(id) ?? DEMO_DOCS[1]
+        const existing = docs.get(id)
+        if (!existing) throw new Error('Document not found.')
         let icon = existing.icon
         if (Object.prototype.hasOwnProperty.call(patch, 'icon')) {
           const nextIcon = patch.icon?.trim() ?? ''
@@ -379,7 +393,7 @@ function createBrowserShell(): ShellApi {
         workspaceRows.set(id, updated)
         if (activeWorkspace.id === id) {
           activeWorkspace = Array.from(workspaceRows.values()).find(item => !item.archivedAt && item.id !== id)
-            ?? await window.shell.workspace.create({ name: 'Browser Preview', type: 'authoring', root: '/' })
+            ?? await window.shell.workspace.create({ name: demoMode ? 'Browser Preview' : 'Local Preview', type: 'authoring', root: '/' })
         }
         return activeWorkspace
       },
@@ -399,7 +413,7 @@ function createBrowserShell(): ShellApi {
         }
         if (activeWorkspace.id === id) {
           activeWorkspace = Array.from(workspaceRows.values()).find(item => !item.archivedAt)
-            ?? await window.shell.workspace.create({ name: 'Browser Preview', type: 'authoring', root: '/' })
+            ?? await window.shell.workspace.create({ name: demoMode ? 'Browser Preview' : 'Local Preview', type: 'authoring', root: '/' })
         }
         return activeWorkspace
       },
@@ -433,6 +447,7 @@ function createBrowserShell(): ShellApi {
       invoke: async (params) => {
         const provider = aiProviders.find(item => item.providerId === params.providerId) ?? aiProviders[0]
         const now = new Date().toISOString()
+        const shouldFailForMissingKey = !demoMode && provider.providerId !== 'mock-local'
         const run: AiRun = {
           id: `browser-run-${Date.now()}`,
           workspaceId: params.workspaceId,
@@ -442,10 +457,10 @@ function createBrowserShell(): ShellApi {
           providerId: provider.providerId,
           model: params.model ?? provider.defaultModel,
           temperature: params.temperature ?? 0.7,
-          status: 'completed',
+          status: shouldFailForMissingKey ? 'failed' : 'completed',
           inputSummary: params.prompt.slice(0, 240),
-          outputText: `Browser ${provider.providerName} preview complete.\n\n${params.prompt}`,
-          error: null,
+          outputText: shouldFailForMissingKey ? '' : `Browser ${provider.providerName} preview complete.\n\n${params.prompt}`,
+          error: shouldFailForMissingKey ? AI_API_KEY_REQUIRED_MESSAGE : null,
           createdAt: now,
           completedAt: now
         }
