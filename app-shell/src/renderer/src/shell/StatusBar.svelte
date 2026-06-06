@@ -74,10 +74,10 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image: url('/status-bar-metallic-spectrum.png');
+    background-image: url('/status-bar-metallic-spectrum.svg');
     background-position: center;
     background-size: 100% 100%;
-    filter: saturate(1.18) brightness(1.04);
+    filter: saturate(1.08) brightness(0.96);
     opacity: 1;
     pointer-events: none;
   }
@@ -116,18 +116,22 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 2px 4px;
+    padding: 2px 6px;
     border-radius: var(--radius-sm);
+    background: color-mix(in srgb, black 44%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);
+    color: #f8fafc;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.78);
     transition: color 0.15s ease, background 0.15s ease;
   }
 
   .item:hover {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
+    background: color-mix(in srgb, black 54%, transparent);
+    color: #ffffff;
   }
 
   .word-count {
-    color: var(--color-fg-secondary);
+    color: #f8fafc;
     font-variant-numeric: tabular-nums;
   }
 
@@ -138,10 +142,11 @@
     transition: color 0.3s ease;
   }
 
-  .save-indicator.clean { color: var(--accent-nav); }
-  .save-indicator.dirty { color: var(--accent-status); }
+  .save-indicator.clean { color: #f0fdf4; }
+  .save-indicator.dirty { color: #fff7ed; }
 
   .save-icon {
+    color: var(--accent-nav);
     font-size: 9px;
     line-height: 1;
     transition: transform 0.2s ease;
@@ -172,15 +177,17 @@
     white-space: nowrap;
     padding: 2px var(--space-2);
     border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    background: transparent;
+    color: #f8fafc;
+    background: color-mix(in srgb, black 44%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.78);
     cursor: pointer;
     font-size: var(--font-size-xs);
   }
 
   .jobs-item:hover {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
+    background: color-mix(in srgb, black 54%, transparent);
+    color: #ffffff;
   }
 
   .jobs-item span {
