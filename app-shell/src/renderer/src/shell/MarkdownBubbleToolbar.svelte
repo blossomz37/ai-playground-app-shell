@@ -1,13 +1,5 @@
-<!-- ──────────────────────────────────────────────
-  File:        EditorToolbar.svelte
-  Description: Floating bubble menu on text selection — format actions
-  Version:     0.1.0
-  Created:     2026-05-29
-  Modified:    2026-05-29
-  Author:      carlo
-  ────────────────────────────────────────────── -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import type { Editor } from '@tiptap/core'
 
   interface Props {
@@ -20,15 +12,12 @@
   let visible = $state(false)
   let x = $state(0)
   let y = $state(0)
-
-  // Active mark/node states for highlighting
   let isBold = $state(false)
   let isItalic = $state(false)
   let isStrike = $state(false)
   let isCode = $state(false)
   let isBlockquote = $state(false)
-  let headingLevel = $state(0) // 0 = paragraph
-
+  let headingLevel = $state(0)
   let raf = 0
 
   function toolbarHost(node: HTMLDivElement): void {
@@ -41,24 +30,18 @@
       return
     }
 
-    // Get the selection coordinates from ProseMirror's coordsAtPos
     const { from, to } = editor.state.selection
     const start = editor.view.coordsAtPos(from)
     const end = editor.view.coordsAtPos(to)
-
-    // Position above the selection midpoint
     const midX = (start.left + end.right) / 2
     const topY = Math.min(start.top, end.top)
-
     const toolbarWidth = toolbarEl?.offsetWidth ?? 320
     const toolbarHeight = toolbarEl?.offsetHeight ?? 40
 
-    // Clamp within viewport
     let posX = midX - toolbarWidth / 2
     posX = Math.max(8, Math.min(posX, window.innerWidth - toolbarWidth - 8))
 
     let posY = topY - toolbarHeight - 8
-    // Flip below if it would go off top
     if (posY < 8) {
       posY = Math.max(start.bottom, end.bottom) + 8
     }
@@ -66,8 +49,6 @@
     x = posX
     y = posY
     visible = true
-
-    // Update active states
     isBold = editor.isActive('bold')
     isItalic = editor.isActive('italic')
     isStrike = editor.isActive('strike')
@@ -89,15 +70,27 @@
     cancelAnimationFrame(raf)
   })
 
-  // --- Actions ---
+  function toggleBold(): void {
+    editor?.chain().focus().toggleBold().run()
+  }
 
-  function toggleBold() { editor?.chain().focus().toggleBold().run() }
-  function toggleItalic() { editor?.chain().focus().toggleItalic().run() }
-  function toggleStrike() { editor?.chain().focus().toggleStrike().run() }
-  function toggleCode() { editor?.chain().focus().toggleCode().run() }
-  function toggleBlockquote() { editor?.chain().focus().toggleBlockquote().run() }
+  function toggleItalic(): void {
+    editor?.chain().focus().toggleItalic().run()
+  }
 
-  function toggleHeading(level: 1 | 2 | 3) {
+  function toggleStrike(): void {
+    editor?.chain().focus().toggleStrike().run()
+  }
+
+  function toggleCode(): void {
+    editor?.chain().focus().toggleCode().run()
+  }
+
+  function toggleBlockquote(): void {
+    editor?.chain().focus().toggleBlockquote().run()
+  }
+
+  function toggleHeading(level: 1 | 2 | 3): void {
     if (headingLevel === level) {
       editor?.chain().focus().setParagraph().run()
     } else {
@@ -116,25 +109,29 @@
     aria-label="Text formatting"
   >
     <button
-      class="tb-btn" class:active={isBold}
+      class="tb-btn"
+      class:active={isBold}
       title="Bold"
       onmousedown={(e) => { e.preventDefault(); toggleBold() }}
     ><strong>B</strong></button>
 
     <button
-      class="tb-btn" class:active={isItalic}
+      class="tb-btn"
+      class:active={isItalic}
       title="Italic"
       onmousedown={(e) => { e.preventDefault(); toggleItalic() }}
     ><em>I</em></button>
 
     <button
-      class="tb-btn" class:active={isStrike}
+      class="tb-btn"
+      class:active={isStrike}
       title="Strikethrough"
       onmousedown={(e) => { e.preventDefault(); toggleStrike() }}
     ><s>S</s></button>
 
     <button
-      class="tb-btn mono" class:active={isCode}
+      class="tb-btn mono"
+      class:active={isCode}
       title="Inline code"
       onmousedown={(e) => { e.preventDefault(); toggleCode() }}
     >&lt;/&gt;</button>
@@ -142,19 +139,22 @@
     <span class="tb-sep"></span>
 
     <button
-      class="tb-btn heading" class:active={headingLevel === 1}
+      class="tb-btn heading"
+      class:active={headingLevel === 1}
       title="Heading 1"
       onmousedown={(e) => { e.preventDefault(); toggleHeading(1) }}
     >H1</button>
 
     <button
-      class="tb-btn heading" class:active={headingLevel === 2}
+      class="tb-btn heading"
+      class:active={headingLevel === 2}
       title="Heading 2"
       onmousedown={(e) => { e.preventDefault(); toggleHeading(2) }}
     >H2</button>
 
     <button
-      class="tb-btn heading" class:active={headingLevel === 3}
+      class="tb-btn heading"
+      class:active={headingLevel === 3}
       title="Heading 3"
       onmousedown={(e) => { e.preventDefault(); toggleHeading(3) }}
     >H3</button>
@@ -162,7 +162,8 @@
     <span class="tb-sep"></span>
 
     <button
-      class="tb-btn" class:active={isBlockquote}
+      class="tb-btn"
+      class:active={isBlockquote}
       title="Blockquote"
       onmousedown={(e) => { e.preventDefault(); toggleBlockquote() }}
     >❝</button>
@@ -189,7 +190,7 @@
 
   @keyframes toolbar-in {
     from { opacity: 0; transform: translateY(4px) scale(0.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   .tb-btn {
@@ -222,13 +223,11 @@
   .tb-btn.mono {
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
-    letter-spacing: -0.02em;
   }
 
   .tb-btn.heading {
     font-weight: 700;
     font-size: var(--font-size-xs);
-    letter-spacing: 0.02em;
   }
 
   .tb-sep {

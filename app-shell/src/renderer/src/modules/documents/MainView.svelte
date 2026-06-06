@@ -16,7 +16,7 @@
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable } from '@shared/module-contract'
-  import EditorToolbar from './EditorToolbar.svelte'
+  import MarkdownBubbleToolbar from '../../shell/MarkdownBubbleToolbar.svelte'
 
   let element: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
@@ -171,7 +171,7 @@
     style:--editor-font-size={$editorSettings.fontSize}
   ></div>
 
-  <EditorToolbar {editor} />
+  <MarkdownBubbleToolbar {editor} />
 
   {#if !$activeDoc}
     <div class="empty">
