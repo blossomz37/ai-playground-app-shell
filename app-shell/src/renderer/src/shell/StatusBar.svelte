@@ -117,22 +117,29 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, black 44%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);
-    color: #f8fafc;
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.78);
-    transition: color 0.15s ease, background 0.15s ease;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-bg-overlay) 90%, black);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, white 18%, transparent),
+      0 1px 3px rgb(0 0 0 / 0.26);
+    color: #ffffff;
+    text-shadow: 0 1px 1px rgb(0 0 0 / 0.42);
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .item:hover {
-    background: color-mix(in srgb, black 54%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 34%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, white 24%, transparent),
+      0 2px 5px rgb(0 0 0 / 0.3);
     color: #ffffff;
   }
 
   .word-count {
-    color: #f8fafc;
+    background: color-mix(in srgb, var(--accent-editor) 88%, black);
+    color: #eef6ff;
     font-variant-numeric: tabular-nums;
   }
 
@@ -143,11 +150,18 @@
     transition: color 0.3s ease;
   }
 
-  .save-indicator.clean { color: #f0fdf4; }
-  .save-indicator.dirty { color: #fff7ed; }
+  .save-indicator.clean {
+    background: color-mix(in srgb, var(--color-success) 86%, black);
+    color: #f0fdf4;
+  }
+
+  .save-indicator.dirty {
+    background: color-mix(in srgb, var(--color-warn) 88%, black);
+    color: #fff7ed;
+  }
 
   .save-icon {
-    color: var(--accent-nav);
+    color: currentColor;
     font-size: 9px;
     line-height: 1;
     transition: transform 0.2s ease;
