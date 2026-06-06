@@ -28,6 +28,7 @@ Key directories:
 - `workspace-agents/implementation/screenshots/` - UI validation evidence.
 - `workspace-agents/session-handoffs/` - numbered handoffs, one per session.
 - `.agent/` - agent-facing workspace index, stable knowledge, and notes.
+- `.agent/protocols/REPO_MAINTENANCE.md` - standing cleanup and preventative maintenance workflow.
 - `archive/` - spent decision material; read only when needed.
 
 ## Shared Workspace Rules
