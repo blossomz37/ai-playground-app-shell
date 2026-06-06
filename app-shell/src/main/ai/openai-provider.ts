@@ -1,5 +1,6 @@
 import type { AiContextCandidate, AiProvider, InvokeAiParams } from '@shared/ai'
 import { secretsService } from '../core/secrets'
+import { AI_API_KEY_REQUIRED_MESSAGE } from '@shared/demo-mode'
 
 interface OpenAiOutputContent {
   type?: string
@@ -88,7 +89,7 @@ export async function runOpenAiProvider(args: {
   const secretName = args.provider.secretName ?? 'OPENAI_API_KEY'
   const apiKey = secretsService.get(secretName)
   if (!apiKey) {
-    throw new Error(`Missing ${secretName}. Add it in Settings > Secrets, or switch the provider back to Mock Local.`)
+    throw new Error(AI_API_KEY_REQUIRED_MESSAGE)
   }
 
   const response = await fetch(args.provider.baseUrl ?? 'https://api.openai.com/v1/responses', {

@@ -19,7 +19,7 @@
     await refreshAiContext()
     log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
 
-    const job = await submitJob('ai.chain.mock', {
+    const job = await submitJob('ai.chain.run', {
       originId: $selectedWorkflowProfile.id,
       prompt: $selectedWorkflowProfile.prompt,
       contextCandidates: includedAiContextCandidates()

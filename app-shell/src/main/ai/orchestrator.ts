@@ -19,6 +19,21 @@ import { events } from '../core/events'
 import { aiRepository } from './repository'
 import { runMockProvider } from './mock-provider'
 import { runOpenAiProvider } from './openai-provider'
+import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
+import { getDb } from '../core/db'
+
+function demoModeEnabled(): boolean {
+  const row = getDb()
+    .prepare('SELECT value FROM shell_settings WHERE key = ?')
+    .get(`shell.${DEMO_MODE_SETTING_KEY}`) as { value: string } | undefined
+  if (!row) return false
+
+  try {
+    return isDemoModeEnabled(JSON.parse(row.value))
+  } catch {
+    return false
+  }
+}
 
 function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.trim().split(/\s+/).filter(Boolean).length * 1.35))
@@ -40,11 +55,12 @@ function renderContext(candidates: AiContextCandidate[]): string {
 }
 
 function resolveProvider(workspaceId: string, providerId: string | undefined): AiProvider {
-  const provider = aiRepository.getProvider(workspaceId, providerId ?? 'mock-local')
+  const preferredProviderId = demoModeEnabled() ? 'mock-local' : 'openai-responses'
+  const provider = aiRepository.getProvider(workspaceId, providerId ?? preferredProviderId)
   if (provider) return provider
 
-  const fallback = aiRepository.getProvider(workspaceId, 'mock-local')
-  if (!fallback) throw new Error('Mock AI provider is not configured.')
+  const fallback = aiRepository.getProvider(workspaceId, preferredProviderId)
+  if (!fallback) throw new Error('AI provider is not configured.')
   return fallback
 }
 

@@ -32,7 +32,7 @@ export const workflowModule: Module = {
         { id: 'ai.chain.run',       title: 'Run AI Chain' }
       ],
       jobs: [
-        { type: 'ai.chain.mock',   title: 'Run AI Chain' },
+        { type: 'ai.chain.run',    title: 'Run AI Chain' },
         { type: 'export.markdown', title: 'Export to Markdown' },
         { type: 'export.html',     title: 'Export to HTML' }
       ]
@@ -53,6 +53,9 @@ export const workflowModule: Module = {
         variables: params.variables,
         contextCandidates: params.contextCandidates
       })
+      if (result.run.status === 'failed') {
+        throw new Error(result.run.error ?? 'Workflow chain failed.')
+      }
       ctx.notify({ level: 'info', message: 'Workflow chain run recorded.' })
       return result
     }
@@ -61,7 +64,7 @@ export const workflowModule: Module = {
 
     ctx.commands.register('ai.chain.run', runChain)
 
-    ctx.jobs.defineRunner('ai.chain.mock', async (payload, handle) => {
+    ctx.jobs.defineRunner('ai.chain.run', async (payload, handle) => {
       handle.progress(10, 'Packing context')
       await new Promise(resolve => setTimeout(resolve, 300))
       if (handle.cancelled) return

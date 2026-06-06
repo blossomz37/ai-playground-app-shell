@@ -1,5 +1,6 @@
 <script lang="ts">
   import { demoModeEnabled, setDemoModePreference } from '../store'
+  import { loadAiProviders } from '../store/ai'
 
   let saving = $state(false)
 
@@ -7,6 +8,7 @@
     saving = true
     try {
       await setDemoModePreference(!$demoModeEnabled)
+      await loadAiProviders()
     } finally {
       saving = false
     }

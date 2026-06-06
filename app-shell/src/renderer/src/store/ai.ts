@@ -9,7 +9,7 @@ import type {
   AiRun,
   InvokeAiParams
 } from '@shared/ai'
-import { activeDocId, workspaceId } from './index'
+import { activeDocId, demoModeEnabled, workspaceId } from './index'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
@@ -22,8 +22,8 @@ export const selectedAiTemplate = derived(
 )
 export const aiProviders = writable<AiProvider[]>([])
 export const aiSecretNames = writable<string[]>([])
-export const selectedAiProviderId = writable<AiProviderId>('mock-local')
-export const selectedAiModel = writable('mock-durable-context-v1')
+export const selectedAiProviderId = writable<AiProviderId>('openai-responses')
+export const selectedAiModel = writable('gpt-4.1-mini')
 export const selectedAiTemperature = writable(0.7)
 export const aiBusy = writable(false)
 
@@ -107,14 +107,18 @@ export async function loadAiProviders(): Promise<void> {
     ? savedProviderId
     : providers.some(provider => provider.providerId === currentProviderId)
       ? currentProviderId
-    : 'mock-local'
+      : providers.find(provider => provider.providerId === 'openai-responses')?.providerId
+        ?? providers[0]?.providerId
+        ?? 'openai-responses'
   selectedAiProviderId.set(providerId)
 
   const provider = providers.find(item => item.providerId === providerId) ?? providers[0]
   const savedModel = await window.shell.settings.get(`ai.model.${providerId}`)
   const fallbackModel = provider?.providerId === 'openai-responses'
     ? 'gpt-4.1-mini'
-    : 'mock-durable-context-v1'
+    : get(demoModeEnabled)
+      ? 'mock-durable-context-v1'
+      : 'gpt-4.1-mini'
   selectedAiModel.set(typeof savedModel === 'string' && savedModel.trim()
     ? savedModel
     : provider?.defaultModel ?? fallbackModel)
@@ -129,7 +133,9 @@ export function modelOptionsForProvider(provider: AiProvider | undefined): strin
     ? provider.availableModels
     : provider?.providerId === 'openai-responses'
       ? FALLBACK_OPENAI_MODELS
-      : ['mock-durable-context-v1']
+      : get(demoModeEnabled)
+        ? ['mock-durable-context-v1']
+        : FALLBACK_OPENAI_MODELS
 
   return options.includes(selected) ? options : [selected, ...options]
 }

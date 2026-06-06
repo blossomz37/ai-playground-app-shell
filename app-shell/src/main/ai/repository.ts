@@ -16,6 +16,24 @@ import type {
   RenameAiPromptTemplateParams
 } from '@shared/ai'
 import { getDb } from '../core/db'
+import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
+
+function demoModeEnabled(): boolean {
+  const row = getDb()
+    .prepare('SELECT value FROM shell_settings WHERE key = ?')
+    .get(`shell.${DEMO_MODE_SETTING_KEY}`) as { value: string } | undefined
+  if (!row) return false
+
+  try {
+    return isDemoModeEnabled(JSON.parse(row.value))
+  } catch {
+    return false
+  }
+}
+
+function preferredProviderId(): string {
+  return demoModeEnabled() ? 'mock-local' : 'openai-responses'
+}
 
 function parseJson<T>(value: string, fallback: T): T {
   try {
@@ -106,6 +124,7 @@ export const aiRepository = {
   ensureDefaults(workspaceId: string): void {
     const db = getDb()
     const now = new Date().toISOString()
+    const demoMode = demoModeEnabled()
 
     const upsertProvider = db.prepare(`
       INSERT INTO ai_providers
@@ -123,19 +142,24 @@ export const aiRepository = {
         updatedAt = excluded.updatedAt
     `)
 
-    upsertProvider.run(
-      'mock-local',
-      workspaceId,
-      'Mock Local Provider',
-      null,
-      null,
-      'mock-durable-context-v1',
-      JSON.stringify(['mock-durable-context-v1']),
-      0,
-      0,
-      now,
-      now
-    )
+    if (demoMode) {
+      upsertProvider.run(
+        'mock-local',
+        workspaceId,
+        'Mock Local Provider',
+        null,
+        null,
+        'mock-durable-context-v1',
+        JSON.stringify(['mock-durable-context-v1']),
+        0,
+        0,
+        now,
+        now
+      )
+    } else {
+      db.prepare('DELETE FROM ai_providers WHERE workspaceId = ? AND id = ?')
+        .run(workspaceId, 'mock-local')
+    }
 
     upsertProvider.run(
       'openai-responses',
@@ -162,7 +186,7 @@ export const aiRepository = {
       .prepare('SELECT COUNT(*) as n FROM ai_prompt_templates WHERE workspaceId = ?')
       .get(workspaceId) as { n: number }
 
-    if (templateCount.n === 0) {
+    if (demoMode && templateCount.n === 0) {
       this.saveTemplate({
         id: randomUUID(),
         workspaceId,
@@ -182,13 +206,15 @@ export const aiRepository = {
 
   listProviders(workspaceId: string): AiProvider[] {
     this.ensureDefaults(workspaceId)
+    const preferred = preferredProviderId()
     return getDb()
       .prepare('SELECT * FROM ai_providers WHERE workspaceId = ? ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, name ASC')
-      .all(workspaceId, 'mock-local')
+      .all(workspaceId, preferred)
       .map(row => providerFromRow(row as Record<string, unknown>))
   },
 
   getProvider(workspaceId: string, providerId: string): AiProvider | undefined {
+    if (providerId === 'mock-local' && !demoModeEnabled()) return undefined
     this.ensureDefaults(workspaceId)
     const row = getDb()
       .prepare('SELECT * FROM ai_providers WHERE workspaceId = ? AND id = ?')
@@ -327,8 +353,8 @@ export const aiRepository = {
       moduleId: params.moduleId,
       originType: params.originType,
       originId: params.originId ?? randomUUID(),
-      providerId: params.providerId ?? 'mock-local',
-      model: params.model ?? 'mock-durable-context-v1',
+      providerId: params.providerId ?? preferredProviderId(),
+      model: params.model ?? (demoModeEnabled() ? 'mock-durable-context-v1' : 'gpt-4.1-mini'),
       temperature: params.temperature ?? 0.7,
       status: 'running',
       inputSummary: params.prompt.trim().slice(0, 240),
