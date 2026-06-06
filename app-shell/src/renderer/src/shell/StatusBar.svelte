@@ -53,6 +53,8 @@
 <style>
   .status-bar {
     grid-area: statusbar;
+    position: relative;
+    isolation: isolate;
     display: grid;
     grid-template-columns: var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col);
     align-items: center;
@@ -67,7 +69,32 @@
     user-select: none;
   }
 
+  .status-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: url('/status-bar-metallic-spectrum.png');
+    background-position: center;
+    background-size: 100% 100%;
+    filter: saturate(1.18) brightness(1.04);
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  .status-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, white 20%, transparent), transparent 42%, color-mix(in srgb, black 12%, transparent));
+    pointer-events: none;
+  }
+
   .zone {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: var(--space-2);
