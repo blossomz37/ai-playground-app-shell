@@ -312,6 +312,22 @@ export function registerIpcHandlers(): void {
     return assets.exportAssets(ids, { ...params, targetDir })
   })
 
+  ipcMain.handle('assets:readPdf', (_event, { id }: { id: string }) => {
+    const asset = assets.open(id)
+    if (!asset) throw new Error('PDF asset was not found.')
+    if (asset.mediaType !== 'pdf') throw new Error('Selected asset is not a PDF.')
+    if (!asset.filePath) throw new Error('PDF asset has no source file path.')
+    if (!existsSync(asset.filePath)) throw new Error('PDF source file is missing or unavailable.')
+
+    return {
+      assetId: asset.id,
+      fileName: asset.originalName,
+      mimeType: 'application/pdf' as const,
+      pageCount: typeof asset.metadata.pageCount === 'number' ? asset.metadata.pageCount : null,
+      dataBase64: readFileSync(asset.filePath).toString('base64')
+    }
+  })
+
   ipcMain.handle('assets:reveal', (_e, { path: filePath }: { path: string }) => {
     shell.showItemInFolder(filePath)
   })

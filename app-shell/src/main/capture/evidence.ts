@@ -33,6 +33,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
   const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
   const openAssetImagePreview = process.env['SHELL_CAPTURE_OPEN_ASSET_IMAGE_PREVIEW'] === '1'
+  const openPdfReader = process.env['SHELL_CAPTURE_OPEN_PDF_READER'] === '1'
+  const pdfReaderPage = Number(process.env['SHELL_CAPTURE_PDF_READER_PAGE'] ?? 1)
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
@@ -565,6 +567,34 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             const trigger = document.querySelector('button.asset-preview-trigger')
             if (!trigger) throw new Error('Image preview trigger is not available.')
             trigger.click()
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openPdfReader) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.assets' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const pdfRows = Array.from(document.querySelectorAll('.asset-open[data-media-type="pdf"]'))
+            const pdfAsset = pdfRows[0]
+            if (!pdfAsset) throw new Error('No PDF asset row available for reader capture.')
+            pdfAsset.click()
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const trigger = document.querySelector('[data-capture-pdf-open]')
+              ?? Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('Read PDF'))
+            if (!trigger) throw new Error('PDF reader trigger is not available.')
+            trigger.click()
+            await new Promise((resolve) => setTimeout(resolve, 1200))
+            const targetPage = ${JSON.stringify(Number.isFinite(pdfReaderPage) ? Math.max(1, Math.floor(pdfReaderPage)) : 1)}
+            if (targetPage > 1) {
+              const input = document.querySelector('[data-capture-pdf-reader] input[type="number"]')
+              if (!input) throw new Error('PDF page input is not available.')
+              input.value = String(targetPage)
+              input.dispatchEvent(new Event('input', { bubbles: true }))
+              input.dispatchEvent(new Event('blur', { bubbles: true }))
+              await new Promise((resolve) => setTimeout(resolve, 1200))
+            }
           })()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))

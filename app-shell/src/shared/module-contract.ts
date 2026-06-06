@@ -356,6 +356,14 @@ export interface AssetExportResult {
   missingFiles: AssetMissingFile[]
 }
 
+export interface AssetPdfData {
+  assetId: string
+  fileName: string
+  mimeType: 'application/pdf'
+  pageCount: number | null
+  dataBase64: string
+}
+
 export interface ModuleContext {
   moduleId: string
 
@@ -495,6 +503,7 @@ export interface ShellApi {
     restore(id: string): Promise<AssetRecord>
     delete(id: string): Promise<{ id: string }>
     exportAssets(ids: string[], params?: AssetExportParams): Promise<AssetExportResult>
+    readPdf(id: string): Promise<AssetPdfData>
     reveal(path: string): Promise<void>
   }
   journal: {

@@ -590,6 +590,9 @@ function createBrowserShell(): ShellApi {
         manifestPath: `${params.targetDir ?? '/browser-preview-assets-export'}/assets-manifest.json`,
         missingFiles: []
       }),
+      readPdf: async () => {
+        throw new Error('PDF reading is only available in the Electron app.')
+      },
       reveal: async () => {}
     },
     journal: {

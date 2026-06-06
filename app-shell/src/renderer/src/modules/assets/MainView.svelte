@@ -1,8 +1,9 @@
 <!-- Assets MainView — asset preview/detail -->
 <script lang="ts">
-  import { MagnifyingGlassPlusIcon, XIcon } from 'phosphor-svelte'
+  import { BookOpenIcon, MagnifyingGlassPlusIcon, XIcon } from 'phosphor-svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import { addToast } from '../../store/toasts'
+  import PdfReaderModal from './PdfReaderModal.svelte'
   import {
     archiveAsset,
     copySelectedAssetPath,
@@ -19,8 +20,11 @@
   let asset = $derived($selectedAsset)
   let hasFilePath = $derived(Boolean(asset?.filePath))
   let imagePreviewAssetId = $state<string | null>(null)
+  let pdfReaderAssetId = $state<string | null>(null)
   let canPreviewImage = $derived(Boolean(asset?.thumbnailDataUrl && asset.mediaType === 'image'))
+  let canReadPdf = $derived(Boolean(asset?.mediaType === 'pdf'))
   let showImagePreview = $derived(Boolean(asset && canPreviewImage && imagePreviewAssetId === asset.id))
+  let showPdfReader = $derived(Boolean(asset && canReadPdf && pdfReaderAssetId === asset.id))
   let renamingAsset = $state(false)
 
   async function commitRename(id: string, name: string): Promise<void> {
@@ -36,10 +40,16 @@
   function closeImagePreview(): void {
     imagePreviewAssetId = null
   }
+
+  function closePdfReader(): void {
+    pdfReaderAssetId = null
+  }
 </script>
 
 <svelte:window onkeydown={(event) => {
-  if (event.key === 'Escape' && showImagePreview) closeImagePreview()
+  if (event.key !== 'Escape') return
+  if (showImagePreview) closeImagePreview()
+  if (showPdfReader) closePdfReader()
 }} />
 
 <div class="main-view">
@@ -73,6 +83,19 @@
               <MagnifyingGlassPlusIcon size={18} weight="bold" />
             </span>
           </button>
+        {:else if canReadPdf && asset.thumbnailDataUrl}
+          <button
+            type="button"
+            class="asset-preview-trigger"
+            aria-label={`Read ${asset.label}`}
+            onclick={() => pdfReaderAssetId = asset.id}
+            data-capture-pdf-open
+          >
+            <img class="asset-preview" src={asset.thumbnailDataUrl} alt={asset.label} />
+            <span class="preview-affordance" aria-hidden="true">
+              <BookOpenIcon size={18} weight="bold" />
+            </span>
+          </button>
         {:else if asset.thumbnailDataUrl}
           <img class="asset-preview" src={asset.thumbnailDataUrl} alt={asset.label} />
         {:else}
@@ -83,6 +106,12 @@
       </div>
     </div>
     <div class="asset-actions">
+      {#if canReadPdf}
+        <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Read this PDF in App Shell' : 'No source file path recorded'} onclick={() => pdfReaderAssetId = asset.id}>
+          <BookOpenIcon size={15} weight="bold" aria-hidden="true" />
+          Read PDF
+        </button>
+      {/if}
       <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'} onclick={() => void revealSelectedAsset()}>Open in Finder</button>
       <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Copy source file path' : 'No source file path recorded'} onclick={() => void copySelectedAssetPath()}>Copy Path</button>
       <button class="action-btn" disabled={!hasFilePath} title="Export this asset and metadata manifest" onclick={() => void exportAsset(asset.id)}>Export</button>
@@ -117,6 +146,9 @@
           <img class="image-modal-img" src={asset.thumbnailDataUrl} alt={asset.label} />
         </div>
       </div>
+    {/if}
+    {#if showPdfReader}
+      <PdfReaderModal asset={asset} onClose={closePdfReader} />
     {/if}
   {/if}
 </div>
@@ -160,6 +192,7 @@
   .placeholder-meta { font-size: var(--font-size-xs); text-align: center; overflow-wrap: anywhere; }
   .asset-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-6); border-top: var(--border-subtle); }
   .action-btn {
+    display: inline-flex; align-items: center; gap: var(--space-1);
     padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: var(--font-size-sm);
     color: var(--color-fg-secondary); background: var(--color-bg-overlay); cursor: pointer; transition: background 0.1s, color 0.1s;
   }

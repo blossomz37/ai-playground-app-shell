@@ -3,6 +3,7 @@ import type {
   AssetExportResult,
   AssetImportParams,
   AssetListParams,
+  AssetPdfData,
   AssetRecord,
   AssetUpdatePatch
 } from '../module-contract'
@@ -19,6 +20,7 @@ export interface AssetsPort {
   restore(id: string): Promise<AssetRecord>
   delete(id: string): Promise<{ id: string }>
   exportAssets(ids: string[], params?: AssetExportParams): Promise<AssetExportResult>
+  readPdf(id: string): Promise<AssetPdfData>
   reveal(path: string): Promise<void>
 }
 

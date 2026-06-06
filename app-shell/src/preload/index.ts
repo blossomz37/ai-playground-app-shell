@@ -74,6 +74,7 @@ const api: ShellApi = {
     restore: (id) => ipcRenderer.invoke('assets:restore', { id }),
     delete: (id) => ipcRenderer.invoke('assets:delete', { id }),
     exportAssets: (ids, params) => ipcRenderer.invoke('assets:exportAssets', { ids, params }),
+    readPdf: (id) => ipcRenderer.invoke('assets:readPdf', { id }),
     reveal: (path) => ipcRenderer.invoke('assets:reveal', { path })
   },
 

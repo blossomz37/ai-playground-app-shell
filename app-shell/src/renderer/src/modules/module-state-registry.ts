@@ -64,6 +64,7 @@ registerModuleState('shell.assets', 'assets', new AssetsStateSlice({
   restore: (id) => window.shell.assets.restore(id),
   delete: (id) => window.shell.assets.delete(id),
   exportAssets: (ids, params) => window.shell.assets.exportAssets(ids, params),
+  readPdf: (id) => window.shell.assets.readPdf(id),
   reveal: (path) => window.shell.assets.reveal(path)
 }))
 registerModuleState('shell.web', 'web', new WebStateSlice())
