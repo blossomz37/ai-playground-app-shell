@@ -122,18 +122,19 @@
     background: color-mix(in srgb, var(--color-bg-overlay) 90%, black);
     box-shadow:
       inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
-      inset 0 0 0 1px color-mix(in srgb, white 18%, transparent),
-      0 1px 3px rgb(0 0 0 / 0.26);
+      inset 0 0 0 1px color-mix(in srgb, white 24%, transparent),
+      0 1px 1px rgb(0 0 0 / 0.24);
     color: #ffffff;
     text-shadow: 0 1px 1px rgb(0 0 0 / 0.42);
+    transform: translateY(2px);
     transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .item:hover {
     box-shadow:
       inset 0 1px 0 color-mix(in srgb, white 34%, transparent),
-      inset 0 0 0 1px color-mix(in srgb, white 24%, transparent),
-      0 2px 5px rgb(0 0 0 / 0.3);
+      inset 0 0 0 1px color-mix(in srgb, white 30%, transparent),
+      0 1px 2px rgb(0 0 0 / 0.28);
     color: #ffffff;
   }
 
