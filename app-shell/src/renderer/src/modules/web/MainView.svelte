@@ -311,6 +311,7 @@
     flex: 1;
     height: 100%;
     min-height: 0;
+    padding: var(--space-2);
     overflow: hidden;
     background: var(--color-bg-base);
   }

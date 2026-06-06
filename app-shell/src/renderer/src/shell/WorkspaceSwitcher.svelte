@@ -31,6 +31,7 @@
   let busyAction = $state<string | null>(null)
   let workspaceError = $state<string | null>(null)
   let confirmDeleteId = $state<string | null>(null)
+  let switcherElement: HTMLDivElement | undefined = $state()
 
   let switchableWorkspaces = $derived($workspaces.filter((workspace) => workspace.id !== $workspaceId))
   let activeProjectCount = $derived($workspaces.length)
@@ -39,6 +40,19 @@
     menuOpen = false
     createWorkspaceOpen = false
     confirmDeleteId = null
+  }
+
+  function onDocumentClick(event: MouseEvent): void {
+    if (!menuOpen || !switcherElement) return
+    if (event.target instanceof Node && switcherElement.contains(event.target)) return
+    closeMenu()
+  }
+
+  function trackSwitcher(node: HTMLDivElement): () => void {
+    switcherElement = node
+    return () => {
+      if (switcherElement === node) switcherElement = undefined
+    }
   }
 
   async function runWorkspaceAction(action: string, task: () => Promise<void>, closeAfter = true): Promise<void> {
@@ -103,8 +117,9 @@
 <svelte:window onkeydown={(event) => {
   if (event.key === 'Escape' && menuOpen) closeMenu()
 }} />
+<svelte:document onclick={onDocumentClick} />
 
-<div class="workspace-switcher">
+<div class="workspace-switcher" {@attach trackSwitcher}>
   <button
     class="workspace-button"
     type="button"
