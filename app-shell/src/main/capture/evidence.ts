@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'path'
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { isThemeMode } from '../core/theme'
 import { getDb } from '../core/db'
+import { workspaceService } from '../core/workspaces'
 
 /**
  * Dev-only UI-evidence capture. Gated by the SHELL_CAPTURE env var.
@@ -42,6 +43,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
   const tableKind = process.env['SHELL_CAPTURE_TABLE_KIND']
+  const tableKinds = process.env['SHELL_CAPTURE_TABLE_KINDS']
+  const tableWordsMin = process.env['SHELL_CAPTURE_TABLE_WORDS_MIN']
+  const tableWordsMax = process.env['SHELL_CAPTURE_TABLE_WORDS_MAX']
+  const tableUpdatedRange = process.env['SHELL_CAPTURE_TABLE_UPDATED_RANGE']
+  const tableReset = process.env['SHELL_CAPTURE_TABLE_RESET'] === '1'
+  const restoreWorkspaceId = process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID']
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
   const documentExportDir = process.env['SHELL_CAPTURE_DOCUMENT_EXPORT_DIR']
@@ -619,22 +626,33 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
-      if (tableSearch !== undefined || tableKind) {
+      if (
+        tableSearch !== undefined
+        || tableKind
+        || tableKinds !== undefined
+        || tableWordsMin !== undefined
+        || tableWordsMax !== undefined
+        || tableUpdatedRange !== undefined
+        || tableReset
+      ) {
         await win.webContents.executeJavaScript(`
           (async () => {
             window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.tableview' }))
             await new Promise((resolve) => setTimeout(resolve, 250))
-            const searchInput = document.querySelector('[data-capture-table-search]')
-            const kindSelect = document.querySelector('[data-capture-table-kind]')
-            if (!searchInput || !kindSelect) throw new Error('Table capture controls are not available.')
-            if (${JSON.stringify(tableSearch !== undefined)}) {
-              searchInput.value = ${JSON.stringify(tableSearch ?? '')}
-              searchInput.dispatchEvent(new Event('input', { bubbles: true }))
-            }
-            if (${JSON.stringify(Boolean(tableKind))}) {
-              kindSelect.value = ${JSON.stringify(tableKind ?? '')}
-              kindSelect.dispatchEvent(new Event('change', { bubbles: true }))
-            }
+            window.dispatchEvent(new CustomEvent('table:capture-set-filters', {
+              detail: {
+                search: ${JSON.stringify(tableSearch)},
+                kinds: ${JSON.stringify(tableKinds !== undefined
+                  ? tableKinds.split(',').map(kind => kind.trim()).filter(Boolean)
+                  : tableKind
+                    ? [tableKind]
+                    : undefined)},
+                wordsMin: ${JSON.stringify(tableWordsMin !== undefined ? Number(tableWordsMin) : undefined)},
+                wordsMax: ${JSON.stringify(tableWordsMax !== undefined ? Number(tableWordsMax) : undefined)},
+                updatedRange: ${JSON.stringify(tableUpdatedRange)},
+                reset: ${JSON.stringify(tableReset)}
+              }
+            }))
           })()
         `)
         tableFilterCleanup = true
@@ -757,6 +775,14 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_TABLE_FILTER_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (restoreWorkspaceId) {
+        try {
+          const restored = workspaceService.switch(restoreWorkspaceId)
+          console.log('[SHELL_CAPTURE_WORKSPACE_RESTORE]', JSON.stringify({ restoredWorkspaceId: restored.id }))
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_WORKSPACE_RESTORE] failed:', cleanupErr)
         }
       }
       app.quit()

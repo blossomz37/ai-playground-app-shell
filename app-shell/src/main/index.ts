@@ -69,7 +69,19 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   initDb()
   registerIpcHandlers()
-  const activeWorkspace = workspaceService.getActive()
+  const captureWorkspaceName = process.env['SHELL_CAPTURE_WORKSPACE_NAME']
+  let activeWorkspace = workspaceService.getActive()
+  if (process.env['SHELL_CAPTURE'] && captureWorkspaceName) {
+    const target = workspaceService
+      .list()
+      .find(workspace => workspace.name === captureWorkspaceName)
+    if (target && target.id !== activeWorkspace.id) {
+      process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID'] = activeWorkspace.id
+      activeWorkspace = workspaceService.switch(target.id)
+    } else if (!target) {
+      console.error('[SHELL_CAPTURE_WORKSPACE_SELECT] failed: workspace not found', captureWorkspaceName)
+    }
+  }
   moduleRegistry.setWorkspace(activeWorkspace)
 
   // 0. Restore persisted theme before window creation to avoid flash.
