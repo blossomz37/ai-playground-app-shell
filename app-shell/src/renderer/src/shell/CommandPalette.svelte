@@ -21,6 +21,7 @@
   let searchResults = $state<SearchResult[]>([])
   let searchPending = $state(false)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
+  let capturePaletteListener: ((event: Event) => void) | null = null
 
   // Derived: strip the `>` prefix for command mode
   const commandQuery = $derived(
@@ -100,6 +101,23 @@
 
   onMount(() => {
     setSearchOpener(openSearch)
+    capturePaletteListener = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      paletteOpen.set(true)
+      queueMicrotask(() => {
+        query = `> ${detail ?? ''}`
+        mode = 'commands'
+        selected = 0
+        inputEl?.focus()
+      })
+    }
+    window.addEventListener('shell:capture-open-command-palette', capturePaletteListener)
+
+    return () => {
+      if (capturePaletteListener) {
+        window.removeEventListener('shell:capture-open-command-palette', capturePaletteListener)
+      }
+    }
   })
 
   function close() {
@@ -218,7 +236,7 @@
               >
                 <div class="search-info">
                   <span class="title">{result.title}</span>
-                  <span class="snippet">{@html result.snippet}</span>
+                  <span class="snippet">{result.snippet}</span>
                 </div>
               </button>
             </li>

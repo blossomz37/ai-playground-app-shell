@@ -187,14 +187,25 @@ export function registerIpcHandlers(): void {
       moduleRegistry.enable(id)
     } else {
       moduleRegistry.disable(id)
-      await moduleRegistry.deactivate(id)
+      if (!moduleRegistry.isEnabled(id)) {
+        await moduleRegistry.deactivate(id)
+      }
     }
+  })
+
+  ipcMain.handle('modules:setVisible', (_e, { id, visible }: { id: string; visible: boolean }) => {
+    moduleRegistry.setVisible(id, visible)
   })
 
   ipcMain.handle('commands:list', () => moduleRegistry.commands())
 
   // Demand-activate the owning module if the command handler isn't registered yet
   ipcMain.handle('commands:execute', async (_e, id: string, ...args: unknown[]) => {
+    const declaredOwner = moduleRegistry.findDeclaredModuleForCommand(id)
+    if (declaredOwner && !moduleRegistry.isEnabled(declaredOwner)) {
+      throw new Error(`Command unavailable because module is disabled: ${declaredOwner}`)
+    }
+
     let h = getCommandHandler(id)
     if (!h) {
       const moduleId = moduleRegistry.findModuleForCommand(id)

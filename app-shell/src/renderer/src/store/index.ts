@@ -6,6 +6,8 @@ import { loadCommands } from './commands'
 import { initToasts } from './toasts'
 import { loadJobs } from './jobs'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
+import { activeModuleId } from './active-module'
+import { loadModules } from './modules'
 
 export type { ThemeMode }
 
@@ -13,7 +15,7 @@ export const workspaceId   = writable<string>('ws-default')
 export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
 export const archivedWorkspaces = writable<Workspace[]>([])
-export const activeModuleId = writable<string | null>('shell.documents')
+export { activeModuleId } from './active-module'
 
 export const documentsState = getModuleState<DocumentsStateSlice>('shell.documents', 'documents')
 
@@ -150,6 +152,7 @@ export async function setDemoModePreference(enabled: boolean): Promise<void> {
 
 export async function initStore(): Promise<void> {
   initToasts()
+  await loadModules()
   await loadCommands()
   await loadThemePreference()
   await loadEditorSettings()

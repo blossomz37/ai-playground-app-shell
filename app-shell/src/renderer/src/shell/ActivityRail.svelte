@@ -8,6 +8,7 @@
   } from 'phosphor-svelte'
 
   import type { Component } from 'svelte'
+  import { moduleList, loadModules } from '../store/modules'
 
   interface RailItem { id: string; label: string; icon: Component }
   interface Props {
@@ -16,7 +17,6 @@
   }
 
   let { moduleId, onSelect }: Props = $props()
-  let modules = $state<RailItem[]>([])
   let focusedControlId = $state<string | null>(null)
   let customRailOrder = $state<string[] | null>(null)
   let draggingModuleId = $state<string | null>(null)
@@ -47,22 +47,22 @@
   }
 
   const effectiveRailOrder = $derived(normalizeRailOrder(customRailOrder ?? railOrder))
+  const modules = $derived($moduleList
+    .filter(module => module.enabled && module.visible)
+    .map(module => ({
+      id: module.id,
+      label: module.name,
+      icon: iconMap[module.id] ?? PenNibIcon
+    })))
   const railModules = $derived(sortModules(modules.filter(mod => railOrder.includes(mod.id)), effectiveRailOrder))
   const visibleControlIds = $derived(railModules.map(mod => mod.id))
   const tabStopId = $derived(focusedControlId ?? activeRailControlId())
 
   onMount(async () => {
-    const [list, savedOrder] = await Promise.all([
-      window.shell.modules.list(),
+    const [, savedOrder] = await Promise.all([
+      loadModules(),
       window.shell.settings.get(RAIL_ORDER_SETTING) as Promise<unknown>
     ])
-    modules = list
-      .filter(m => m.enabled)
-      .map(m => ({
-        id: m.id,
-        label: m.name,
-        icon: iconMap[m.id] ?? PenNibIcon
-      }))
 
     if (Array.isArray(savedOrder)) {
       customRailOrder = normalizeRailOrder(savedOrder.filter(item => typeof item === 'string'))

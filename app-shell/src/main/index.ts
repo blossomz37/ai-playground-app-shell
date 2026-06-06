@@ -78,6 +78,8 @@ app.whenReady().then(async () => {
   const captureAiModel = process.env['SHELL_CAPTURE_AI_MODEL']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const captureDemoMode = process.env['SHELL_CAPTURE_DEMO_MODE']
+  const captureModuleEnabled = process.env['SHELL_CAPTURE_MODULES_ENABLED']
+  const captureModuleVisible = process.env['SHELL_CAPTURE_MODULES_VISIBLE']
   if (process.env['SHELL_CAPTURE'] && captureAiProviderId) {
     shellSettings.set('ai.providerId', captureAiProviderId)
     if (captureAiModel) {
@@ -111,6 +113,12 @@ app.whenReady().then(async () => {
 
   // 2. Restore enabled state from persistence (defaults to all-enabled on first launch).
   moduleRegistry.restoreEnabledState()
+  if (process.env['SHELL_CAPTURE'] && (captureModuleEnabled || captureModuleVisible)) {
+    moduleRegistry.applyTransientState({
+      enabledIds: captureModuleEnabled?.split(',').map(id => id.trim()).filter(Boolean),
+      visibleIds: captureModuleVisible?.split(',').map(id => id.trim()).filter(Boolean)
+    })
+  }
 
   // 3. Auto-activate any enabled module whose activation rules match the workspace type.
   //    Everything else activates on first use (rail click, command execution, file open).

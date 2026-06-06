@@ -1,4 +1,5 @@
-import type { ActivationRule, CommandCatalogEntry, Module, Workspace } from '@shared/module-contract'
+import type { ActivationRule, CommandCatalogEntry, Module, ModuleListItem, Workspace } from '@shared/module-contract'
+import { getModulePolicy, normalizeModuleEnabled, normalizeModuleVisible } from '@shared/module-policy'
 import { createModuleContext, type DisposableModuleContext } from './context'
 import { createSettingsStore } from '../core/settings'
 import { workspaceService } from '../core/workspaces'
@@ -8,6 +9,7 @@ import { workspaceService } from '../core/workspaces'
 interface ModuleRecord {
   module: Module
   enabled: boolean
+  visible: boolean
   activated: boolean
   ctx?: DisposableModuleContext
 }
@@ -24,6 +26,7 @@ export type ActivationTrigger =
 const registry = new Map<string, ModuleRecord>()
 const shellSettings = createSettingsStore('modules')
 const ENABLED_KEY = 'enabled'
+const VISIBLE_KEY = 'visible'
 let currentWorkspace: Workspace | null = null
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -77,7 +80,7 @@ export const moduleRegistry = {
   },
 
   register(module: Module): void {
-    registry.set(module.manifest.id, { module, enabled: false, activated: false })
+    registry.set(module.manifest.id, { module, enabled: false, visible: true, activated: false })
   },
 
   /**
@@ -98,28 +101,72 @@ export const moduleRegistry = {
         } else {
           r.enabled = enabledSet.has(id)
         }
+        r.enabled = normalizeModuleEnabled(id, r.enabled)
       }
       this._persistEnabled()
     } else {
       // First launch — enable everything and persist
-      for (const r of registry.values()) r.enabled = true
+      for (const [id, r] of registry) r.enabled = normalizeModuleEnabled(id, true)
       this._persistEnabled()
     }
+
+    this.restoreVisibleState()
+  },
+
+  restoreVisibleState(): void {
+    const persistedVisible = shellSettings.get<string[]>(VISIBLE_KEY)
+    const persistedKnown = shellSettings.get<string[]>('known_modules')
+    const visibleSet = persistedVisible ? new Set(persistedVisible) : null
+    const knownSet = persistedKnown ? new Set(persistedKnown) : null
+
+    for (const [id, r] of registry) {
+      const defaultVisible = visibleSet && knownSet?.has(id) ? visibleSet.has(id) : true
+      r.visible = normalizeModuleVisible(id, defaultVisible, r.enabled)
+    }
+
+    this._persistVisible()
   },
 
   enable(id: string): void {
     const r = registry.get(id)
     if (r) {
-      r.enabled = true
+      r.enabled = normalizeModuleEnabled(id, true)
+      r.visible = normalizeModuleVisible(id, r.visible, r.enabled)
       this._persistEnabled()
+      this._persistVisible()
     }
   },
 
   disable(id: string): void {
     const r = registry.get(id)
     if (r) {
-      r.enabled = false
+      r.enabled = normalizeModuleEnabled(id, false)
+      r.visible = normalizeModuleVisible(id, r.visible, r.enabled)
       this._persistEnabled()
+      this._persistVisible()
+    }
+  },
+
+  setVisible(id: string, visible: boolean): void {
+    const r = registry.get(id)
+    if (!r) return
+    r.visible = normalizeModuleVisible(id, visible, r.enabled)
+    this._persistVisible()
+  },
+
+  applyTransientState(state: { enabledIds?: string[]; visibleIds?: string[] }): void {
+    const enabledSet = state.enabledIds ? new Set(state.enabledIds) : null
+    const visibleSet = state.visibleIds ? new Set(state.visibleIds) : null
+
+    for (const [id, r] of registry) {
+      if (enabledSet) {
+        r.enabled = normalizeModuleEnabled(id, enabledSet.has(id))
+      }
+      if (visibleSet) {
+        r.visible = normalizeModuleVisible(id, visibleSet.has(id), r.enabled)
+      } else {
+        r.visible = normalizeModuleVisible(id, r.visible, r.enabled)
+      }
     }
   },
 
@@ -157,11 +204,13 @@ export const moduleRegistry = {
 
   // ── Queries ────────────────────────────────────────────────────────────
 
-  list(): Array<{ id: string; name: string; icon: string; enabled: boolean; activated: boolean }> {
+  list(): ModuleListItem[] {
     return Array.from(registry.values()).map(r => ({
       id: r.module.manifest.id,
       name: r.module.manifest.name,
       icon: r.module.manifest.contributes.zones?.railEntry?.icon ?? 'circle',
+      ...getModulePolicy(r.module.manifest.id),
+      visible: r.visible,
       enabled: r.enabled,
       activated: r.activated
     }))
@@ -175,6 +224,7 @@ export const moduleRegistry = {
   commands(): CommandCatalogEntry[] {
     const out: CommandCatalogEntry[] = []
     for (const r of registry.values()) {
+      if (!r.enabled) continue
       for (const c of r.module.manifest.contributes.commands ?? []) {
         out.push({ id: c.id, title: c.title, keybinding: c.keybinding, moduleId: r.module.manifest.id })
       }
@@ -188,11 +238,24 @@ export const moduleRegistry = {
    */
   findModuleForCommand(commandId: string): string | undefined {
     for (const r of registry.values()) {
+      if (r.enabled && r.module.manifest.contributes.commands?.some(c => c.id === commandId)) {
+        return r.module.manifest.id
+      }
+    }
+    return undefined
+  },
+
+  findDeclaredModuleForCommand(commandId: string): string | undefined {
+    for (const r of registry.values()) {
       if (r.module.manifest.contributes.commands?.some(c => c.id === commandId)) {
         return r.module.manifest.id
       }
     }
     return undefined
+  },
+
+  isEnabled(id: string): boolean {
+    return registry.get(id)?.enabled ?? false
   },
 
   // ── Internal ───────────────────────────────────────────────────────────
@@ -205,5 +268,13 @@ export const moduleRegistry = {
     
     shellSettings.set(ENABLED_KEY, enabledIds)
     shellSettings.set('known_modules', allIds)
+  },
+
+  _persistVisible(): void {
+    const visibleIds = Array.from(registry.entries())
+      .filter(([, r]) => r.visible)
+      .map(([id]) => id)
+
+    shellSettings.set(VISIBLE_KEY, visibleIds)
   }
 }

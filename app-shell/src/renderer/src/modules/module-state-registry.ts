@@ -5,6 +5,7 @@ import { JournalStateSlice } from '@shared/state/journal-state'
 import { TableViewStateSlice } from '@shared/state/tableview-state'
 import { WebStateSlice } from '@shared/state/web-state'
 import { WorkflowStateSlice } from '@shared/state/workflow-state'
+import type { ModuleListItem } from '@shared/module-contract'
 
 type ModuleStateKey =
   | 'aichat'
@@ -15,22 +16,42 @@ type ModuleStateKey =
   | 'web'
   | 'workflow'
 
-const registry = new Map<string, Map<ModuleStateKey, unknown>>()
+type StateFactory<T = unknown> = () => T
 
-function registerModuleState<T>(moduleId: string, key: ModuleStateKey, state: T): T {
-  const moduleStates = registry.get(moduleId) ?? new Map<ModuleStateKey, unknown>()
-  moduleStates.set(key, state)
-  registry.set(moduleId, moduleStates)
-  return state
+const factories = new Map<string, Map<ModuleStateKey, StateFactory>>()
+const instances = new Map<string, Map<ModuleStateKey, unknown>>()
+let moduleSnapshot = new Map<string, ModuleListItem>()
+
+function registerModuleState<T>(moduleId: string, key: ModuleStateKey, create: StateFactory<T>): void {
+  const moduleFactories = factories.get(moduleId) ?? new Map<ModuleStateKey, StateFactory>()
+  moduleFactories.set(key, create)
+  factories.set(moduleId, moduleFactories)
 }
 
 export function getModuleState<T>(moduleId: string, key: ModuleStateKey): T {
-  const state = registry.get(moduleId)?.get(key)
-  if (!state) throw new Error(`Module state not registered: ${moduleId}/${key}`)
+  const existing = instances.get(moduleId)?.get(key)
+  if (existing) return existing as T
+
+  const moduleInfo = moduleSnapshot.get(moduleId)
+  if (moduleInfo && moduleInfo.category === 'custom' && !moduleInfo.enabled) {
+    throw new Error(`Module state blocked because module is disabled: ${moduleId}/${key}`)
+  }
+
+  const factory = factories.get(moduleId)?.get(key)
+  if (!factory) throw new Error(`Module state not registered: ${moduleId}/${key}`)
+
+  const state = factory()
+  const moduleStates = instances.get(moduleId) ?? new Map<ModuleStateKey, unknown>()
+  moduleStates.set(key, state)
+  instances.set(moduleId, moduleStates)
   return state as T
 }
 
-registerModuleState('shell.documents', 'documents', new DocumentsStateSlice({
+export function setModulePolicySnapshot(modules: ModuleListItem[]): void {
+  moduleSnapshot = new Map(modules.map(module => [module.id, module]))
+}
+
+registerModuleState('shell.documents', 'documents', () => new DocumentsStateSlice({
   list: (workspaceId) => window.shell.documents.list(workspaceId),
   listArchived: (workspaceId) => window.shell.documents.listArchived(workspaceId),
   open: (id) => window.shell.documents.open(id),
@@ -47,15 +68,15 @@ registerModuleState('shell.documents', 'documents', new DocumentsStateSlice({
   setSortMode: (mode) => window.shell.settings.set('documents.tree.sortMode', mode)
 }))
 
-registerModuleState('shell.aichat', 'aichat', new AiChatStateSlice({
+registerModuleState('shell.aichat', 'aichat', () => new AiChatStateSlice({
   conversations: (workspaceId) => window.shell.ai.conversations(workspaceId),
   createConversation: (params) => window.shell.ai.createConversation(params),
   renameConversation: (params) => window.shell.ai.renameConversation(params),
   appendMessage: (params) => window.shell.ai.appendMessage(params)
 }))
 
-registerModuleState('shell.journal', 'journal', new JournalStateSlice())
-registerModuleState('shell.assets', 'assets', new AssetsStateSlice({
+registerModuleState('shell.journal', 'journal', () => new JournalStateSlice())
+registerModuleState('shell.assets', 'assets', () => new AssetsStateSlice({
   list: (params) => window.shell.assets.list(params),
   open: (id) => window.shell.assets.open(id),
   importFiles: (params) => window.shell.assets.importFiles(params),
@@ -67,6 +88,6 @@ registerModuleState('shell.assets', 'assets', new AssetsStateSlice({
   readPdf: (id) => window.shell.assets.readPdf(id),
   reveal: (path) => window.shell.assets.reveal(path)
 }))
-registerModuleState('shell.web', 'web', new WebStateSlice())
-registerModuleState('shell.tableview', 'tableview', new TableViewStateSlice())
-registerModuleState('shell.workflow', 'workflow', new WorkflowStateSlice())
+registerModuleState('shell.web', 'web', () => new WebStateSlice())
+registerModuleState('shell.tableview', 'tableview', () => new TableViewStateSlice())
+registerModuleState('shell.workflow', 'workflow', () => new WorkflowStateSlice())

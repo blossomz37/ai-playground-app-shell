@@ -439,6 +439,21 @@ export interface Module {
 }
 
 // window.shell API shape — declared here, used in renderer/src/env.d.ts
+export type { ModuleCategory, ModulePolicy } from './module-policy'
+
+export interface ModuleListItem {
+  id: string
+  name: string
+  icon: string
+  category: import('./module-policy').ModuleCategory
+  required: boolean
+  canDisable: boolean
+  canHide: boolean
+  visible: boolean
+  enabled: boolean
+  activated: boolean
+}
+
 export interface ShellApi {
   documents: {
     list(workspaceId: string): Promise<Doc[]>
@@ -470,9 +485,10 @@ export interface ShellApi {
     set(key: string, value: unknown): Promise<void>
   }
   modules: {
-    list(): Promise<Array<{ id: string; name: string; icon: string; enabled: boolean; activated: boolean }>>
+    list(): Promise<ModuleListItem[]>
     activate(id: string): Promise<void>
     setEnabled(id: string, enabled: boolean): Promise<void>
+    setVisible(id: string, visible: boolean): Promise<void>
   }
   commands: {
     list(): Promise<CommandCatalogEntry[]>

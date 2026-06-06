@@ -9,6 +9,8 @@ import type {
   ThemeMode,
   Workspace
 } from '@shared/module-contract'
+import type { ModuleListItem } from '@shared/module-contract'
+import { getModulePolicy, normalizeModuleEnabled, normalizeModuleVisible } from '@shared/module-policy'
 import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
 import { AI_API_KEY_REQUIRED_MESSAGE, DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
@@ -22,6 +24,9 @@ const MODULES = [
   { id: 'shell.web', name: 'Web', icon: 'globe' },
   { id: 'shell.promptstudio', name: 'Prompt Studio', icon: 'terminal' }
 ]
+
+const MODULE_ENABLED_KEY = 'modules.enabled'
+const MODULE_VISIBLE_KEY = 'modules.visible'
 
 const COMMANDS: CommandCatalogEntry[] = [
   { id: 'documents.save', title: 'Save Document', keybinding: 'CmdOrCtrl+S', moduleId: 'shell.documents' },
@@ -141,6 +146,8 @@ function createBrowserShell(): ShellApi {
     : []
   const aiConversations: AiConversation[] = []
   const assetRows: AssetRecord[] = []
+  let enabledModuleIds = normalizeEnabledIds(normalizePersistedModuleIds(settings.get(MODULE_ENABLED_KEY), MODULES.map(module => module.id)))
+  let visibleModuleIds = normalizeVisibleIds(normalizePersistedModuleIds(settings.get(MODULE_VISIBLE_KEY), MODULES.map(module => module.id)), enabledModuleIds)
 
   function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
     const doc = activeDocumentId
@@ -431,12 +438,35 @@ function createBrowserShell(): ShellApi {
       }
     },
     modules: {
-      list: async () => MODULES.map(module => ({ ...module, enabled: true, activated: false })),
+      list: async () => listBrowserModules(),
       activate: async () => {},
-      setEnabled: async () => {}
+      setEnabled: async (id, enabled) => {
+        const nextEnabled = normalizeModuleEnabled(id, enabled)
+        if (nextEnabled) {
+          enabledModuleIds = addModuleId(enabledModuleIds, id)
+        } else {
+          enabledModuleIds = enabledModuleIds.filter(item => item !== id)
+        }
+        visibleModuleIds = normalizeVisibleIds(visibleModuleIds, enabledModuleIds)
+        settings.set(MODULE_ENABLED_KEY, enabledModuleIds)
+        settings.set(MODULE_VISIBLE_KEY, visibleModuleIds)
+        writeBrowserSetting(MODULE_ENABLED_KEY, enabledModuleIds)
+        writeBrowserSetting(MODULE_VISIBLE_KEY, visibleModuleIds)
+      },
+      setVisible: async (id, visible) => {
+        const enabled = enabledModuleIds.includes(id)
+        const nextVisible = normalizeModuleVisible(id, visible, enabled)
+        if (nextVisible) {
+          visibleModuleIds = addModuleId(visibleModuleIds, id)
+        } else {
+          visibleModuleIds = visibleModuleIds.filter(item => item !== id)
+        }
+        settings.set(MODULE_VISIBLE_KEY, visibleModuleIds)
+        writeBrowserSetting(MODULE_VISIBLE_KEY, visibleModuleIds)
+      }
     },
     commands: {
-      list: async () => COMMANDS,
+      list: async () => COMMANDS.filter(command => !command.moduleId || enabledModuleIds.includes(command.moduleId)),
       execute: async () => {}
     },
     search: {
@@ -678,6 +708,40 @@ function createBrowserShell(): ShellApi {
       }
     }
   }
+
+  function listBrowserModules(): ModuleListItem[] {
+    return MODULES.map(module => {
+      const enabled = normalizeModuleEnabled(module.id, enabledModuleIds.includes(module.id))
+      return {
+        ...module,
+        ...getModulePolicy(module.id),
+        enabled,
+        visible: normalizeModuleVisible(module.id, visibleModuleIds.includes(module.id), enabled),
+        activated: false
+      }
+    })
+  }
+}
+
+function normalizePersistedModuleIds(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return [...fallback]
+  return value.filter(item => typeof item === 'string')
+}
+
+function normalizeEnabledIds(ids: string[]): string[] {
+  return MODULES
+    .filter(module => normalizeModuleEnabled(module.id, ids.includes(module.id)))
+    .map(module => module.id)
+}
+
+function normalizeVisibleIds(ids: string[], enabledIds: string[]): string[] {
+  return MODULES
+    .filter(module => normalizeModuleVisible(module.id, ids.includes(module.id), enabledIds.includes(module.id)))
+    .map(module => module.id)
+}
+
+function addModuleId(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids : [...ids, id]
 }
 
 export function installBrowserShell(): void {

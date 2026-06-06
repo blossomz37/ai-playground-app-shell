@@ -21,6 +21,8 @@
   import JobsPanel from './JobsPanel.svelte'
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
   import { activeModuleId } from '../store'
+  import { ensureActiveModuleAvailable, isModuleReachable, loadModules } from '../store/modules'
+  import { FALLBACK_MODULE_ID } from '@shared/module-policy'
   import { toggleJobsPanel } from '../store/jobs'
   import { importAssets } from '../modules/assets/state'
   import {
@@ -86,6 +88,12 @@
   }
 
   async function selectModule(id: string) {
+    await loadModules()
+    if (!isModuleReachable(id)) {
+      activeModuleId.set(FALLBACK_MODULE_ID)
+      await window.shell.modules.activate(FALLBACK_MODULE_ID)
+      return
+    }
     activeModuleId.set(id)
     await window.shell.modules.activate(id)
   }
@@ -137,6 +145,7 @@
       applyLayout(state)
     } catch { /* use defaults */ }
     layoutLoaded = true
+    ensureActiveModuleAvailable()
 
     // Register commands
     commandDisposables.push(

@@ -29,6 +29,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
+  const settingsSearch = process.env['SHELL_CAPTURE_SETTINGS_SEARCH']
+  const commandPaletteQuery = process.env['SHELL_CAPTURE_COMMAND_PALETTE_QUERY']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
   const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
@@ -505,6 +507,24 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (openSettings) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-open-settings'))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+        if (settingsSearch) {
+          await win.webContents.executeJavaScript(`
+            {
+              const input = document.querySelector('#settings-module-search');
+              if (input instanceof HTMLInputElement) {
+                input.value = ${JSON.stringify(settingsSearch)};
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }
+          `)
+          await new Promise(resolve => setTimeout(resolve, interactionDelay))
+        }
+      }
+      if (commandPaletteQuery !== undefined) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-open-command-palette', { detail: ${JSON.stringify(commandPaletteQuery)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

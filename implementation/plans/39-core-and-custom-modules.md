@@ -381,3 +381,36 @@ Document the new module policy and leave the implementation easy to continue.
 - Assumption: one Core toggle controls both “shown in rail” and any other module-list visibility for v1; no separate per-surface toggles.
 - Assumption: existing persisted `modules.enabled` values should not be allowed to disable Required/Core modules after this change.
 - Assumption: no user data is deleted when a Custom module is disabled.
+
+## Implementation Result - 2026-06-06
+
+Status: implemented.
+
+What landed:
+- Shared Required/Core/Custom policy in `app-shell/src/shared/module-policy.ts`.
+- `modules:list` now returns category, required, canDisable, canHide, visible, enabled, and activated.
+- `modules:setVisible` persists Core visibility separately from Custom enablement.
+- Table View is the required fallback and cannot be disabled or hidden.
+- Settings now includes Core & Custom Plugins with search, Required/Core/Custom grouping, Core Show toggles, and Custom Enable toggles.
+- Activity rail, commands, direct command execution, and browser preview honor module enabled/visible state.
+- Main/sidebar/inspector module views load through dynamic import maps and cache after first load.
+- Renderer module state registration is factory-based; Custom module state is blocked when the latest module policy snapshot says the module is disabled.
+
+Validation:
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+- Svelte autofixer clean for new/touched module-settings, rail, shell, and pane components; `CommandPalette.svelte` has no autofixer issues after replacing an existing `{@html}` snippet with escaped text, though the autofixer still reports advisory suggestions against its pre-existing effect-based search flow.
+- Electron captures:
+  - `implementation/screenshots/core-custom-modules-settings-after-2026-06-06.png`
+  - `implementation/screenshots/core-custom-modules-settings-search-custom-after-2026-06-06.png`
+  - `implementation/screenshots/core-custom-modules-core-hidden-rail-after-2026-06-06.png`
+  - `implementation/screenshots/core-custom-modules-custom-disabled-rail-after-2026-06-06.png`
+  - `implementation/screenshots/core-custom-modules-command-palette-disabled-custom-after-2026-06-06.png`
+  - `implementation/screenshots/core-custom-modules-reenabled-custom-render-after-2026-06-06.png`
+- Browser preview capture:
+  - `implementation/screenshots/core-custom-modules-browser-preview-state-after-2026-06-06.png`
+
+Known notes:
+- Screenshot capture module enabled/visible overrides are transient in-memory overrides and do not persist to user settings.
+- The Prompt Studio render capture logged existing local database foreign-key warnings while still rendering the module UI; this appears tied to the current local database state, not module policy or lazy loading.

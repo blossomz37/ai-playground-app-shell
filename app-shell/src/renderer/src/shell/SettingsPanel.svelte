@@ -12,6 +12,7 @@
   import AppearanceSettings from './AppearanceSettings.svelte'
   import DemoModeSettings from './DemoModeSettings.svelte'
   import EditorSettings from './EditorSettings.svelte'
+  import ModulePluginSettings from './ModulePluginSettings.svelte'
   import SecretsSettings from './SecretsSettings.svelte'
 
   let open = $state(false)
@@ -66,6 +67,7 @@
 
       <div class="settings-body">
         <AppearanceSettings />
+        <ModulePluginSettings />
         <DemoModeSettings />
         <EditorSettings />
         <AiProviderSettings {secretNames} {markSecretStored} {loadSecrets} />
