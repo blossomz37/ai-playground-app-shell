@@ -1,11 +1,15 @@
 import type {
+  AssetDocumentLinkParams,
+  AssetDocumentLinkUpdateParams,
   AssetExportParams,
   AssetExportResult,
   AssetImportParams,
   AssetListParams,
   AssetPdfData,
   AssetRecord,
-  AssetUpdatePatch
+  AssetUpdatePatch,
+  AssetWorkspaceLinkParams,
+  AssetWorkspaceLinkUpdateParams
 } from '../module-contract'
 import { ObservableSlice } from './observable'
 
@@ -16,6 +20,12 @@ export interface AssetsPort {
   open(id: string): Promise<AssetRecord | null>
   importFiles(params: AssetImportParams): Promise<AssetRecord[]>
   update(id: string, patch: AssetUpdatePatch): Promise<AssetRecord>
+  addWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord>
+  updateWorkspaceLink(params: AssetWorkspaceLinkUpdateParams): Promise<AssetRecord>
+  removeWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord>
+  addDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord>
+  updateDocumentLink(params: AssetDocumentLinkUpdateParams): Promise<AssetRecord>
+  removeDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord>
   archive(id: string): Promise<AssetRecord>
   restore(id: string): Promise<AssetRecord>
   delete(id: string): Promise<{ id: string }>
@@ -74,6 +84,37 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     this.upsertAsset(updated)
     this.emit()
     return updated
+  }
+
+  async addWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord> {
+    return this.applyLinkedAsset(await this.port.addWorkspaceLink(params))
+  }
+
+  async updateWorkspaceLink(params: AssetWorkspaceLinkUpdateParams): Promise<AssetRecord> {
+    return this.applyLinkedAsset(await this.port.updateWorkspaceLink(params))
+  }
+
+  async removeWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord> {
+    const updated = await this.port.removeWorkspaceLink(params)
+    if (this.workspaceId && !updated.workspaceLinks.some(link => link.workspaceId === this.workspaceId)) {
+      await this.refresh()
+      this.selectedAssetId = this.assets[0]?.id ?? this.archivedAssets[0]?.id ?? ''
+      this.emit()
+      return updated
+    }
+    return this.applyLinkedAsset(updated)
+  }
+
+  async addDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord> {
+    return this.applyLinkedAsset(await this.port.addDocumentLink(params))
+  }
+
+  async updateDocumentLink(params: AssetDocumentLinkUpdateParams): Promise<AssetRecord> {
+    return this.applyLinkedAsset(await this.port.updateDocumentLink(params))
+  }
+
+  async removeDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord> {
+    return this.applyLinkedAsset(await this.port.removeDocumentLink(params))
   }
 
   async importAssets(workspaceId: string, filePaths?: string[]): Promise<AssetRecord[]> {
@@ -143,6 +184,13 @@ export class AssetsStateSlice extends ObservableSlice<AssetsState> {
     }
     const otherIndex = other.findIndex(item => item.id === asset.id)
     if (otherIndex >= 0) other.splice(otherIndex, 1)
+  }
+
+  private applyLinkedAsset(asset: AssetRecord): AssetRecord {
+    this.upsertAsset(asset)
+    this.selectedAssetId = asset.id
+    this.emit()
+    return asset
   }
 }
 

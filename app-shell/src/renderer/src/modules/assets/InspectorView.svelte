@@ -1,8 +1,57 @@
 <!-- Assets InspectorView — metadata panel -->
 <script lang="ts">
-  import { formatAssetBytes, primaryAssetMetadata, renameAsset, selectedAsset, updateAssetDetails } from './state'
+  import type { AssetDocumentLink, AssetWorkspaceLink, Doc } from '@shared/module-contract'
+  import { activeWorkspace, documents } from '../../store'
+  import {
+    addDocumentLink,
+    addProjectLink,
+    formatAssetBytes,
+    primaryAssetMetadata,
+    removeDocumentLink,
+    removeProjectLink,
+    renameAsset,
+    selectedAsset,
+    updateAssetDetails,
+    updateDocumentLink,
+    updateProjectLink
+  } from './state'
+
+  const PROJECT_ROLES = ['reference', 'cover', 'research', 'marketing', 'moodboard', 'other']
+  const DOCUMENT_RELATIONS = ['reference', 'illustrates', 'source', 'cover', 'research', 'other']
 
   let asset = $derived($selectedAsset)
+  let workspace = $derived($activeWorkspace)
+  let documentQuery = $state('')
+  let documentTypeaheadOpen = $state(false)
+  let highlightedDocumentIndex = $state(0)
+  let newDocumentRelation = $state('reference')
+
+  let currentWorkspaceLinks = $derived(
+    asset && workspace ? asset.workspaceLinks.filter(link => link.workspaceId === workspace.id) : []
+  )
+
+  let availableProjectRoles = $derived(
+    PROJECT_ROLES.filter(role => !currentWorkspaceLinks.some(link => link.role === role))
+  )
+
+  let documentLookup = $derived.by(() =>
+    new Map($documents.map(doc => [doc.id, doc]))
+  )
+
+  let linkedDocumentIds = $derived.by(() =>
+    new Set(asset?.documentLinks.map(link => link.documentId) ?? [])
+  )
+
+  let documentCandidates = $derived.by(() => {
+    const query = documentQuery.trim().toLowerCase()
+    if (!query) return []
+    return $documents
+      .filter(doc => !doc.archivedAt && !linkedDocumentIds.has(doc.id))
+      .filter(doc => `${doc.kind} ${doc.title}`.toLowerCase().includes(query))
+      .slice(0, 7)
+  })
+
+  let showDocumentCandidates = $derived(documentTypeaheadOpen && documentCandidates.length > 0)
 
   async function saveLabel(value: string): Promise<void> {
     if (!asset) return
@@ -21,6 +70,84 @@
     const tags = value.split(',').map(tag => tag.trim()).filter(Boolean)
     if (tags.join('|') === asset.tags.join('|')) return
     await updateAssetDetails(asset.id, { tags })
+  }
+
+  async function addCurrentProjectLink(): Promise<void> {
+    if (!asset || !workspace || availableProjectRoles.length === 0) return
+    await addProjectLink(asset.id, workspace.id, availableProjectRoles[0])
+  }
+
+  async function changeProjectRole(link: AssetWorkspaceLink, nextRole: string): Promise<void> {
+    if (!asset || link.role === nextRole) return
+    await updateProjectLink(asset.id, link.workspaceId, link.role, nextRole)
+  }
+
+  async function unlinkProject(link: AssetWorkspaceLink): Promise<void> {
+    if (!asset) return
+    await removeProjectLink(asset.id, link.workspaceId, link.role)
+  }
+
+  async function changeDocumentRelation(link: AssetDocumentLink, nextRelationType: string): Promise<void> {
+    if (!asset || link.relationType === nextRelationType) return
+    await updateDocumentLink(asset.id, link.documentId, link.relationType, nextRelationType)
+  }
+
+  async function unlinkDocument(link: AssetDocumentLink): Promise<void> {
+    if (!asset) return
+    await removeDocumentLink(asset.id, link.documentId, link.relationType)
+  }
+
+  async function selectDocumentCandidate(doc: Doc): Promise<void> {
+    if (!asset) return
+    await addDocumentLink(asset.id, doc.id, newDocumentRelation)
+    documentQuery = ''
+    documentTypeaheadOpen = false
+    highlightedDocumentIndex = 0
+  }
+
+  function onDocumentQueryInput(event: Event): void {
+    documentQuery = event.currentTarget instanceof HTMLInputElement ? event.currentTarget.value : ''
+    documentTypeaheadOpen = true
+    highlightedDocumentIndex = 0
+  }
+
+  function onDocumentQueryFocus(): void {
+    documentTypeaheadOpen = true
+  }
+
+  function onDocumentQueryKeydown(event: KeyboardEvent): void {
+    if (!showDocumentCandidates && event.key !== 'Escape') return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      highlightedDocumentIndex = Math.min(highlightedDocumentIndex + 1, documentCandidates.length - 1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      highlightedDocumentIndex = Math.max(highlightedDocumentIndex - 1, 0)
+    } else if (event.key === 'Enter') {
+      const candidate = documentCandidates[highlightedDocumentIndex]
+      if (!candidate) return
+      event.preventDefault()
+      void selectDocumentCandidate(candidate)
+    } else if (event.key === 'Escape') {
+      documentTypeaheadOpen = false
+    }
+  }
+
+  function roleOptions(currentRole: string): string[] {
+    return PROJECT_ROLES.includes(currentRole) ? PROJECT_ROLES : [currentRole, ...PROJECT_ROLES]
+  }
+
+  function relationOptions(currentRelation: string): string[] {
+    return DOCUMENT_RELATIONS.includes(currentRelation) ? DOCUMENT_RELATIONS : [currentRelation, ...DOCUMENT_RELATIONS]
+  }
+
+  function documentLabel(documentId: string): string {
+    const doc = documentLookup.get(documentId)
+    return doc ? `${titleCase(doc.kind)} - ${doc.title}` : documentId
+  }
+
+  function titleCase(value: string): string {
+    return value.slice(0, 1).toUpperCase() + value.slice(1)
   }
 </script>
 
@@ -83,9 +210,106 @@
     </section>
 
     <section class="section">
-      <h3 class="section-title">Links</h3>
-      <p class="usage-hint">{asset.workspaceLinks.length} workspace link{asset.workspaceLinks.length === 1 ? '' : 's'}</p>
-      <p class="usage-hint">{asset.documentLinks.length} document link{asset.documentLinks.length === 1 ? '' : 's'}</p>
+      <div class="section-row">
+        <h3 class="section-title">Links</h3>
+        <span class="readonly-badge">{currentWorkspaceLinks.length} project · {asset.documentLinks.length} document</span>
+      </div>
+
+      <div class="link-group">
+        <div class="link-group-header">
+          <span>Project</span>
+          <button
+            type="button"
+            class="link-add"
+            disabled={!workspace || availableProjectRoles.length === 0}
+            onclick={() => void addCurrentProjectLink()}
+          >+ Add project link</button>
+        </div>
+
+        {#if currentWorkspaceLinks.length > 0}
+          <div class="link-list">
+            {#each currentWorkspaceLinks as link (link.workspaceId + link.role)}
+              <div class="link-row">
+                <span class="link-target">{workspace?.name ?? 'Current project'}</span>
+                <select
+                  class="link-select"
+                  aria-label="Project link role"
+                  value={link.role}
+                  onchange={(event) => void changeProjectRole(link, event.currentTarget.value)}
+                >
+                  {#each roleOptions(link.role) as role (role)}
+                    <option value={role}>{role}</option>
+                  {/each}
+                </select>
+                <button type="button" class="link-remove" aria-label="Remove project link" onclick={() => void unlinkProject(link)}>×</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <div class="link-group">
+        <div class="link-group-header">
+          <span>Documents</span>
+          <select class="link-select compact-select" aria-label="New document link relation" bind:value={newDocumentRelation}>
+            {#each DOCUMENT_RELATIONS as relation (relation)}
+              <option value={relation}>{relation}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="typeahead">
+          <input
+            class="field"
+            aria-label="Add document link"
+            aria-autocomplete="list"
+            aria-expanded={showDocumentCandidates}
+            placeholder="+ Add document link"
+            value={documentQuery}
+            data-capture-document-typeahead
+            oninput={onDocumentQueryInput}
+            onfocus={onDocumentQueryFocus}
+            onkeydown={onDocumentQueryKeydown}
+          />
+          {#if showDocumentCandidates}
+            <div class="typeahead-results" role="listbox">
+              {#each documentCandidates as doc, index (doc.id)}
+                <button
+                  type="button"
+                  role="option"
+                  class="typeahead-result"
+                  class:active={index === highlightedDocumentIndex}
+                  aria-selected={index === highlightedDocumentIndex}
+                  onclick={() => void selectDocumentCandidate(doc)}
+                >
+                  <span>{titleCase(doc.kind)} - {doc.title}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        {#if asset.documentLinks.length > 0}
+          <div class="link-list document-link-list">
+            {#each asset.documentLinks as link (link.documentId + link.relationType)}
+              <div class="link-row" data-capture-document-link-row>
+                <span class="link-target">{documentLabel(link.documentId)}</span>
+                <select
+                  class="link-select"
+                  aria-label="Document link relation"
+                  value={link.relationType}
+                  onchange={(event) => void changeDocumentRelation(link, event.currentTarget.value)}
+                >
+                  {#each relationOptions(link.relationType) as relation (relation)}
+                    <option value={relation}>{relation}</option>
+                  {/each}
+                </select>
+                <button type="button" class="link-remove" aria-label="Remove document link" onclick={() => void unlinkDocument(link)}>×</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </section>
   {/if}
 </div>
@@ -112,6 +336,38 @@
   }
   .field.compact { padding: var(--space-1) var(--space-2); }
   .comments { min-height: 86px; resize: vertical; }
-  .field:focus-visible, .comments:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
-  .usage-hint { font-size: var(--font-size-sm); color: var(--color-fg-muted); margin: 0 0 var(--space-1); }
+  .field:focus-visible, .comments:focus-visible, .link-select:focus-visible, .link-add:focus-visible, .link-remove:focus-visible, .typeahead-result:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+  .link-group { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+  .link-group-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--font-size-xs); font-weight: 700; color: var(--color-fg-secondary); text-transform: uppercase; }
+  .link-add {
+    border: var(--border-subtle); border-radius: var(--radius-sm); background: var(--color-bg-overlay);
+    color: var(--color-fg-secondary); font: inherit; font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);
+  }
+  .link-add:disabled { opacity: 0.45; cursor: not-allowed; }
+  .link-list { display: grid; gap: var(--space-2); }
+  .document-link-list { margin-top: var(--space-2); }
+  .link-row { display: grid; grid-template-columns: minmax(0, 1fr) 108px 28px; gap: var(--space-2); align-items: center; }
+  .link-target { min-width: 0; color: var(--color-fg-secondary); font-size: var(--font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link-select {
+    width: 100%; border: var(--border-subtle); border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay); color: var(--color-fg-primary);
+    font: inherit; font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);
+  }
+  .compact-select { max-width: 116px; }
+  .link-remove {
+    width: 28px; height: 28px; border: var(--border-subtle); border-radius: var(--radius-sm);
+    background: transparent; color: var(--color-fg-muted); font: inherit; line-height: 1;
+  }
+  .link-remove:hover, .link-add:hover:not(:disabled), .typeahead-result:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
+  .typeahead { position: relative; }
+  .typeahead-results {
+    position: absolute; z-index: 4; left: 0; right: 0; top: calc(100% + var(--space-1));
+    display: grid; gap: 1px; border: var(--border-subtle); border-radius: var(--radius-sm);
+    background: var(--color-bg-elevated); box-shadow: var(--shadow-panel); overflow: hidden;
+  }
+  .typeahead-result {
+    width: 100%; border: 0; background: transparent; color: var(--color-fg-secondary);
+    font: inherit; font-size: var(--font-size-sm); text-align: left; padding: var(--space-2);
+  }
+  .typeahead-result.active { background: color-mix(in srgb, var(--accent-inspector) 18%, transparent); color: var(--color-fg-primary); }
 </style>

@@ -1,9 +1,13 @@
 import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
 import type {
+  AssetDocumentLinkParams,
+  AssetDocumentLinkUpdateParams,
   AssetExportParams,
   AssetImportParams,
   AssetListParams,
   AssetUpdatePatch,
+  AssetWorkspaceLinkParams,
+  AssetWorkspaceLinkUpdateParams,
   DocumentExportParams,
   JournalEntry,
   JournalExportParams,
@@ -295,6 +299,30 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('assets:update', (_event, { id, patch }: { id: string; patch: AssetUpdatePatch }) =>
     assets.update(id, patch)
+  )
+
+  ipcMain.handle('assets:addWorkspaceLink', (_event, params: AssetWorkspaceLinkParams) =>
+    assets.addWorkspaceLink(params)
+  )
+
+  ipcMain.handle('assets:updateWorkspaceLink', (_event, params: AssetWorkspaceLinkUpdateParams) =>
+    assets.updateWorkspaceLink(params)
+  )
+
+  ipcMain.handle('assets:removeWorkspaceLink', (_event, params: AssetWorkspaceLinkParams) =>
+    assets.removeWorkspaceLink(params)
+  )
+
+  ipcMain.handle('assets:addDocumentLink', (_event, params: AssetDocumentLinkParams) =>
+    assets.addDocumentLink(params)
+  )
+
+  ipcMain.handle('assets:updateDocumentLink', (_event, params: AssetDocumentLinkUpdateParams) =>
+    assets.updateDocumentLink(params)
+  )
+
+  ipcMain.handle('assets:removeDocumentLink', (_event, params: AssetDocumentLinkParams) =>
+    assets.removeDocumentLink(params)
   )
 
   ipcMain.handle('assets:archive', (_event, { id }: { id: string }) => assets.archive(id))

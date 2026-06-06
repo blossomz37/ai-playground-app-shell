@@ -51,6 +51,30 @@ export async function updateAssetDetails(id: string, patch: AssetUpdatePatch): P
   await assetsState.updateAsset(id, patch)
 }
 
+export async function addProjectLink(assetId: string, workspaceId: string, role: string): Promise<void> {
+  await assetsState.addWorkspaceLink({ assetId, workspaceId, role })
+}
+
+export async function updateProjectLink(assetId: string, workspaceId: string, fromRole: string, toRole: string): Promise<void> {
+  await assetsState.updateWorkspaceLink({ assetId, workspaceId, fromRole, toRole })
+}
+
+export async function removeProjectLink(assetId: string, workspaceId: string, role: string): Promise<void> {
+  await assetsState.removeWorkspaceLink({ assetId, workspaceId, role })
+}
+
+export async function addDocumentLink(assetId: string, documentId: string, relationType: string): Promise<void> {
+  await assetsState.addDocumentLink({ assetId, documentId, relationType })
+}
+
+export async function updateDocumentLink(assetId: string, documentId: string, fromRelationType: string, toRelationType: string): Promise<void> {
+  await assetsState.updateDocumentLink({ assetId, documentId, fromRelationType, toRelationType })
+}
+
+export async function removeDocumentLink(assetId: string, documentId: string, relationType: string): Promise<void> {
+  await assetsState.removeDocumentLink({ assetId, documentId, relationType })
+}
+
 export async function copySelectedAssetPath(): Promise<void> {
   const path = assetsState.getSnapshot().selectedAsset?.filePath
   if (!path) return
@@ -163,6 +187,7 @@ if (typeof window !== 'undefined') {
   const captureWindow = window as typeof window & {
     __assetsCaptureDbSmoke?: (params: AssetsCaptureDbSmokeParams) => Promise<unknown>
     __assetsCaptureDeleteAssets?: (ids: string[]) => Promise<void>
+    __assetsCaptureRefresh?: (workspaceId: string, assetId?: string) => Promise<void>
   }
   captureWindow.__assetsCaptureDbSmoke = runAssetsCaptureDbSmoke
   captureWindow.__assetsCaptureDeleteAssets = async (ids) => {
@@ -171,5 +196,10 @@ if (typeof window !== 'undefined') {
     }
     const wsId = get(workspaceId)
     if (wsId && wsId !== 'ws-default') await assetsState.loadWorkspace(wsId)
+  }
+  captureWindow.__assetsCaptureRefresh = async (wsId, assetId) => {
+    if (!wsId || wsId === 'ws-default') return
+    await assetsState.loadWorkspace(wsId)
+    if (assetId) assetsState.selectAsset(assetId)
   }
 }

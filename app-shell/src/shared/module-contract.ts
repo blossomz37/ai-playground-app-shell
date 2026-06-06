@@ -339,6 +339,32 @@ export interface AssetUpdatePatch {
   tags?: string[]
 }
 
+export interface AssetWorkspaceLinkParams {
+  assetId: string
+  workspaceId: string
+  role: string
+}
+
+export interface AssetWorkspaceLinkUpdateParams {
+  assetId: string
+  workspaceId: string
+  fromRole: string
+  toRole: string
+}
+
+export interface AssetDocumentLinkParams {
+  assetId: string
+  documentId: string
+  relationType: string
+}
+
+export interface AssetDocumentLinkUpdateParams {
+  assetId: string
+  documentId: string
+  fromRelationType: string
+  toRelationType: string
+}
+
 export interface AssetExportParams {
   targetDir?: string
 }
@@ -515,6 +541,12 @@ export interface ShellApi {
     open(id: string): Promise<AssetRecord | null>
     importFiles(params: AssetImportParams): Promise<AssetRecord[]>
     update(id: string, patch: AssetUpdatePatch): Promise<AssetRecord>
+    addWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord>
+    updateWorkspaceLink(params: AssetWorkspaceLinkUpdateParams): Promise<AssetRecord>
+    removeWorkspaceLink(params: AssetWorkspaceLinkParams): Promise<AssetRecord>
+    addDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord>
+    updateDocumentLink(params: AssetDocumentLinkUpdateParams): Promise<AssetRecord>
+    removeDocumentLink(params: AssetDocumentLinkParams): Promise<AssetRecord>
     archive(id: string): Promise<AssetRecord>
     restore(id: string): Promise<AssetRecord>
     delete(id: string): Promise<{ id: string }>

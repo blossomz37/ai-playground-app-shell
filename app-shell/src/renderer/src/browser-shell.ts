@@ -614,6 +614,54 @@ function createBrowserShell(): ShellApi {
         asset.updatedAt = new Date().toISOString()
         return asset
       },
+      addWorkspaceLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        if (!asset.workspaceLinks.some(link => link.workspaceId === params.workspaceId && link.role === params.role)) {
+          asset.workspaceLinks.push({ workspaceId: params.workspaceId, role: params.role, createdAt: new Date().toISOString() })
+        }
+        return asset
+      },
+      updateWorkspaceLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        asset.workspaceLinks = asset.workspaceLinks.filter(link =>
+          !(link.workspaceId === params.workspaceId && link.role === params.fromRole)
+            && !(link.workspaceId === params.workspaceId && link.role === params.toRole)
+        )
+        asset.workspaceLinks.push({ workspaceId: params.workspaceId, role: params.toRole, createdAt: new Date().toISOString() })
+        return asset
+      },
+      removeWorkspaceLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        asset.workspaceLinks = asset.workspaceLinks.filter(link =>
+          !(link.workspaceId === params.workspaceId && link.role === params.role)
+        )
+        return asset
+      },
+      addDocumentLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        asset.documentLinks = asset.documentLinks.filter(link => link.documentId !== params.documentId)
+        asset.documentLinks.push({ documentId: params.documentId, relationType: params.relationType, createdAt: new Date().toISOString() })
+        return asset
+      },
+      updateDocumentLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        asset.documentLinks = asset.documentLinks.filter(link => link.documentId !== params.documentId)
+        asset.documentLinks.push({ documentId: params.documentId, relationType: params.toRelationType, createdAt: new Date().toISOString() })
+        return asset
+      },
+      removeDocumentLink: async (params) => {
+        const asset = assetRows.find(item => item.id === params.assetId)
+        if (!asset) throw new Error('Asset not found.')
+        asset.documentLinks = asset.documentLinks.filter(link =>
+          !(link.documentId === params.documentId && link.relationType === params.relationType)
+        )
+        return asset
+      },
       archive: async (id) => {
         const asset = assetRows.find(item => item.id === id)
         if (!asset) throw new Error('Asset not found.')

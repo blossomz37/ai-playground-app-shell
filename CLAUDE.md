@@ -84,6 +84,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Demo Mode and no-mock defaults**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/38-demo-mode-no-mock-defaults.md`): New installs seed only a neutral empty workspace, browser preview starts without demo manuscript content, Settings exposes shell-level Demo Mode, and AI tools no longer fall back to `mock-local` unless Demo Mode is enabled. Missing live credentials now show `Save an API key before using AI tools.`
 - ~~**Core & Custom module settings**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/39-core-and-custom-modules.md`): Added Required/Core/Custom module policy. Table View is required and always visible; Documents, Journal, Assets, and Web are Core modules that can be hidden from navigation but remain enabled; AI Chat, Prompt Studio, and Workflow Runner are Custom modules that can be disabled. Settings now exposes Core & Custom Plugins, rail/commands/browser preview honor module state, and renderer module views/state initialize lazily where practical.
 - ~~**Enhanced Table View filters**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/40-enhanced-table-view-filters.md`): Table View now supports multi-kind custom filtering with All/None/Invert, word-count min/max filters, modified-date quick ranges, visible filter chips, and result summaries while preserving legacy single-kind persisted state migration.
+- ~~**Assets project/document links**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/41-assets-project-document-links.md`): Assets inspector now supports editable current-project roles and document links through a current-workspace typeahead while source/technical metadata remains read-only.
 - **Next slice** — not selected. Start from the newest numbered `session-handoffs/HANDOFF_NN.md` and live repo evidence before planning the next narrow hardening pass.
 
 ## Workspace Layout
@@ -92,7 +93,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 app-shell-project/
 ├── CLAUDE.md                 ← you are here (durable orientation)
 ├── session-handoffs/         ← per-session handoffs, numbered HANDOFF_NN.md
-│   └── HANDOFF_55.md         ← latest = highest number; read it first
+│   └── HANDOFF_56.md         ← latest = highest number; read it first
 ├── 0-shell-platform-spec.md  ← primary spec; §12 = resolved decisions
 ├── 1-shell-spec.md           ← SHELL_SPEC: stack, layout, persistence, theming, manifest
 ├── 2-modules-overview.md     ← MODULES_OVERVIEW: first module-set + room→module map

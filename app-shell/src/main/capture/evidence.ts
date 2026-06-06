@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { basename, dirname, join } from 'path'
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { isThemeMode } from '../core/theme'
 import { getDb } from '../core/db'
 import { workspaceService } from '../core/workspaces'
@@ -59,6 +59,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const journalImportDir = join(journalSmokeDir, 'import')
   const journalExportDir = join(journalSmokeDir, 'export')
   const assetsDbSmoke = process.env['SHELL_CAPTURE_ASSETS_DB_SMOKE'] === '1'
+  const assetLinksState = process.env['SHELL_CAPTURE_ASSET_LINKS_STATE']
   const selectAssetMediaType = process.env['SHELL_CAPTURE_SELECT_ASSET_MEDIA_TYPE']
   const assetsImportDir = process.env['SHELL_CAPTURE_ASSETS_IMPORT_DIR']
     ?? join(process.cwd(), '..', 'sample-assets-import')
@@ -72,6 +73,9 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
+  let assetLinksCleanupIds: string[] = []
+  let assetLinksDocumentCleanupIds: string[] = []
+  let assetLinksTempPaths: string[] = []
   let tableFilterCleanup = false
 
   async function waitForWebviewRender(): Promise<void> {
@@ -511,6 +515,117 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         console.log('[SHELL_CAPTURE_ASSETS_DB_SMOKE]', JSON.stringify(smokeResult))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (assetLinksState) {
+        const importSource = readdirSync(assetsImportDir, { withFileTypes: true })
+          .filter(entry => entry.isFile() && !entry.name.startsWith('.'))
+          .map(entry => join(assetsImportDir, entry.name))
+          .sort((left, right) => {
+            const leftImage = /\.(png|jpe?g|webp)$/i.test(left) ? 0 : 1
+            const rightImage = /\.(png|jpe?g|webp)$/i.test(right) ? 0 : 1
+            return leftImage - rightImage || basename(left).localeCompare(basename(right))
+          })[0]
+        if (!importSource) throw new Error(`No asset import source found in ${assetsImportDir}`)
+        const tempAssetPath = join(app.getPath('temp'), `app-shell-asset-links-${Date.now()}-${basename(importSource)}`)
+        copyFileSync(importSource, tempAssetPath)
+        assetLinksTempPaths.push(tempAssetPath)
+
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const createdDocumentIds = []
+            let docs = await window.shell.documents.list(workspace.id)
+            const targets = [
+              { title: 'Capture Opening Scene', kind: 'scene' },
+              { title: 'Capture Research Note', kind: 'chapter' }
+            ]
+
+            for (const target of targets) {
+              if (!docs.some((doc) => doc.title === target.title)) {
+                const created = await window.shell.documents.create({
+                  workspaceId: workspace.id,
+                  kind: target.kind,
+                  title: target.title,
+                  parentId: null
+                })
+                createdDocumentIds.push(created.id)
+              }
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 450))
+            docs = await window.shell.documents.list(workspace.id)
+            const openingDoc = docs.find((doc) => doc.title === 'Capture Opening Scene')
+            const researchDoc = docs.find((doc) => doc.title === 'Capture Research Note')
+            if (!openingDoc || !researchDoc) throw new Error('Asset link capture documents were not available.')
+
+            const imported = await window.shell.assets.importFiles({
+              workspaceId: workspace.id,
+              filePaths: [${JSON.stringify(tempAssetPath)}]
+            })
+            const asset = imported[0]
+            if (!asset) throw new Error('Asset link capture import failed.')
+
+            await window.shell.assets.updateWorkspaceLink({
+              assetId: asset.id,
+              workspaceId: workspace.id,
+              fromRole: 'imported',
+              toRole: 'cover'
+            })
+
+            if (${JSON.stringify(assetLinksState)} === 'linked') {
+              await window.shell.assets.addDocumentLink({
+                assetId: asset.id,
+                documentId: openingDoc.id,
+                relationType: 'illustrates'
+              })
+            }
+
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.assets' }))
+            await new Promise((resolve) => setTimeout(resolve, 550))
+            if (typeof window.__assetsCaptureRefresh === 'function') {
+              await window.__assetsCaptureRefresh(workspace.id, asset.id)
+              await new Promise((resolve) => setTimeout(resolve, 350))
+            }
+            const rows = Array.from(document.querySelectorAll('.asset-open'))
+            const row = rows.find((item) => item.textContent?.includes(asset.label)) ?? rows[0]
+            if (!row) throw new Error('Imported asset row was not available for capture.')
+            row.click()
+            await new Promise((resolve) => setTimeout(resolve, 350))
+            document.querySelector('button[aria-label="Show inspector"]')?.click()
+            await new Promise((resolve) => setTimeout(resolve, 350))
+            const inspector = document.querySelector('.inspector')
+            if (inspector) inspector.scrollTop = inspector.scrollHeight
+            await new Promise((resolve) => setTimeout(resolve, 250))
+
+            if (${JSON.stringify(assetLinksState)} === 'typeahead') {
+              const input = document.querySelector('[data-capture-document-typeahead]')
+              if (!(input instanceof HTMLInputElement)) throw new Error('Document link typeahead input was not available.')
+              input.focus()
+              input.value = 'Research'
+              input.dispatchEvent(new Event('input', { bubbles: true }))
+              await new Promise((resolve) => setTimeout(resolve, 350))
+            }
+
+            const reopened = await window.shell.assets.open(asset.id)
+            return {
+              workspaceId: workspace.id,
+              assetId: asset.id,
+              state: ${JSON.stringify(assetLinksState)},
+              createdDocumentIds,
+              projectRole: reopened?.workspaceLinks.find((link) => link.workspaceId === workspace.id)?.role ?? null,
+              documentLinkCount: reopened?.documentLinks.length ?? 0,
+              openingDocumentId: openingDoc.id,
+              researchDocumentId: researchDoc.id
+            }
+          })()
+        `)
+
+        assetLinksCleanupIds = result.assetId ? [String(result.assetId)] : []
+        assetLinksDocumentCleanupIds = Array.isArray(result.createdDocumentIds)
+          ? result.createdDocumentIds.map(String)
+          : []
+        console.log('[SHELL_CAPTURE_ASSET_LINKS_SMOKE]', JSON.stringify(result))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (openSettings) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-open-settings'))`
@@ -759,6 +874,40 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           }
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_ASSETS_DB_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (assetLinksCleanupIds.length > 0 || assetLinksDocumentCleanupIds.length > 0 || assetLinksTempPaths.length > 0) {
+        try {
+          if (assetLinksCleanupIds.length > 0) {
+            await win.webContents.executeJavaScript(`
+              (async () => {
+                const ids = ${JSON.stringify(assetLinksCleanupIds)}
+                for (const id of ids) await window.shell.assets.delete(id)
+                return { deletedAssetIds: ids }
+              })()
+            `).then((cleanupResult) => {
+              console.log('[SHELL_CAPTURE_ASSET_LINKS_ASSET_CLEANUP]', JSON.stringify(cleanupResult))
+            })
+          }
+          if (assetLinksDocumentCleanupIds.length > 0) {
+            const db = getDb()
+            const placeholders = assetLinksDocumentCleanupIds.map(() => '?').join(', ')
+            db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...assetLinksDocumentCleanupIds)
+            db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...assetLinksDocumentCleanupIds)
+            console.log('[SHELL_CAPTURE_ASSET_LINKS_DOCUMENT_CLEANUP]', JSON.stringify({
+              deletedDocumentIds: assetLinksDocumentCleanupIds
+            }))
+          }
+          for (const filePath of assetLinksTempPaths) {
+            if (existsSync(filePath)) unlinkSync(filePath)
+          }
+          if (assetLinksTempPaths.length > 0) {
+            console.log('[SHELL_CAPTURE_ASSET_LINKS_FILE_CLEANUP]', JSON.stringify({
+              deletedPaths: assetLinksTempPaths
+            }))
+          }
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_ASSET_LINKS_CLEANUP] failed:', cleanupErr)
         }
       }
       if (tableFilterCleanup) {

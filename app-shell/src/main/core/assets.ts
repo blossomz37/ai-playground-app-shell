@@ -2,17 +2,24 @@ import { createHash, randomUUID } from 'crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import path from 'path'
 import type {
+  AssetDocumentLinkParams,
+  AssetDocumentLinkUpdateParams,
   AssetExportParams,
   AssetExportResult,
   AssetMediaType,
   AssetMetadata,
   AssetRecord,
-  AssetUpdatePatch
+  AssetUpdatePatch,
+  AssetWorkspaceLinkParams,
+  AssetWorkspaceLinkUpdateParams,
+  Doc
 } from '@shared/module-contract'
 import { metadataForImportedAsset } from '../assets/metadata'
 import { getDb } from './db'
 
 const INVALID_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1F]/g
+const PROJECT_LINK_ROLES = new Set(['reference', 'cover', 'research', 'marketing', 'moodboard', 'other'])
+const DOCUMENT_LINK_RELATIONS = new Set(['reference', 'illustrates', 'source', 'cover', 'research', 'other'])
 
 type AssetRow = {
   id: string
@@ -88,6 +95,86 @@ export const assets = {
     })()
 
     return this.open(id) as AssetRecord
+  },
+
+  addWorkspaceLink(params: AssetWorkspaceLinkParams): AssetRecord {
+    ensureAsset(params.assetId)
+    const role = normalizeProjectRole(params.role)
+    const now = new Date().toISOString()
+    getDb()
+      .prepare('INSERT OR IGNORE INTO asset_workspace_links (assetId, workspaceId, role, createdAt) VALUES (?, ?, ?, ?)')
+      .run(params.assetId, params.workspaceId, role, now)
+    return this.open(params.assetId) as AssetRecord
+  },
+
+  updateWorkspaceLink(params: AssetWorkspaceLinkUpdateParams): AssetRecord {
+    ensureAsset(params.assetId)
+    const fromRole = requireNonEmpty(params.fromRole, 'Workspace link role')
+    const toRole = normalizeProjectRole(params.toRole)
+    const now = new Date().toISOString()
+    getDb().transaction(() => {
+      getDb()
+        .prepare('DELETE FROM asset_workspace_links WHERE assetId = ? AND workspaceId = ? AND role = ?')
+        .run(params.assetId, params.workspaceId, fromRole)
+      getDb()
+        .prepare('INSERT OR IGNORE INTO asset_workspace_links (assetId, workspaceId, role, createdAt) VALUES (?, ?, ?, ?)')
+        .run(params.assetId, params.workspaceId, toRole, now)
+    })()
+    return this.open(params.assetId) as AssetRecord
+  },
+
+  removeWorkspaceLink(params: AssetWorkspaceLinkParams): AssetRecord {
+    ensureAsset(params.assetId)
+    const role = requireNonEmpty(params.role, 'Workspace link role')
+    getDb()
+      .prepare('DELETE FROM asset_workspace_links WHERE assetId = ? AND workspaceId = ? AND role = ?')
+      .run(params.assetId, params.workspaceId, role)
+    return this.open(params.assetId) as AssetRecord
+  },
+
+  addDocumentLink(params: AssetDocumentLinkParams): AssetRecord {
+    ensureAsset(params.assetId)
+    ensureDocument(params.documentId)
+    const relationType = normalizeDocumentRelation(params.relationType)
+    const now = new Date().toISOString()
+    getDb().transaction(() => {
+      getDb()
+        .prepare('DELETE FROM asset_document_links WHERE assetId = ? AND documentId = ?')
+        .run(params.assetId, params.documentId)
+      getDb()
+        .prepare('INSERT INTO asset_document_links (assetId, documentId, relationType, createdAt) VALUES (?, ?, ?, ?)')
+        .run(params.assetId, params.documentId, relationType, now)
+    })()
+    return this.open(params.assetId) as AssetRecord
+  },
+
+  updateDocumentLink(params: AssetDocumentLinkUpdateParams): AssetRecord {
+    ensureAsset(params.assetId)
+    ensureDocument(params.documentId)
+    const fromRelationType = requireNonEmpty(params.fromRelationType, 'Document link relation')
+    const toRelationType = normalizeDocumentRelation(params.toRelationType)
+    const now = new Date().toISOString()
+    getDb().transaction(() => {
+      getDb()
+        .prepare('DELETE FROM asset_document_links WHERE assetId = ? AND documentId = ? AND relationType = ?')
+        .run(params.assetId, params.documentId, fromRelationType)
+      getDb()
+        .prepare('DELETE FROM asset_document_links WHERE assetId = ? AND documentId = ?')
+        .run(params.assetId, params.documentId)
+      getDb()
+        .prepare('INSERT INTO asset_document_links (assetId, documentId, relationType, createdAt) VALUES (?, ?, ?, ?)')
+        .run(params.assetId, params.documentId, toRelationType, now)
+    })()
+    return this.open(params.assetId) as AssetRecord
+  },
+
+  removeDocumentLink(params: AssetDocumentLinkParams): AssetRecord {
+    ensureAsset(params.assetId)
+    const relationType = requireNonEmpty(params.relationType, 'Document link relation')
+    getDb()
+      .prepare('DELETE FROM asset_document_links WHERE assetId = ? AND documentId = ? AND relationType = ?')
+      .run(params.assetId, params.documentId, relationType)
+    return this.open(params.assetId) as AssetRecord
   },
 
   archive(id: string): AssetRecord {
@@ -333,6 +420,35 @@ function normalizeTags(tags: string[]): string[] {
     seen.add(key)
     normalized.push(value)
   }
+  return normalized
+}
+
+function ensureAsset(assetId: string): void {
+  const row = getDb().prepare('SELECT id FROM assets WHERE id = ?').get(assetId) as { id: string } | undefined
+  if (!row) throw new Error(`Asset not found: ${assetId}`)
+}
+
+function ensureDocument(documentId: string): Doc {
+  const row = getDb().prepare('SELECT * FROM documents WHERE id = ? AND archivedAt IS NULL').get(documentId) as Doc | undefined
+  if (!row) throw new Error(`Document not found: ${documentId}`)
+  return row
+}
+
+function normalizeProjectRole(role: string): string {
+  const value = requireNonEmpty(role, 'Workspace link role')
+  if (!PROJECT_LINK_ROLES.has(value)) throw new Error(`Unsupported workspace link role: ${value}`)
+  return value
+}
+
+function normalizeDocumentRelation(relationType: string): string {
+  const value = requireNonEmpty(relationType, 'Document link relation')
+  if (!DOCUMENT_LINK_RELATIONS.has(value)) throw new Error(`Unsupported document link relation: ${value}`)
+  return value
+}
+
+function requireNonEmpty(value: string, label: string): string {
+  const normalized = value.trim()
+  if (!normalized) throw new Error(`${label} is required.`)
   return normalized
 }
 
