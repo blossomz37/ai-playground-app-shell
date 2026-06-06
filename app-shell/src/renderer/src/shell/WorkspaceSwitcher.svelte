@@ -153,10 +153,49 @@
     >
       <header class="workspace-current">
         <span class="field-label">Current project</span>
-        <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
-        <span class="workspace-current-meta">
-          {$activeWorkspace?.type ?? 'default'} / {$activeWorkspace?.root ?? '/'}
-        </span>
+        <div class="current-project-row">
+          <div class="workspace-current-summary">
+            <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
+            <span class="workspace-current-type">{$activeWorkspace?.type ?? 'default'}</span>
+          </div>
+          <button
+            class="icon-action"
+            type="button"
+            title="Duplicate project"
+            aria-label={`Duplicate ${$activeWorkspace?.name ?? 'current project'}`}
+            disabled={busyAction !== null || !$activeWorkspace}
+            onclick={() => onDuplicateCurrent()}
+          >
+            <CopyIcon size={14} weight="bold" />
+          </button>
+          <button
+            class="icon-action"
+            type="button"
+            title="Archive project"
+            aria-label={`Archive ${$activeWorkspace?.name ?? 'current project'}`}
+            disabled={busyAction !== null || !$activeWorkspace}
+            onclick={() => onArchiveCurrent()}
+          >
+            <ArchiveIcon size={14} weight="bold" />
+          </button>
+          <button
+            class="icon-action danger"
+            type="button"
+            title={confirmDeleteId === $activeWorkspace?.id ? 'Confirm database delete' : 'Delete from app'}
+            aria-label={`${confirmDeleteId === $activeWorkspace?.id ? 'Confirm delete' : 'Delete'} ${$activeWorkspace?.name ?? 'current project'}`}
+            disabled={busyAction !== null || !$activeWorkspace}
+            onclick={() => $activeWorkspace && onDeleteWorkspace($activeWorkspace.id)}
+          >
+            {#if confirmDeleteId === $activeWorkspace?.id}
+              <CheckIcon size={14} weight="bold" />
+            {:else}
+              <TrashIcon size={14} weight="bold" />
+            {/if}
+          </button>
+        </div>
+        {#if confirmDeleteId === $activeWorkspace?.id}
+          <p class="workspace-note">Source files and folders stay on disk.</p>
+        {/if}
       </header>
 
       <section class="workspace-section project-list-section" aria-label="Open project">
@@ -265,49 +304,6 @@
           <FolderOpenIcon size={14} weight="bold" />
           <span>{busyAction === 'import' ? 'Importing...' : 'Import folder'}</span>
         </button>
-      </section>
-
-      <section class="workspace-section current-actions-section" aria-label="Current project actions">
-        <div class="section-heading">
-          <span>Current</span>
-        </div>
-        <div class="action-grid">
-          <button
-            class="workspace-action"
-            type="button"
-            disabled={busyAction !== null || !$activeWorkspace}
-            onclick={() => onDuplicateCurrent()}
-          >
-            <CopyIcon size={14} weight="bold" />
-            <span>{busyAction === `duplicate:${$activeWorkspace?.id}` ? 'Duplicating...' : 'Duplicate'}</span>
-          </button>
-          <button
-            class="workspace-action"
-            type="button"
-            disabled={busyAction !== null || !$activeWorkspace}
-            onclick={() => onArchiveCurrent()}
-          >
-            <ArchiveIcon size={14} weight="bold" />
-            <span>{busyAction === `archive:${$activeWorkspace?.id}` ? 'Archiving...' : 'Archive'}</span>
-          </button>
-        </div>
-        <button
-          class="workspace-action danger"
-          type="button"
-          disabled={busyAction !== null || !$activeWorkspace}
-          onclick={() => $activeWorkspace && onDeleteWorkspace($activeWorkspace.id)}
-        >
-          {#if confirmDeleteId === $activeWorkspace?.id}
-            <CheckIcon size={14} weight="bold" />
-            <span>{busyAction === `delete:${$activeWorkspace?.id}` ? 'Deleting...' : 'Confirm database delete'}</span>
-          {:else}
-            <TrashIcon size={14} weight="bold" />
-            <span>Delete from app</span>
-          {/if}
-        </button>
-        {#if confirmDeleteId === $activeWorkspace?.id}
-          <p class="workspace-note">Source files and folders stay on disk.</p>
-        {/if}
       </section>
 
       <section class="workspace-section archived-projects-section" aria-label="Archived projects">
@@ -432,13 +428,9 @@
     order: -2;
   }
 
-  .workspace-menu.inline .current-actions-section {
-    order: -1;
-  }
-
   .workspace-current {
     display: grid;
-    gap: 3px;
+    gap: var(--space-1);
     padding-bottom: var(--space-2);
   }
 
@@ -450,6 +442,15 @@
     text-transform: uppercase;
   }
 
+  .workspace-current-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: 0 var(--space-2);
+  }
+
   .workspace-current-name {
     min-width: 0;
     overflow: hidden;
@@ -457,14 +458,10 @@
     white-space: nowrap;
     color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
-    font-weight: 750;
+    font-weight: 650;
   }
 
-  .workspace-current-meta {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .workspace-current-type {
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
   }
@@ -511,6 +508,16 @@
     padding-left: 0;
   }
 
+  .current-project-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 28px 28px 28px;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 30px;
+    padding-left: 0;
+    border-radius: var(--radius-sm);
+  }
+
   .workspace-row span:first-child,
   .archived-name {
     min-width: 0;
@@ -531,12 +538,6 @@
   .workspace-row:hover:not(:disabled),
   .icon-action:hover:not(:disabled) {
     background: var(--color-hover);
-  }
-
-  .action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
   }
 
   .workspace-action,
@@ -560,7 +561,6 @@
     background: color-mix(in srgb, var(--accent-nav) 16%, transparent);
   }
 
-  .workspace-action.danger,
   .icon-action.danger {
     color: var(--color-danger);
     border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));

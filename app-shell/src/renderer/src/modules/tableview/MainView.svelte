@@ -204,9 +204,7 @@
     font: inherit;
     font-weight: inherit;
     text-align: left;
-    text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--accent-nav) 45%, transparent);
-    text-underline-offset: 3px;
+    text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -214,7 +212,6 @@
   .doc-link:hover,
   .doc-link:focus-visible {
     color: var(--accent-nav);
-    text-decoration-color: currentColor;
   }
   .doc-link:focus-visible {
     outline: 2px solid var(--color-focus-ring);
