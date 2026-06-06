@@ -36,6 +36,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
+  const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
+  const tableKind = process.env['SHELL_CAPTURE_TABLE_KIND']
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
   const documentExportDir = process.env['SHELL_CAPTURE_DOCUMENT_EXPORT_DIR']
@@ -59,6 +61,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
+  let tableFilterCleanup = false
 
   async function waitForWebviewRender(): Promise<void> {
     if (moduleId !== 'shell.web') return
@@ -566,6 +569,27 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (tableSearch !== undefined || tableKind) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.tableview' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const searchInput = document.querySelector('[data-capture-table-search]')
+            const kindSelect = document.querySelector('[data-capture-table-kind]')
+            if (!searchInput || !kindSelect) throw new Error('Table capture controls are not available.')
+            if (${JSON.stringify(tableSearch !== undefined)}) {
+              searchInput.value = ${JSON.stringify(tableSearch ?? '')}
+              searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+            }
+            if (${JSON.stringify(Boolean(tableKind))}) {
+              kindSelect.value = ${JSON.stringify(tableKind ?? '')}
+              kindSelect.dispatchEvent(new Event('change', { bubbles: true }))
+            }
+          })()
+        `)
+        tableFilterCleanup = true
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (openAiContext) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[aria-haspopup="dialog"]')?.click()
@@ -667,6 +691,22 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           }
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_ASSETS_DB_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (tableFilterCleanup) {
+        try {
+          await win.webContents.executeJavaScript(`
+            (async () => {
+              window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.tableview' }))
+              await new Promise((resolve) => setTimeout(resolve, 100))
+              document.querySelector('.reset-btn')?.click()
+              return { reset: true }
+            })()
+          `).then((cleanupResult) => {
+            console.log('[SHELL_CAPTURE_TABLE_FILTER_CLEANUP]', JSON.stringify(cleanupResult))
+          })
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_TABLE_FILTER_CLEANUP] failed:', cleanupErr)
         }
       }
       app.quit()

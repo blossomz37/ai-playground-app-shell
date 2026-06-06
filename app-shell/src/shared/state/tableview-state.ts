@@ -7,14 +7,17 @@ export type TableSortBy = 'title' | 'updatedAt' | 'createdAt' | 'kind'
 export interface TableViewState {
   documents: Doc[]
   filterKind: TableFilterKind
+  searchQuery: string
   sortBy: TableSortBy
   selectedDocId: string | null
   filteredDocuments: Doc[]
   selectedDoc: Doc | null
+  hasActiveFilters: boolean
 }
 
 export interface TableViewPersistenceSnapshot {
   filterKind: TableFilterKind
+  searchQuery?: string
   sortBy: TableSortBy
   selectedDocId: string | null
 }
@@ -22,6 +25,7 @@ export interface TableViewPersistenceSnapshot {
 export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   private documents: Doc[] = []
   private filterKind: TableFilterKind = 'all'
+  private searchQuery = ''
   private sortBy: TableSortBy = 'title'
   private selectedDocId: string | null = null
 
@@ -30,10 +34,12 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     return {
       documents: this.documents,
       filterKind: this.filterKind,
+      searchQuery: this.searchQuery,
       sortBy: this.sortBy,
       selectedDocId: this.selectedDocId,
       filteredDocuments,
-      selectedDoc: this.documents.find(doc => doc.id === this.selectedDocId) ?? null
+      selectedDoc: this.documents.find(doc => doc.id === this.selectedDocId) ?? null,
+      hasActiveFilters: this.filterKind !== 'all' || this.searchQuery.trim() !== ''
     }
   }
 
@@ -49,8 +55,21 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.emit()
   }
 
+  setSearchQuery(searchQuery: string): void {
+    this.searchQuery = searchQuery
+    this.ensureVisibleSelection()
+    this.emit()
+  }
+
   setSortBy(sortBy: TableSortBy): void {
     this.sortBy = sortBy
+    this.ensureVisibleSelection()
+    this.emit()
+  }
+
+  resetFilters(): void {
+    this.filterKind = 'all'
+    this.searchQuery = ''
     this.ensureVisibleSelection()
     this.emit()
   }
@@ -74,6 +93,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     }
 
     this.filterKind = snapshot.filterKind
+    this.searchQuery = snapshot.searchQuery ?? ''
     this.sortBy = snapshot.sortBy
     this.selectedDocId = snapshot.selectedDocId
     this.ensureVisibleSelection()
@@ -83,17 +103,26 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   persistenceSnapshot(): TableViewPersistenceSnapshot {
     return {
       filterKind: this.filterKind,
+      searchQuery: this.searchQuery,
       sortBy: this.sortBy,
       selectedDocId: this.selectedDocId
     }
   }
 
   private filteredDocuments(): Doc[] {
-    const filtered = this.filterKind === 'all'
+    const query = this.searchQuery.trim().toLowerCase()
+    const kindFiltered = this.filterKind === 'all'
       ? [...this.documents]
       : this.documents.filter(doc => doc.kind === this.filterKind)
 
-    return filtered.sort((a, b) => {
+    const searchFiltered = query
+      ? kindFiltered.filter(doc =>
+          doc.title.toLowerCase().includes(query)
+          || doc.content.toLowerCase().includes(query)
+        )
+      : kindFiltered
+
+    return searchFiltered.sort((a, b) => {
       if (this.sortBy === 'updatedAt') return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
       if (this.sortBy === 'createdAt') return Date.parse(b.createdAt) - Date.parse(a.createdAt)
       if (this.sortBy === 'kind') return a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title)
