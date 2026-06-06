@@ -57,7 +57,7 @@
 
   // Compute shared shell tracks dynamically. Rows that represent the same zones
   // consume these variables so titlebar/context/body/status stay aligned.
-  let railColumn = $derived(zenMode ? '0px' : '48px')
+  let railColumn = $derived(zenMode ? '0px' : '46px')
   let sidebarColumn = $derived(zenMode ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
   let inspectorColumn = $derived(zenMode ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
   let gridColumns = $derived('var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col)')
