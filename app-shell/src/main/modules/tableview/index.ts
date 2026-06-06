@@ -20,7 +20,6 @@ export const tableViewModule: Module = {
     contributes: {
       zones: {
         railEntry: { icon: 'table', label: 'Table' },
-        navigation: { title: 'Filters' },
         main: { title: 'Data Table' },
         inspector: { title: 'Row Detail' }
       },

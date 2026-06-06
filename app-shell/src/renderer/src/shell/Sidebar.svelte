@@ -7,8 +7,6 @@
   import AssetsNavView from '../modules/assets/NavView.svelte'
   // Workflow
   import WorkflowNavView from '../modules/workflow/NavView.svelte'
-  // Table View
-  import TableNavView from '../modules/tableview/NavView.svelte'
   // AI Chat
   import AIChatNavView from '../modules/aichat/NavView.svelte'
   // Web
@@ -21,28 +19,29 @@
 </script>
 
 <aside class="sidebar">
-  <WorkspaceSwitcher mode="sidebar" />
-  <div class="module-navigation">
-    {#if props.moduleId === 'shell.documents'}
-      <DocsNavView />
-    {:else if props.moduleId === 'shell.journal'}
-      <JournalNavView />
-    {:else if props.moduleId === 'shell.assets'}
-      <AssetsNavView />
-    {:else if props.moduleId === 'shell.workflow'}
-      <WorkflowNavView />
-    {:else if props.moduleId === 'shell.tableview'}
-      <TableNavView />
-    {:else if props.moduleId === 'shell.aichat'}
-      <AIChatNavView />
-    {:else if props.moduleId === 'shell.web'}
-      <WebNavView />
-    {:else if props.moduleId === 'shell.promptstudio'}
-      <PromptStudioNavView />
-    {:else}
-      <div class="empty">Nothing selected</div>
-    {/if}
-  </div>
+  {#if props.moduleId === 'shell.tableview'}
+    <WorkspaceSwitcher mode="sidebar" />
+  {:else}
+    <div class="module-navigation">
+      {#if props.moduleId === 'shell.documents'}
+        <DocsNavView />
+      {:else if props.moduleId === 'shell.journal'}
+        <JournalNavView />
+      {:else if props.moduleId === 'shell.assets'}
+        <AssetsNavView />
+      {:else if props.moduleId === 'shell.workflow'}
+        <WorkflowNavView />
+      {:else if props.moduleId === 'shell.aichat'}
+        <AIChatNavView />
+      {:else if props.moduleId === 'shell.web'}
+        <WebNavView />
+      {:else if props.moduleId === 'shell.promptstudio'}
+        <PromptStudioNavView />
+      {:else}
+        <div class="empty">Nothing selected</div>
+      {/if}
+    </div>
+  {/if}
 </aside>
 
 <style>
@@ -62,7 +61,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-top: var(--border-zone);
   }
 
   .empty {
