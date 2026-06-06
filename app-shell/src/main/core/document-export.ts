@@ -27,7 +27,7 @@ export function exportDocumentSubtree(rootDoc: Doc, subtreeDocs: Doc[], targetDi
   }
 
   const usedPaths = new Set<string>()
-  if (rootDoc.kind === 'folder') {
+  if (rootDoc.nodeType === 'folder') {
     const rootDir = uniquePath(resolvedTarget, safeName(rootDoc.title), '', usedPaths)
     mkdirSync(rootDir, { recursive: true })
     result.foldersWritten.push(rootDir)
@@ -48,7 +48,7 @@ function exportChildren(
 ): void {
   const children = childrenByParent.get(parentId) ?? []
   for (const child of children) {
-    if (child.kind === 'folder') {
+    if (child.nodeType === 'folder') {
       const folderPath = uniquePath(outputDir, safeName(child.title), '', usedPaths)
       mkdirSync(folderPath, { recursive: true })
       result.foldersWritten.push(folderPath)

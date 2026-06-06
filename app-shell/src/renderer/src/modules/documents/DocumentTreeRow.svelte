@@ -53,7 +53,7 @@
     onRenameBlur
   }: Props = $props()
 
-  let rowLabel = $derived(node.kind === 'folder'
+  let rowLabel = $derived(node.nodeType === 'folder'
     ? `${expanded ? 'Collapse' : 'Expand'} ${node.title}`
     : `Open ${node.title}`)
 </script>
@@ -82,7 +82,7 @@
   <button
     type="button"
     class="icon-button"
-    class:is-folder={node.kind === 'folder'}
+    class:is-folder={node.nodeType === 'folder'}
     aria-label={rowLabel}
     aria-expanded={node.children.length > 0 ? expanded : undefined}
     draggable={true}

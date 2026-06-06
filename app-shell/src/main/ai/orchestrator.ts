@@ -14,6 +14,7 @@ import type {
   RenameAiConversationParams,
   RenameAiPromptTemplateParams
 } from '@shared/ai'
+import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
 import { documents } from '../core/documents'
 import { events } from '../core/events'
 import { aiRepository } from './repository'
@@ -109,7 +110,7 @@ export const aiOrchestrator = {
         id: doc.id,
         sourceType,
         title: doc.title,
-        kind: doc.kind,
+        kind: doc.nodeType === 'folder' ? STRUCTURAL_FOLDER_KIND_LABEL : doc.kind ?? UNCATEGORIZED_KIND_LABEL,
         content: doc.content,
         priority,
         reason

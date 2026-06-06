@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocVersion } from '@shared/module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocumentNodeType, DocVersion } from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
 import { exportDocumentSubtree } from './document-export'
@@ -111,14 +111,18 @@ export const documents = {
     events.emit('documents:changed', id)
   },
 
-  update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Doc {
+  update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Doc {
     const db = getDb()
     const now = new Date().toISOString()
     const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
     if (!current) throw new Error(`Document not found: ${id}`)
 
     const title = patch.title?.trim() || current.title
-    const kind = patch.kind?.trim() || current.kind
+    let kind = current.kind
+    if (Object.prototype.hasOwnProperty.call(patch, 'kind')) {
+      const nextKind = patch.kind?.trim() ?? ''
+      kind = current.nodeType === 'folder' || nextKind === '' ? null : nextKind
+    }
     let icon = current.icon
     if (Object.prototype.hasOwnProperty.call(patch, 'icon')) {
       const nextIcon = patch.icon?.trim() ?? ''
@@ -168,8 +172,8 @@ export const documents = {
 
       const insertDoc = db.prepare(`
         INSERT INTO documents
-          (id, workspaceId, parentId, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, workspaceId, parentId, nodeType, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
 
       const rowsById = new Map(sourceRows.map(doc => [doc.id, doc]))
@@ -194,6 +198,7 @@ export const documents = {
           copyId,
           source.workspaceId,
           parentId,
+          source.nodeType,
           source.kind,
           title,
           source.icon,
@@ -225,7 +230,8 @@ export const documents = {
 
   create(params: {
     workspaceId: string
-    kind: string
+    nodeType?: DocumentNodeType
+    kind?: string | null
     title: string
     parentId?: string | null
     sortOrder?: number
@@ -234,6 +240,8 @@ export const documents = {
     const now = new Date().toISOString()
     const id = randomUUID()
     const parentId = params.parentId ?? null
+    const nodeType = params.nodeType ?? 'document'
+    const kind = nodeType === 'folder' ? null : (params.kind?.trim() || null)
     const sortOrder = params.sortOrder ?? (
       db.prepare(`
         SELECT COALESCE(MAX(sortOrder), -1) + 1 AS nextSortOrder
@@ -254,9 +262,9 @@ export const documents = {
 
       db.prepare(`
         INSERT INTO documents
-          (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, '', 'markdown', ?, ?)
-      `).run(id, params.workspaceId, parentId, params.kind, params.title, sortOrder, now, now)
+          (id, workspaceId, parentId, nodeType, kind, title, sortOrder, content, contentFormat, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, '', 'markdown', ?, ?)
+      `).run(id, params.workspaceId, parentId, nodeType, kind, params.title, sortOrder, now, now)
     })()
 
     events.emit('documents:changed', id)

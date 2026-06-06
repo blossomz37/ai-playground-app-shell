@@ -11,6 +11,7 @@ import type {
 } from '@shared/module-contract'
 import type { ModuleListItem } from '@shared/module-contract'
 import { getModulePolicy, normalizeModuleEnabled, normalizeModuleVisible } from '@shared/module-policy'
+import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
 import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
 import { AI_API_KEY_REQUIRED_MESSAGE, DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
@@ -45,7 +46,8 @@ const DEMO_DOCS: Doc[] = [
     id: 'demo-root',
     workspaceId: 'ws-browser-preview',
     parentId: null,
-    kind: 'folder',
+    nodeType: 'folder',
+    kind: null,
     title: 'Manuscript',
     icon: null,
     sortOrder: 0,
@@ -62,6 +64,7 @@ const DEMO_DOCS: Doc[] = [
     id: 'demo-chapter-1',
     workspaceId: 'ws-browser-preview',
     parentId: 'demo-root',
+    nodeType: 'document',
     kind: 'chapter',
     title: 'Chapter 1 - The Arrival',
     icon: '✨',
@@ -152,7 +155,7 @@ function createBrowserShell(): ShellApi {
   function collectContext(activeDocumentId?: string | null): AiContextCandidate[] {
     const doc = activeDocumentId
       ? docs.get(activeDocumentId)
-      : docs.get('demo-chapter-1') ?? Array.from(docs.values()).find(item => item.kind !== 'folder')
+      : docs.get('demo-chapter-1') ?? Array.from(docs.values()).find(item => item.nodeType === 'document')
     if (!doc) return []
 
     return [{
@@ -160,7 +163,7 @@ function createBrowserShell(): ShellApi {
       sourceType: 'active-document',
       sourceId: doc.id,
       title: doc.title,
-      kind: doc.kind,
+      kind: doc.nodeType === 'folder' ? STRUCTURAL_FOLDER_KIND_LABEL : doc.kind ?? UNCATEGORIZED_KIND_LABEL,
       excerpt: doc.content.replace(/\s+/g, ' ').slice(0, 180),
       content: doc.content,
       estimatedTokens: Math.max(1, Math.ceil(doc.content.split(/\s+/).filter(Boolean).length * 1.35)),
@@ -197,7 +200,9 @@ function createBrowserShell(): ShellApi {
         const updated = {
           ...existing,
           title: patch.title?.trim() || existing.title,
-          kind: patch.kind?.trim() || existing.kind,
+          kind: Object.prototype.hasOwnProperty.call(patch, 'kind')
+            ? patch.kind?.trim() || null
+            : existing.kind,
           icon,
           updatedAt: new Date().toISOString()
         }
@@ -301,7 +306,8 @@ function createBrowserShell(): ShellApi {
           id: `demo-${Date.now()}`,
           workspaceId: params.workspaceId,
           parentId: params.parentId ?? null,
-          kind: params.kind,
+          nodeType: params.nodeType ?? 'document',
+          kind: (params.nodeType ?? 'document') === 'folder' ? null : params.kind ?? null,
           title: params.title,
           icon: null,
           sortOrder: docs.size,

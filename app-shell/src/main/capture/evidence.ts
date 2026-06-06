@@ -52,6 +52,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const tableBulkCount = Number(process.env['SHELL_CAPTURE_TABLE_BULK_COUNT'] ?? 3)
   const tableBulkKind = process.env['SHELL_CAPTURE_TABLE_BULK_KIND']
   const tableBulkTargetWords = process.env['SHELL_CAPTURE_TABLE_BULK_TARGET_WORDS']
+  const documentKindSmokeState = process.env['SHELL_CAPTURE_DOCUMENT_KIND_SMOKE']
   const toastMessage = process.env['SHELL_CAPTURE_TOAST_MESSAGE']
   const toastLevel = process.env['SHELL_CAPTURE_TOAST_LEVEL'] ?? 'info'
   const restoreWorkspaceId = process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID']
@@ -83,6 +84,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let assetLinksDocumentCleanupIds: string[] = []
   let assetLinksTempPaths: string[] = []
   let tableFilterCleanup = false
+  let documentKindSmokeCleanupIds: string[] = []
 
   async function waitForWebviewRender(): Promise<void> {
     if (moduleId !== 'shell.web') return
@@ -241,8 +243,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               metadataDocumentId: metadataDoc?.id ?? null,
               importedDocCount: importedDocs.length,
               duplicateDocCount: duplicateDocs.length,
-              folderTitles: importedDocs.filter((doc) => doc.kind === 'folder').map((doc) => doc.title).sort(),
-              fileTitles: importedDocs.filter((doc) => doc.kind === 'chapter').map((doc) => doc.title).sort(),
+              folderTitles: importedDocs.filter((doc) => doc.nodeType === 'folder').map((doc) => doc.title).sort(),
+              fileTitles: importedDocs.filter((doc) => doc.nodeType === 'document' && doc.kind === null).map((doc) => doc.title).sort(),
               contentMatched: importedDocs.some((doc) => doc.title === 'alpha' && doc.content.includes('Imported markdown.'))
                 && importedDocs.some((doc) => doc.title === 'scene-note' && doc.content.includes('Scene note text.')),
               unsupportedSkipped: !importedDocs.some((doc) => doc.title === 'unsupported'),
@@ -286,39 +288,44 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           (async () => {
             const workspace = await window.shell.workspace.get()
             window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.documents' }))
-            const root = await window.shell.documents.create({
-              workspaceId: workspace.id,
-              kind: 'folder',
+	            const root = await window.shell.documents.create({
+	              workspaceId: workspace.id,
+	              nodeType: 'folder',
+	              kind: null,
               title: 'Lifecycle Export Smoke',
               parentId: null,
               sortOrder: 0
             })
-            const overview = await window.shell.documents.create({
-              workspaceId: workspace.id,
-              kind: 'chapter',
+	            const overview = await window.shell.documents.create({
+	              workspaceId: workspace.id,
+	              nodeType: 'document',
+	              kind: 'chapter',
               title: 'Overview',
               parentId: root.id,
               sortOrder: 0
             })
             await window.shell.documents.save(overview.id, '# Overview\\n\\nExport smoke overview.')
-            const scenes = await window.shell.documents.create({
-              workspaceId: workspace.id,
-              kind: 'folder',
+	            const scenes = await window.shell.documents.create({
+	              workspaceId: workspace.id,
+	              nodeType: 'folder',
+	              kind: null,
               title: 'Scenes',
               parentId: root.id,
               sortOrder: 1
             })
-            const firstScene = await window.shell.documents.create({
-              workspaceId: workspace.id,
-              kind: 'scene',
+	            const firstScene = await window.shell.documents.create({
+	              workspaceId: workspace.id,
+	              nodeType: 'document',
+	              kind: 'scene',
               title: 'Scene Notes',
               parentId: scenes.id,
               sortOrder: 0
             })
             await window.shell.documents.save(firstScene.id, '# Scene Notes\\n\\nFirst exported scene.')
-            const secondScene = await window.shell.documents.create({
-              workspaceId: workspace.id,
-              kind: 'scene',
+	            const secondScene = await window.shell.documents.create({
+	              workspaceId: workspace.id,
+	              nodeType: 'document',
+	              kind: 'scene',
               title: 'Scene Notes',
               parentId: scenes.id,
               sortOrder: 1
@@ -547,9 +554,10 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
 
             for (const target of targets) {
               if (!docs.some((doc) => doc.title === target.title)) {
-                const created = await window.shell.documents.create({
-                  workspaceId: workspace.id,
-                  kind: target.kind,
+	                const created = await window.shell.documents.create({
+	                  workspaceId: workspace.id,
+	                  nodeType: 'document',
+	                  kind: target.kind,
                   title: target.title,
                   parentId: null
                 })
@@ -649,6 +657,93 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           `)
           await new Promise(resolve => setTimeout(resolve, interactionDelay))
         }
+      }
+      if (documentKindSmokeState) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            await window.shell.settings.set(\`documents.\${workspace.id}.kindOptions\`, [
+              { id: 'chapter', label: 'Chapter' },
+              { id: 'scene', label: 'Scene' },
+              { id: 'plan', label: 'Plan' },
+              { id: 'note', label: 'Note' },
+              { id: 'research', label: 'Research' },
+              { id: 'character', label: 'Character' },
+              { id: 'setting', label: 'Setting' },
+              { id: 'outline', label: 'Outline' },
+              { id: 'research-note', label: 'Research Note' }
+            ])
+
+            const folder = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'folder',
+              kind: null,
+              title: 'Kind Smoke Folder',
+              parentId: null
+            })
+            const uncategorized = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: null,
+              title: 'Kind Smoke Uncategorized',
+              parentId: folder.id
+            })
+            await window.shell.documents.save(uncategorized.id, '# Kind Smoke Uncategorized\\n\\nThis starts uncategorized.')
+            await window.shell.documents.update(uncategorized.id, { kind: 'chapter' })
+            const cleared = await window.shell.documents.update(uncategorized.id, { kind: null })
+            const research = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: 'research-note',
+              title: 'Kind Smoke Research',
+              parentId: folder.id
+            })
+            await window.shell.documents.save(research.id, '# Kind Smoke Research\\n\\nConfigured kind smoke.')
+
+            const state = ${JSON.stringify(documentKindSmokeState)}
+            if (state === 'settings') {
+              window.dispatchEvent(new CustomEvent('shell:capture-open-settings'))
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              if (!document.querySelector('#settings-document-kinds')) {
+                document.querySelector('button[aria-label="Open settings"]')?.click()
+              }
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              document.querySelector('#settings-document-kinds')?.scrollIntoView({ block: 'start' })
+            } else if (state === 'inspector') {
+              window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.documents' }))
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: uncategorized.id }))
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              document.querySelector('button[aria-label="Show inspector"]')?.click()
+            } else if (state === 'table' || state === 'table-bulk') {
+              window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.tableview' }))
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              window.dispatchEvent(new CustomEvent('table:capture-set-filters', {
+                detail: { reset: true, search: 'Kind Smoke' }
+              }))
+              await new Promise((resolve) => setTimeout(resolve, 250))
+              if (state === 'table-bulk') {
+                window.dispatchEvent(new CustomEvent('table:capture-set-bulk', {
+                  detail: { count: 3, kind: '__uncategorized__' }
+                }))
+              }
+            }
+
+            return {
+              state,
+              generatedDocumentIds: [folder.id, uncategorized.id, research.id],
+              clearedKind: cleared.kind,
+              folderNodeType: folder.nodeType,
+              uncategorizedNodeType: uncategorized.nodeType,
+              researchKind: research.kind
+            }
+          })()
+        `)
+        documentKindSmokeCleanupIds = Array.isArray(result.generatedDocumentIds)
+          ? result.generatedDocumentIds.map(String)
+          : []
+        console.log('[SHELL_CAPTURE_DOCUMENT_KIND_SMOKE]', JSON.stringify(result))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (commandPaletteQuery !== undefined) {
         await win.webContents.executeJavaScript(
@@ -954,6 +1049,25 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_TABLE_FILTER_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (documentKindSmokeCleanupIds.length > 0) {
+        try {
+          await win.webContents.executeJavaScript(`
+            (async () => {
+              const ids = ${JSON.stringify(documentKindSmokeCleanupIds)}
+              const deleted = []
+              for (const id of ids) {
+                const result = await window.shell.documents.delete(id, { recursive: true })
+                deleted.push(...result)
+              }
+              return { deletedIds: deleted }
+            })()
+          `).then((cleanupResult) => {
+            console.log('[SHELL_CAPTURE_DOCUMENT_KIND_CLEANUP]', JSON.stringify(cleanupResult))
+          })
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_DOCUMENT_KIND_CLEANUP] failed:', cleanupErr)
         }
       }
       if (restoreWorkspaceId) {

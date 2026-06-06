@@ -18,6 +18,7 @@ export const documentsModule: Module = {
       },
       commands: [
         { id: 'documents.save',       title: 'Save Document',  keybinding: 'CmdOrCtrl+S' },
+        { id: 'documents.newDocument', title: 'New Document' },
         { id: 'documents.newChapter', title: 'New Chapter' },
         { id: 'documents.newScene',   title: 'New Scene' },
         { id: 'documents.newFolder',  title: 'New Folder' },
@@ -30,10 +31,14 @@ export const documentsModule: Module = {
         { id: 'shell.layout.zenMode',         title: 'Zen Mode',         keybinding: 'CmdOrCtrl+Shift+Z' }
       ],
       documentTypes: [
-        { kind: 'folder',  label: 'Folder',  icon: 'folder' },
         { kind: 'chapter', label: 'Chapter', icon: 'book-open' },
         { kind: 'scene',   label: 'Scene',   icon: 'file-text' },
-        { kind: 'plan',    label: 'Plan',    icon: 'map' }
+        { kind: 'plan',    label: 'Plan',    icon: 'map' },
+        { kind: 'note',    label: 'Note',    icon: 'file-text' },
+        { kind: 'research', label: 'Research', icon: 'magnifying-glass' },
+        { kind: 'character', label: 'Character', icon: 'user' },
+        { kind: 'setting', label: 'Setting', icon: 'map-pin' },
+        { kind: 'outline', label: 'Outline', icon: 'list' }
       ]
     }
   },
@@ -41,6 +46,10 @@ export const documentsModule: Module = {
   async activate(ctx: ModuleContext): Promise<void> {
     ctx.commands.register('documents.save', async (id: unknown, content: unknown) => {
       await ctx.documents.save(String(id), String(content))
+    })
+
+    ctx.commands.register('documents.newDocument', async () => {
+      ctx.notify({ level: 'info', message: 'New document is available from the Documents tree.' })
     })
 
     ctx.commands.register('documents.newChapter', async () => {

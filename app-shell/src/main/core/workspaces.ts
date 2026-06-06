@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { createHash, randomUUID } from 'crypto'
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'fs'
 import path from 'path'
-import type { Doc, Workspace, WorkspaceDuplicateParams, WorkspaceImportParams, WorkspaceListParams } from '@shared/module-contract'
+import type { Doc, DocumentNodeType, Workspace, WorkspaceDuplicateParams, WorkspaceImportParams, WorkspaceListParams } from '@shared/module-contract'
 import { getDb } from './db'
 import { createSettingsStore } from './settings'
 import { events } from './events'
@@ -16,7 +16,8 @@ const IMPORTABLE_EXTENSIONS = new Set(['.md', '.markdown', '.txt'])
 type ImportedDocument = {
   id: string
   parentId: string | null
-  kind: 'folder' | 'chapter'
+  nodeType: DocumentNodeType
+  kind: string | null
   title: string
   sortOrder: number
   content: string
@@ -132,7 +133,8 @@ function importableEntries(root: string, parentId: string | null = null): Import
       docs.push({
         id,
         parentId,
-        kind: 'folder',
+        nodeType: 'folder',
+        kind: null,
         title: entry.name,
         sortOrder: index,
         content: '',
@@ -149,7 +151,8 @@ function importableEntries(root: string, parentId: string | null = null): Import
     docs.push({
       id: randomUUID(),
       parentId,
-      kind: 'chapter',
+      nodeType: 'document',
+      kind: null,
       title: titleFromFile(entry.fullPath),
       sortOrder: index,
       content: parsed.body,
@@ -172,12 +175,24 @@ function copyWorkspaceSettings(sourceWorkspaceId: string, targetWorkspaceId: str
     db.prepare('INSERT OR REPLACE INTO shell_settings (key, value) VALUES (?, ?)')
       .run(row.key.replace(`.${sourceWorkspaceId}.`, `.${targetWorkspaceId}.`), row.value)
   }
+
+  const kindOptions = db
+    .prepare('SELECT value FROM shell_settings WHERE key = ?')
+    .get(`shell.documents.${sourceWorkspaceId}.kindOptions`) as { value: string } | undefined
+  if (kindOptions) {
+    db.prepare('INSERT OR REPLACE INTO shell_settings (key, value) VALUES (?, ?)')
+      .run(`shell.documents.${targetWorkspaceId}.kindOptions`, kindOptions.value)
+  }
 }
 
 function deleteWorkspaceSettings(workspaceId: string): void {
-  getDb()
+  const db = getDb()
+  db
     .prepare("DELETE FROM shell_settings WHERE key LIKE ?")
     .run(`modules.%.${workspaceId}.state`)
+  db
+    .prepare('DELETE FROM shell_settings WHERE key = ?')
+    .run(`shell.documents.${workspaceId}.kindOptions`)
 }
 
 function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now: string): void {
@@ -191,8 +206,8 @@ function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now
 
   const insertDoc = db.prepare(`
     INSERT INTO documents
-      (id, workspaceId, parentId, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt, archivedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, workspaceId, parentId, nodeType, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt, archivedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   for (const doc of sourceDocs) {
@@ -200,6 +215,7 @@ function copyDocuments(sourceWorkspaceId: string, targetWorkspaceId: string, now
       idMap.get(doc.id),
       targetWorkspaceId,
       doc.parentId ? idMap.get(doc.parentId) ?? null : null,
+      doc.nodeType,
       doc.kind,
       doc.title,
       doc.icon,
@@ -317,8 +333,8 @@ export const workspaceService = {
       insertWorkspace(workspace)
       const insertDoc = getDb().prepare(`
         INSERT INTO documents
-          (id, workspaceId, parentId, kind, title, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'markdown', ?, ?, ?, ?, ?)
+          (id, workspaceId, parentId, nodeType, kind, title, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'markdown', ?, ?, ?, ?, ?)
       `)
 
       for (const doc of importedDocs) {
@@ -326,6 +342,7 @@ export const workspaceService = {
           doc.id,
           workspace.id,
           doc.parentId,
+          doc.nodeType,
           doc.kind,
           doc.title,
           doc.sortOrder,

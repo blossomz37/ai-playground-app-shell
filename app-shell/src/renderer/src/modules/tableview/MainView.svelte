@@ -2,6 +2,15 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
   import { ArchiveIcon, CheckIcon, CopyIcon, TrashIcon, XIcon } from 'phosphor-svelte'
+  import {
+    documentKindFromValue,
+    documentKindValue,
+    labelForDocumentKind,
+    STRUCTURAL_FOLDER_KIND_LABEL,
+    STRUCTURAL_FOLDER_KIND_VALUE,
+    UNCATEGORIZED_KIND_LABEL,
+    UNCATEGORIZED_KIND_VALUE
+  } from '@shared/document-kinds'
 
   import {
     clearTableSelection,
@@ -38,6 +47,7 @@
     deleteDocs,
     duplicateDocs,
     selectDoc,
+    documentKindOptions,
     updateDoc,
     updateDocMetadata
   } from '../../store'
@@ -45,8 +55,10 @@
   import type { TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
 
   const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
-  const baseKindOptions = ['chapter', 'scene', 'plan', 'folder']
-  const bulkKindOptions = ['chapter', 'scene', 'plan']
+  const baseKindOptions = [
+    { value: STRUCTURAL_FOLDER_KIND_VALUE, label: STRUCTURAL_FOLDER_KIND_LABEL },
+    { value: UNCATEGORIZED_KIND_VALUE, label: UNCATEGORIZED_KIND_LABEL }
+  ]
   const updatedRangeOptions: { value: TableUpdatedRange; label: string }[] = [
     { value: 'all', label: 'Date' },
     { value: 'today', label: 'Today' },
@@ -54,17 +66,30 @@
     { value: '30d', label: '30 days' }
   ]
   let kindPopoverOpen = $state(false)
-  let bulkKind = $state('chapter')
+  let bulkKind = $state(UNCATEGORIZED_KIND_VALUE)
   let bulkTargetWords = $state('')
   let bulkBusy = $state(false)
   let confirmDeleteKey = $state<string | null>(null)
   let captureFilterListener: ((event: Event) => void) | null = null
   let captureBulkListener: ((event: Event) => void) | null = null
 
-  const kindOptions = $derived(Array.from(new Set([
-    ...baseKindOptions,
-    ...$tableDocuments.map(doc => doc.kind)
-  ])).sort((a, b) => baseKindOptions.indexOf(a) - baseKindOptions.indexOf(b) || a.localeCompare(b)))
+  const kindOptions = $derived.by(() => {
+    const options = [...baseKindOptions]
+    for (const option of $documentKindOptions) {
+      if (!options.some(item => item.value === option.id)) {
+        options.push({ value: option.id, label: option.label })
+      }
+    }
+    for (const doc of $tableDocuments) {
+      const value = tableKindValue(doc)
+      if (!options.some(item => item.value === value)) {
+        options.push({ value, label: tableKindLabel(doc) })
+      }
+    }
+    return options
+  })
+
+  const bulkKindOptions = $derived(kindOptions.filter(option => option.value !== STRUCTURAL_FOLDER_KIND_VALUE))
 
   const kindButtonLabel = $derived(
     $tableKindFilterMode === 'all'
@@ -96,14 +121,14 @@
   function toggleKind(kind: string): void {
     confirmDeleteKey = null
     if ($tableKindFilterMode === 'all') {
-      setTableSelectedKinds(kindOptions.filter(item => item !== kind))
+      setTableSelectedKinds(kindOptions.map(option => option.value).filter(item => item !== kind))
       return
     }
 
     const selected = $tableSelectedKinds.includes(kind)
       ? $tableSelectedKinds.filter(item => item !== kind)
       : [...$tableSelectedKinds, kind]
-    setTableSelectedKinds(kindOptions.filter(item => selected.includes(item)))
+    setTableSelectedKinds(kindOptions.map(option => option.value).filter(item => selected.includes(item)))
   }
 
   function selectAllKinds(): void {
@@ -118,8 +143,8 @@
 
   function invertKinds(): void {
     confirmDeleteKey = null
-    const selected = $tableKindFilterMode === 'all' ? kindOptions : $tableSelectedKinds
-    setTableSelectedKinds(kindOptions.filter(kind => !selected.includes(kind)))
+    const selected = $tableKindFilterMode === 'all' ? kindOptions.map(option => option.value) : $tableSelectedKinds
+    setTableSelectedKinds(kindOptions.map(option => option.value).filter(kind => !selected.includes(kind)))
   }
 
   function isKindSelected(kind: string): boolean {
@@ -179,7 +204,7 @@
     if ($tableKindFilterMode !== 'all') {
       chips.push({
         id: 'kind',
-        label: $tableSelectedKinds.length ? `Kinds: ${$tableSelectedKinds.join(', ')}` : 'Kinds: none',
+        label: $tableSelectedKinds.length ? `Kinds: ${$tableSelectedKinds.map(kindLabelForValue).join(', ')}` : 'Kinds: none',
         clear: clearKinds
       })
     }
@@ -224,6 +249,20 @@
     } catch {
       return null
     }
+  }
+
+  function tableKindValue(doc: { nodeType: string; kind: string | null }): string {
+    return doc.nodeType === 'folder' ? STRUCTURAL_FOLDER_KIND_VALUE : documentKindValue(doc.kind)
+  }
+
+  function kindLabelForValue(value: string): string {
+    if (value === STRUCTURAL_FOLDER_KIND_VALUE) return STRUCTURAL_FOLDER_KIND_LABEL
+    return labelForDocumentKind(documentKindFromValue(value), $documentKindOptions)
+  }
+
+  function tableKindLabel(doc: { nodeType: string; kind: string | null }): string {
+    if (doc.nodeType === 'folder') return STRUCTURAL_FOLDER_KIND_LABEL
+    return labelForDocumentKind(doc.kind, $documentKindOptions)
   }
 
   function parseTargetWords(value: string): number | null {
@@ -273,7 +312,7 @@
     bulkBusy = true
     try {
       for (const id of fileIds) {
-        await updateDoc(id, { kind: bulkKind })
+        await updateDoc(id, { kind: documentKindFromValue(bulkKind) })
       }
       clearSelection()
       addToast('info', `Updated ${fileIds.length} file${fileIds.length === 1 ? '' : 's'}.`)
@@ -445,14 +484,14 @@
               <button type="button" onclick={invertKinds}>Invert</button>
             </div>
             <div class="kind-list">
-              {#each kindOptions as kind (kind)}
+              {#each kindOptions as option (option.value)}
                 <label class="kind-option">
                   <input
                     type="checkbox"
-                    checked={isKindSelected(kind)}
-                    onchange={() => toggleKind(kind)}
+                    checked={isKindSelected(option.value)}
+                    onchange={() => toggleKind(option.value)}
                   />
-                  <span>{kind}</span>
+                  <span>{option.label}</span>
                 </label>
               {/each}
             </div>
@@ -568,8 +607,8 @@
         </button>
         <div class="bulk-group" aria-label="Change file kind">
           <select bind:value={bulkKind} disabled={bulkBusy || selectedFileCount === 0} data-capture-table-bulk-kind>
-            {#each bulkKindOptions as kind (kind)}
-              <option value={kind}>{kind}</option>
+            {#each bulkKindOptions as option (option.value)}
+              <option value={option.value}>{option.label}</option>
             {/each}
           </select>
           <button class="bulk-btn" type="button" disabled={bulkBusy || selectedFileCount === 0} onclick={applyBulkKind}>Apply kind</button>
@@ -650,7 +689,7 @@
                   {doc.title}
                 </button>
               </td>
-              <td><span class="kind-badge">{doc.kind}</span></td>
+              <td><span class="kind-badge">{tableKindLabel(doc)}</span></td>
               <td class="cell-date">{new Date(doc.updatedAt).toLocaleDateString()}</td>
               <td class="cell-num">{wordCount(doc.content)}</td>
               <td class="cell-num">{targetWordCount(doc.metadataJson) ?? '-'}</td>

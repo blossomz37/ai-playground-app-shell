@@ -1,7 +1,8 @@
 <!-- Assets InspectorView — metadata panel -->
 <script lang="ts">
   import type { AssetDocumentLink, AssetWorkspaceLink, Doc } from '@shared/module-contract'
-  import { activeWorkspace, documents } from '../../store'
+  import { labelForDocumentKind, STRUCTURAL_FOLDER_KIND_LABEL } from '@shared/document-kinds'
+  import { activeWorkspace, documents, documentKindOptions } from '../../store'
   import {
     addDocumentLink,
     addProjectLink,
@@ -47,7 +48,7 @@
     if (!query) return []
     return $documents
       .filter(doc => !doc.archivedAt && !linkedDocumentIds.has(doc.id))
-      .filter(doc => `${doc.kind} ${doc.title}`.toLowerCase().includes(query))
+      .filter(doc => `${documentKindLabel(doc)} ${doc.title}`.toLowerCase().includes(query))
       .slice(0, 7)
   })
 
@@ -143,11 +144,13 @@
 
   function documentLabel(documentId: string): string {
     const doc = documentLookup.get(documentId)
-    return doc ? `${titleCase(doc.kind)} - ${doc.title}` : documentId
+    return doc ? `${documentKindLabel(doc)} - ${doc.title}` : documentId
   }
 
-  function titleCase(value: string): string {
-    return value.slice(0, 1).toUpperCase() + value.slice(1)
+  function documentKindLabel(doc: Doc): string {
+    return doc.nodeType === 'folder'
+      ? STRUCTURAL_FOLDER_KIND_LABEL
+      : labelForDocumentKind(doc.kind, $documentKindOptions)
   }
 </script>
 
@@ -282,7 +285,7 @@
                   aria-selected={index === highlightedDocumentIndex}
                   onclick={() => void selectDocumentCandidate(doc)}
                 >
-                  <span>{titleCase(doc.kind)} - {doc.title}</span>
+                  <span>{documentKindLabel(doc)} - {doc.title}</span>
                 </button>
               {/each}
             </div>

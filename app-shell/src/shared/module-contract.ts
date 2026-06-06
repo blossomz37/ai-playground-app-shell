@@ -79,6 +79,13 @@ export interface DocumentTypeDecl {
   icon?: string
 }
 
+export type DocumentNodeType = 'folder' | 'document'
+
+export interface DocumentKindOption {
+  id: string
+  label: string
+}
+
 export interface JobTypeDecl {
   type: string
   title: string
@@ -99,7 +106,8 @@ export interface Doc {
   id: string
   workspaceId: string
   parentId: string | null
-  kind: string
+  nodeType: DocumentNodeType
+  kind: string | null
   title: string
   icon: string | null
   sortOrder: number
@@ -445,11 +453,11 @@ export interface ModuleContext {
     listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: unknown): Promise<void>
-    update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
     delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
-    create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    create(params: { workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
@@ -497,11 +505,11 @@ export interface ShellApi {
     listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
     save(id: string, content: string): Promise<void>
-    update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
     delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
-    create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+    create(params: { workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
     restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>

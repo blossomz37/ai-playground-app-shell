@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { DocumentSourceMetadata } from '@shared/module-contract'
-  import { activeDoc, versions, editorContent, countWords, updateDoc } from '../../store'
-
-  const docKinds = ['folder', 'chapter', 'scene', 'plan']
+  import { documentKindFromValue, documentKindValue, labelForDocumentKind, UNCATEGORIZED_KIND_LABEL, UNCATEGORIZED_KIND_VALUE } from '@shared/document-kinds'
+  import { activeDoc, versions, editorContent, countWords, updateDoc, documents, documentKindOptions } from '../../store'
 
   type SourceField = { label: string; value: string; title?: string }
 
@@ -17,7 +16,9 @@
     const doc = $activeDoc
     if (!doc) return
 
-    const kind = (event.currentTarget as HTMLSelectElement).value
+    if (doc.nodeType === 'folder') return
+
+    const kind = documentKindFromValue((event.currentTarget as HTMLSelectElement).value)
     if (kind === doc.kind) return
     await updateDoc(doc.id, { kind })
   }
@@ -71,6 +72,23 @@
     field('Imported words', sourceMetadata?.word_count),
     sourceMetadata ? field('Current words', countWords($editorContent)) : null
   ]))
+
+  let docKindSelectOptions = $derived.by(() => {
+    const current = $activeDoc?.kind ?? null
+    const options = [
+      { value: UNCATEGORIZED_KIND_VALUE, label: UNCATEGORIZED_KIND_LABEL },
+      ...$documentKindOptions.map(option => ({ value: option.id, label: option.label }))
+    ]
+    if (current !== null && !options.some(option => option.value === current)) {
+      options.push({ value: current, label: labelForDocumentKind(current, $documentKindOptions) })
+    }
+    for (const doc of $documents) {
+      if (doc.kind !== null && !options.some(option => option.value === doc.kind)) {
+        options.push({ value: doc.kind, label: labelForDocumentKind(doc.kind, $documentKindOptions) })
+      }
+    }
+    return options
+  })
 </script>
 
 <div class="inspector-view">
@@ -91,13 +109,24 @@
           />
         </div>
         <div class="field">
-          <label class="label" for="document-kind">Kind</label>
-          <select id="document-kind" class="kind-select" value={$activeDoc.kind} onchange={onKindChange}>
-            {#each docKinds as kind (kind)}
-              <option value={kind}>{kind}</option>
-            {/each}
-          </select>
+          <span class="label">Type</span>
+          <span class="value">{$activeDoc.nodeType === 'folder' ? 'Folder' : 'Document'}</span>
         </div>
+        {#if $activeDoc.nodeType === 'document'}
+          <div class="field">
+            <label class="label" for="document-kind">Kind</label>
+            <select id="document-kind" class="kind-select" value={documentKindValue($activeDoc.kind)} onchange={onKindChange}>
+              {#each docKindSelectOptions as option (option.value)}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </div>
+        {:else}
+          <div class="field">
+            <span class="label">Kind</span>
+            <span class="value">Not applicable</span>
+          </div>
+        {/if}
         <div class="field">
           <label class="label" for="document-icon">Icon</label>
           <input
@@ -106,7 +135,7 @@
             type="text"
             maxlength="8"
             value={$activeDoc.icon ?? ''}
-            placeholder={$activeDoc.kind === 'folder' ? '📁' : '📄'}
+            placeholder={$activeDoc.nodeType === 'folder' ? '📁' : '📄'}
             onchange={onIconChange}
           />
         </div>

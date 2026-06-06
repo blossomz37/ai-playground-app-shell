@@ -1,4 +1,4 @@
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocVersion } from '../module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocumentNodeType, DocVersion } from '../module-contract'
 import { ObservableSlice } from './observable'
 
 export interface DocNode extends Doc {
@@ -13,11 +13,11 @@ export interface DocumentsPort {
   listArchived(workspaceId: string): Promise<Doc[]>
   open(id: string): Promise<Doc | undefined>
   save(id: string, content: string): Promise<void>
-  update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+  update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
   updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
   duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
   delete(id: string, options?: DocumentLifecycleOptions): Promise<string[]>
-  create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
+  create(params: { workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
   move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
   archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
   restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
@@ -115,7 +115,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.emit()
   }
 
-  async updateDoc(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<void> {
+  async updateDoc(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<void> {
     const updated = await this.port.update(id, patch)
     this.upsertDocument(updated)
 
@@ -133,12 +133,15 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.emit()
   }
 
-  async createDoc(params: { workspaceId: string; kind: 'chapter' | 'scene' | 'folder'; targetId?: string | null }): Promise<Doc> {
-    const placement = this.createPlacement(params.kind, params.targetId ?? this.activeDocId)
-    const title = this.uniqueTitle(this.defaultTitle(params.kind), placement.parentId)
+  async createDoc(params: { workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; targetId?: string | null }): Promise<Doc> {
+    const nodeType = params.nodeType ?? 'document'
+    const kind = nodeType === 'folder' ? null : (params.kind ?? null)
+    const placement = this.createPlacement(nodeType, kind, params.targetId ?? this.activeDocId)
+    const title = this.uniqueTitle(this.defaultTitle(nodeType, kind), placement.parentId)
     const created = await this.port.create({
       workspaceId: params.workspaceId,
-      kind: params.kind,
+      nodeType,
+      kind,
       title,
       parentId: placement.parentId,
       sortOrder: placement.sortOrder
@@ -305,7 +308,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
     const duplicated: Doc[] = []
     for (const doc of rootDocs) {
-      const copied = await this.port.duplicate(doc.id, { recursive: doc.kind === 'folder' })
+      const copied = await this.port.duplicate(doc.id, { recursive: doc.nodeType === 'folder' })
       duplicated.push(...copied)
     }
 
@@ -330,7 +333,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
     const affectedSet = new Set<string>()
     for (const doc of rootDocs) {
-      for (const affectedId of doc.kind === 'folder' ? this.collectDescendantIds(doc.id) : [doc.id]) {
+      for (const affectedId of doc.nodeType === 'folder' ? this.collectDescendantIds(doc.id) : [doc.id]) {
         affectedSet.add(affectedId)
       }
     }
@@ -345,7 +348,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     const nextActiveId = activeWillDelete ? this.nextSelectionAfterArchive(this.activeDocId!, affectedSet) : this.activeDocId
     const deletedSet = new Set<string>()
     for (const doc of rootDocs) {
-      const deletedIds = await this.port.delete(doc.id, { recursive: doc.kind === 'folder' })
+      const deletedIds = await this.port.delete(doc.id, { recursive: doc.nodeType === 'folder' })
       for (const deletedId of deletedIds) {
         deletedSet.add(deletedId)
       }
@@ -534,24 +537,24 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     return compareManualDocuments(a, b)
   }
 
-  private defaultTitle(kind: 'chapter' | 'scene' | 'folder'): string {
-    if (kind === 'chapter') return 'Untitled Chapter'
-    if (kind === 'scene') return 'Untitled Scene'
-    return 'Untitled Folder'
+  private defaultTitle(nodeType: DocumentNodeType, kind: string | null): string {
+    if (nodeType === 'folder') return 'Untitled Folder'
+    if (kind === null) return 'Untitled Document'
+    return `Untitled ${titleCaseKind(kind)}`
   }
 
-  private createPlacement(kind: 'chapter' | 'scene' | 'folder', targetId?: string | null): { parentId: string | null; sortOrder: number } {
+  private createPlacement(nodeType: DocumentNodeType, kind: string | null, targetId?: string | null): { parentId: string | null; sortOrder: number } {
     const target = targetId ? this.documents.find(doc => doc.id === targetId) : undefined
 
     if (!target) {
       return this.appendPlacement(null)
     }
 
-    if (target.kind === 'folder') {
+    if (target.nodeType === 'folder') {
       return this.appendPlacement(target.id)
     }
 
-    if (kind === 'scene' && (target.kind === 'chapter' || target.kind === 'plan')) {
+    if (nodeType === 'document' && kind === 'scene' && (target.kind === 'chapter' || target.kind === 'plan')) {
       return this.appendPlacement(target.id)
     }
 
@@ -680,4 +683,12 @@ function compareManualDocuments(a: Doc, b: Doc): number {
   }
   if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
   return a.createdAt.localeCompare(b.createdAt)
+}
+
+function titleCaseKind(kind: string): string {
+  return kind
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || kind
 }

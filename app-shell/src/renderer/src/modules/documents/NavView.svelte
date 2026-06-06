@@ -79,7 +79,7 @@
       return
     }
 
-    if (node.kind === 'folder') {
+    if (node.nodeType === 'folder') {
       toggle(node.id)
       return
     }
@@ -90,7 +90,7 @@
   function displayIcon(node: DocNode): string {
     const customIcon = node.icon?.trim()
     if (customIcon) return customIcon
-    if (node.kind === 'folder') return isExpanded(node.id) ? '📂' : '📁'
+    if (node.nodeType === 'folder') return isExpanded(node.id) ? '📂' : '📁'
     return '📄'
   }
 
@@ -188,6 +188,7 @@
   function onTreeContextMenu(e: MouseEvent, node: DocNode) {
     e.preventDefault()
     const items: ContextMenuItem[] = [
+      { id: 'documents.newDocument', label: 'New Document', icon: '📄', args: [node.id] },
       { id: 'documents.newChapter', label: 'New Chapter', icon: '📄', args: [node.id] },
       { id: 'documents.newScene',   label: 'New Scene',   icon: '📄', args: [node.id] },
       { id: 'documents.newFolder',  label: 'New Folder',  icon: '📂', args: [node.id] },
@@ -206,10 +207,11 @@
     }
   }
 
-  async function handleCreate(kind: 'chapter' | 'scene' | 'folder', target?: unknown) {
+  async function handleCreate(kind: string | null, target?: unknown) {
     const created = await createDoc({
       workspaceId: $workspaceId,
-      kind,
+      nodeType: kind === 'folder' ? 'folder' : 'document',
+      kind: kind === 'folder' ? null : kind,
       targetId: commandTargetId(target)
     })
     expandPathTo(created.parentId)
@@ -446,6 +448,7 @@
 
   onMount(() => {
     commandDisposables = [
+      registerCommand('documents.newDocument', (target) => handleCreate(null, target)),
       registerCommand('documents.newChapter', (target) => handleCreate('chapter', target)),
       registerCommand('documents.newScene', (target) => handleCreate('scene', target)),
       registerCommand('documents.newFolder', (target) => handleCreate('folder', target)),
@@ -578,7 +581,7 @@
       <div class="empty-tree">
         <p>Create or import a project to begin.</p>
         <div class="empty-actions">
-          <button type="button" onclick={() => handleCreate('chapter')}>New chapter</button>
+          <button type="button" onclick={() => handleCreate(null)}>New document</button>
           <button type="button" onclick={() => handleCreate('folder')}>New folder</button>
         </div>
       </div>

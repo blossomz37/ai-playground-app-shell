@@ -11,6 +11,7 @@
   import AiProviderSettings from './AiProviderSettings.svelte'
   import AppearanceSettings from './AppearanceSettings.svelte'
   import DemoModeSettings from './DemoModeSettings.svelte'
+  import DocumentKindSettings from './DocumentKindSettings.svelte'
   import EditorSettings from './EditorSettings.svelte'
   import ModulePluginSettings from './ModulePluginSettings.svelte'
   import SecretsSettings from './SecretsSettings.svelte'
@@ -70,6 +71,7 @@
         <ModulePluginSettings />
         <DemoModeSettings />
         <EditorSettings />
+        <DocumentKindSettings />
         <AiProviderSettings {secretNames} {markSecretStored} {loadSecrets} />
         <SecretsSettings {secretNames} {secretsLoading} {loadSecrets} />
       </div>

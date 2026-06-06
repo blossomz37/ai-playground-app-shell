@@ -1,6 +1,8 @@
 <!-- Table View InspectorView — row detail -->
 <script lang="ts">
   import { countWords } from '../../store'
+  import { labelForDocumentKind, STRUCTURAL_FOLDER_KIND_LABEL } from '@shared/document-kinds'
+  import { documentKindOptions } from '../../store'
   import { selectedTableDoc } from './state'
 
   function fmt(iso: string): string {
@@ -13,6 +15,11 @@
   }
 
   let doc = $derived($selectedTableDoc)
+  let kindLabel = $derived(doc
+    ? doc.nodeType === 'folder'
+      ? STRUCTURAL_FOLDER_KIND_LABEL
+      : labelForDocumentKind(doc.kind, $documentKindOptions)
+    : '')
 </script>
 
 <div class="inspector-view">
@@ -21,7 +28,7 @@
     {#if doc}
       <div class="meta-grid">
         <span class="meta-label">Title</span><span class="meta-value">{doc.title}</span>
-        <span class="meta-label">Kind</span><span class="meta-value">{doc.kind}</span>
+        <span class="meta-label">Kind</span><span class="meta-value">{kindLabel}</span>
         <span class="meta-label">Words</span><span class="meta-value">{countWords(doc.content)}</span>
         <span class="meta-label">Created</span><span class="meta-value">{fmt(doc.createdAt)}</span>
         <span class="meta-label">Updated</span><span class="meta-value">{fmt(doc.updatedAt)}</span>

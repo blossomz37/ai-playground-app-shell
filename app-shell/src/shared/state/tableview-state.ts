@@ -1,5 +1,6 @@
 import type { Doc } from '../module-contract'
 import { ObservableSlice } from './observable'
+import { documentKindValue, STRUCTURAL_FOLDER_KIND_VALUE } from '../document-kinds'
 
 export type TableFilterKind = 'all' | string
 export type TableSortBy = 'title' | 'updatedAt' | 'createdAt' | 'kind'
@@ -71,8 +72,8 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       sortBy: this.sortBy,
       selectedDocId: this.selectedDocId,
       selectedDocIds: selectedDocs.map(doc => doc.id),
-      selectedFileIds: selectedDocs.filter(doc => doc.kind !== 'folder').map(doc => doc.id),
-      selectedFolderIds: selectedDocs.filter(doc => doc.kind === 'folder').map(doc => doc.id),
+      selectedFileIds: selectedDocs.filter(doc => doc.nodeType === 'document').map(doc => doc.id),
+      selectedFolderIds: selectedDocs.filter(doc => doc.nodeType === 'folder').map(doc => doc.id),
       visibleSelectedCount,
       allVisibleSelected: filteredDocuments.length > 0 && visibleSelectedCount === filteredDocuments.length,
       someVisibleSelected: visibleSelectedCount > 0,
@@ -277,7 +278,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     const query = this.searchQuery.trim().toLowerCase()
     const kindFiltered = this.kindFilterMode === 'all'
       ? [...this.documents]
-      : this.documents.filter(doc => this.selectedKinds.includes(doc.kind))
+      : this.documents.filter(doc => this.selectedKinds.includes(tableKindValue(doc)))
 
     const searchFiltered = query
       ? kindFiltered.filter(doc =>
@@ -298,7 +299,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     return dateFiltered.sort((a, b) => {
       if (this.sortBy === 'updatedAt') return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
       if (this.sortBy === 'createdAt') return Date.parse(b.createdAt) - Date.parse(a.createdAt)
-      if (this.sortBy === 'kind') return a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title)
+      if (this.sortBy === 'kind') return compareDocumentKind(a, b) || a.title.localeCompare(b.title)
       return a.title.localeCompare(b.title)
     })
   }
@@ -372,6 +373,18 @@ function migrateSnapshot(snapshot: TableViewPersistenceSnapshot): {
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function compareDocumentKind(left: Doc, right: Doc): number {
+  if (left.nodeType === 'folder' && right.nodeType !== 'folder') return -1
+  if (left.nodeType !== 'folder' && right.nodeType === 'folder') return 1
+  if (left.kind === null && right.kind !== null) return -1
+  if (left.kind !== null && right.kind === null) return 1
+  return (left.kind ?? '').localeCompare(right.kind ?? '')
+}
+
+function tableKindValue(doc: Doc): string {
+  return doc.nodeType === 'folder' ? STRUCTURAL_FOLDER_KIND_VALUE : documentKindValue(doc.kind)
 }
 
 function documentMatchesUpdatedRange(doc: Doc, range: TableUpdatedRange): boolean {

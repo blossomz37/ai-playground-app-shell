@@ -1,6 +1,7 @@
 import { writable, readable, get } from 'svelte/store'
-import type { DocumentMetadataPatch, ThemeMode, Workspace } from '@shared/module-contract'
+import type { DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, ThemeMode, Workspace } from '@shared/module-contract'
 import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
+import { DEFAULT_DOCUMENT_KIND_OPTIONS, normalizeDocumentKindOptions, slugifyDocumentKindLabel } from '@shared/document-kinds'
 import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
@@ -15,6 +16,7 @@ export const workspaceId   = writable<string>('ws-default')
 export const activeWorkspace = writable<Workspace | null>(null)
 export const workspaces = writable<Workspace[]>([])
 export const archivedWorkspaces = writable<Workspace[]>([])
+export const documentKindOptions = writable<DocumentKindOption[]>(DEFAULT_DOCUMENT_KIND_OPTIONS)
 export { activeModuleId } from './active-module'
 
 export const documentsState = getModuleState<DocumentsStateSlice>('shell.documents', 'documents')
@@ -145,6 +147,57 @@ async function loadDemoModePreference(): Promise<void> {
   }
 }
 
+function documentKindOptionsKey(wsId: string): string {
+  return `documents.${wsId}.kindOptions`
+}
+
+async function loadDocumentKindOptions(wsId: string): Promise<void> {
+  try {
+    documentKindOptions.set(normalizeDocumentKindOptions(
+      await window.shell.settings.get(documentKindOptionsKey(wsId))
+    ))
+  } catch {
+    documentKindOptions.set(DEFAULT_DOCUMENT_KIND_OPTIONS)
+  }
+}
+
+async function persistDocumentKindOptions(options: DocumentKindOption[]): Promise<void> {
+  const wsId = get(workspaceId)
+  documentKindOptions.set(options)
+  await window.shell.settings.set(documentKindOptionsKey(wsId), options)
+}
+
+export async function addDocumentKind(label: string): Promise<DocumentKindOption | null> {
+  const trimmed = label.trim()
+  if (!trimmed) return null
+
+  const current = get(documentKindOptions)
+  const ids = new Set(current.map(option => option.id))
+  const baseId = slugifyDocumentKindLabel(trimmed)
+  let id = baseId
+  let suffix = 2
+  while (ids.has(id)) {
+    id = `${baseId}-${suffix}`
+    suffix += 1
+  }
+
+  const option = { id, label: trimmed }
+  await persistDocumentKindOptions([...current, option])
+  return option
+}
+
+export async function renameDocumentKind(id: string, label: string): Promise<void> {
+  const trimmed = label.trim()
+  if (!trimmed) return
+  const current = get(documentKindOptions)
+  await persistDocumentKindOptions(current.map(option => option.id === id ? { ...option, label: trimmed } : option))
+}
+
+export async function removeDocumentKind(id: string): Promise<void> {
+  const current = get(documentKindOptions)
+  await persistDocumentKindOptions(current.filter(option => option.id !== id))
+}
+
 export async function setDemoModePreference(enabled: boolean): Promise<void> {
   demoModeEnabled.set(enabled)
   await window.shell.settings.set(DEMO_MODE_SETTING_KEY, enabled)
@@ -162,8 +215,10 @@ export async function initStore(): Promise<void> {
   const workspace = await window.shell.workspace.get()
   activeWorkspace.set(workspace)
   workspaceId.set(workspace.id)
+  await loadDocumentKindOptions(workspace.id)
   await refreshWorkspaceLists()
   await loadWorkspaceDocuments(workspace.id)
+  await loadDocumentKindOptions(workspace.id)
   await loadJobs(workspace.id)
 
   if (window.shell.capture?.documentId) {
@@ -252,7 +307,7 @@ export async function selectDoc(id: string): Promise<void> {
   await documentsState.selectDoc(id)
 }
 
-export async function updateDoc(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<void> {
+export async function updateDoc(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<void> {
   await documentsState.updateDoc(id, patch)
 }
 
@@ -260,7 +315,7 @@ export async function updateDocMetadata(id: string, patch: DocumentMetadataPatch
   await documentsState.updateDocMetadata(id, patch)
 }
 
-export async function createDoc(params: { workspaceId: string; kind: 'chapter' | 'scene' | 'folder'; targetId?: string | null }) {
+export async function createDoc(params: { workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; targetId?: string | null }) {
   return documentsState.createDoc(params)
 }
 

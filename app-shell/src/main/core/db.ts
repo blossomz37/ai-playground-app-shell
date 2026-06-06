@@ -34,7 +34,8 @@ function migrate(db: Database.Database): void {
       id              TEXT PRIMARY KEY,
       workspaceId     TEXT NOT NULL REFERENCES workspaces(id),
       parentId        TEXT,
-      kind            TEXT NOT NULL,
+      nodeType        TEXT NOT NULL DEFAULT 'document',
+      kind            TEXT,
       title           TEXT NOT NULL,
       icon            TEXT,
       sortOrder       INTEGER NOT NULL DEFAULT 0,
@@ -257,12 +258,101 @@ function migrate(db: Database.Database): void {
       PRIMARY KEY (assetId, documentId, relationType)
     );
 
-    -- FTS5 virtual table for full-text search on documents
+  `)
+
+  ensureColumn(db, 'workspaces', 'lastOpenedAt', 'TEXT')
+  ensureColumn(db, 'workspaces', 'archivedAt', 'TEXT')
+  migrateDocumentsNodeType(db)
+  ensureColumn(db, 'documents', 'icon', 'TEXT')
+  ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
+  setupDocumentFts(db)
+  const now = new Date().toISOString()
+  db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)
+}
+
+function migrateDocumentsNodeType(db: Database.Database): void {
+  const columns = db.prepare('PRAGMA table_info(documents)').all() as Array<{ name: string; notnull: number }>
+  const hasNodeType = columns.some(column => column.name === 'nodeType')
+  const kindColumn = columns.find(column => column.name === 'kind')
+  if (hasNodeType && kindColumn?.notnull === 0) return
+
+  const hasIcon = columns.some(column => column.name === 'icon')
+  const hasMetadataJson = columns.some(column => column.name === 'metadataJson')
+  const hasArchivedAt = columns.some(column => column.name === 'archivedAt')
+  db.exec(`
+    DROP TRIGGER IF EXISTS documents_fts_insert;
+    DROP TRIGGER IF EXISTS documents_fts_update;
+    DROP TRIGGER IF EXISTS documents_fts_delete;
+    DROP TABLE IF EXISTS documents_fts;
+  `)
+
+  const nodeTypeExpression = hasNodeType
+    ? "CASE WHEN kind = 'folder' THEN 'folder' ELSE COALESCE(NULLIF(nodeType, ''), 'document') END"
+    : "CASE WHEN kind = 'folder' THEN 'folder' ELSE 'document' END"
+
+  db.pragma('foreign_keys = OFF')
+  try {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE documents_new (
+          id              TEXT PRIMARY KEY,
+          workspaceId     TEXT NOT NULL REFERENCES workspaces(id),
+          parentId        TEXT,
+          nodeType        TEXT NOT NULL DEFAULT 'document',
+          kind            TEXT,
+          title           TEXT NOT NULL,
+          icon            TEXT,
+          sortOrder       INTEGER NOT NULL DEFAULT 0,
+          content         TEXT NOT NULL DEFAULT '',
+          contentFormat   TEXT NOT NULL DEFAULT 'markdown',
+          sourcePath      TEXT,
+          sourceChecksum  TEXT,
+          metadataJson    TEXT,
+          createdAt       TEXT NOT NULL,
+          updatedAt       TEXT NOT NULL,
+          archivedAt      TEXT
+        );
+      `)
+
+      db.exec(`
+        INSERT INTO documents_new
+          (id, workspaceId, parentId, nodeType, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt, archivedAt)
+        SELECT
+          id,
+          workspaceId,
+          parentId,
+          ${nodeTypeExpression},
+          CASE WHEN kind = 'folder' THEN NULL ELSE kind END,
+          title,
+          ${hasIcon ? 'icon' : 'NULL'},
+          sortOrder,
+          content,
+          contentFormat,
+          sourcePath,
+          sourceChecksum,
+          ${hasMetadataJson ? 'metadataJson' : 'NULL'},
+          createdAt,
+          updatedAt,
+          ${hasArchivedAt ? 'archivedAt' : 'NULL'}
+        FROM documents;
+      `)
+
+      db.exec(`
+        DROP TABLE documents;
+        ALTER TABLE documents_new RENAME TO documents;
+      `)
+    })()
+  } finally {
+    db.pragma('foreign_keys = ON')
+  }
+}
+
+function setupDocumentFts(db: Database.Database): void {
+  db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
       title, content, content='documents', content_rowid='rowid'
     );
 
-    -- Triggers to keep FTS index in sync with documents table
     CREATE TRIGGER IF NOT EXISTS documents_fts_insert AFTER INSERT ON documents
     BEGIN
       INSERT INTO documents_fts(rowid, title, content)
@@ -283,13 +373,6 @@ function migrate(db: Database.Database): void {
       VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
     END;
   `)
-
-  ensureColumn(db, 'workspaces', 'lastOpenedAt', 'TEXT')
-  ensureColumn(db, 'workspaces', 'archivedAt', 'TEXT')
-  ensureColumn(db, 'documents', 'icon', 'TEXT')
-  ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
-  const now = new Date().toISOString()
-  db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)
 }
 
 function ensureColumn(db: Database.Database, table: string, column: string, definition: string): void {

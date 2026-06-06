@@ -11,6 +11,7 @@ import type {
   DocumentExportParams,
   DocumentLifecycleOptions,
   DocumentMetadataPatch,
+  DocumentNodeType,
   JournalEntry,
   JournalExportParams,
   ThemeMode,
@@ -66,7 +67,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('documents:update', (_e, { id, patch }: {
-    id: string; patch: { title?: string; kind?: string; icon?: string | null }
+    id: string; patch: { title?: string; kind?: string | null; icon?: string | null }
   }) => documents.update(id, patch))
 
   ipcMain.handle('documents:updateMetadata', (_e, { id, patch }: {
@@ -82,7 +83,7 @@ export function registerIpcHandlers(): void {
   }) => documents.delete(id, options))
 
   ipcMain.handle('documents:create', (_e, params: {
-    workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number
+    workspaceId: string; nodeType?: DocumentNodeType; kind?: string | null; title: string; parentId?: string | null; sortOrder?: number
   }) => documents.create(params))
 
   ipcMain.handle('documents:move', (_e, params: {
