@@ -24,6 +24,7 @@
     workspaceId
   } from '../store'
 
+  let { mode = 'rail' }: { mode?: 'rail' | 'sidebar' } = $props()
   let menuOpen = $state(false)
   let createWorkspaceOpen = $state(false)
   let workspaceName = $state('')
@@ -33,6 +34,7 @@
   let confirmDeleteId = $state<string | null>(null)
   let switcherElement: HTMLDivElement | undefined = $state()
 
+  let isSidebarMode = $derived(mode === 'sidebar')
   let switchableWorkspaces = $derived($workspaces.filter((workspace) => workspace.id !== $workspaceId))
   let activeProjectCount = $derived($workspaces.length)
 
@@ -123,25 +125,32 @@
 </script>
 
 <svelte:window onkeydown={(event) => {
-  if (event.key === 'Escape' && menuOpen) closeMenu()
+  if (event.key === 'Escape' && menuOpen && !isSidebarMode) closeMenu()
 }} />
 <svelte:document onclick={onDocumentClick} />
 
-<div class="workspace-switcher" {@attach trackSwitcher}>
-  <button
-    class="workspace-button"
-    type="button"
-    title={$activeWorkspace?.name ?? 'Workspace'}
-    aria-label={`Project menu, current project ${$activeWorkspace?.name ?? 'Workspace'}`}
-    aria-expanded={menuOpen}
-    aria-haspopup="menu"
-    onclick={() => menuOpen = !menuOpen}
-  >
-    <BookOpenIcon size={20} weight="regular" />
-  </button>
+<div class:workspace-switcher={!isSidebarMode} class:workspace-sidebar={isSidebarMode} {@attach trackSwitcher}>
+  {#if !isSidebarMode}
+    <button
+      class="workspace-button"
+      type="button"
+      title={$activeWorkspace?.name ?? 'Workspace'}
+      aria-label={`Project menu, current project ${$activeWorkspace?.name ?? 'Workspace'}`}
+      aria-expanded={menuOpen}
+      aria-haspopup="menu"
+      onclick={() => menuOpen = !menuOpen}
+    >
+      <BookOpenIcon size={20} weight="regular" />
+    </button>
+  {/if}
 
-  {#if menuOpen}
-    <div class="workspace-menu" role="menu" tabindex="-1" aria-label="Project menu">
+  {#if menuOpen || isSidebarMode}
+    <div
+      class="workspace-menu"
+      class:inline={isSidebarMode}
+      role={isSidebarMode ? 'region' : 'menu'}
+      aria-label="Project menu"
+    >
       <header class="workspace-current">
         <span class="field-label">Current project</span>
         <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
@@ -150,7 +159,7 @@
         </span>
       </header>
 
-      <section class="workspace-section" aria-label="Open project">
+      <section class="workspace-section project-list-section" aria-label="Open project">
         <div class="section-heading">
           <span>Projects</span>
           <span>{activeProjectCount}</span>
@@ -211,7 +220,7 @@
         {/if}
       </section>
 
-      <section class="workspace-section" aria-label="Create or import project">
+      <section class="workspace-section create-project-section" aria-label="Create or import project">
         <button
           class="workspace-action primary"
           type="button"
@@ -258,7 +267,7 @@
         </button>
       </section>
 
-      <section class="workspace-section" aria-label="Current project actions">
+      <section class="workspace-section current-actions-section" aria-label="Current project actions">
         <div class="section-heading">
           <span>Current</span>
         </div>
@@ -301,7 +310,7 @@
         {/if}
       </section>
 
-      <section class="workspace-section" aria-label="Archived projects">
+      <section class="workspace-section archived-projects-section" aria-label="Archived projects">
         <div class="section-heading">
           <span>Archived</span>
           <span>{$archivedWorkspaces.length}</span>
@@ -360,6 +369,13 @@
     padding-bottom: var(--space-2);
   }
 
+  .workspace-sidebar {
+    display: block;
+    min-height: 0;
+    max-height: 48%;
+    overflow: hidden;
+  }
+
   .workspace-button {
     position: relative;
     display: flex;
@@ -397,6 +413,26 @@
     border-radius: var(--radius-md);
     background: var(--color-shell-sidebar);
     box-shadow: var(--shadow-panel);
+  }
+
+  .workspace-menu.inline {
+    position: static;
+    z-index: auto;
+    width: 100%;
+    max-height: 100%;
+    overflow: auto;
+    border: none;
+    border-radius: 0;
+    border-bottom: var(--border-subtle);
+    box-shadow: none;
+  }
+
+  .workspace-menu.inline .workspace-current {
+    order: -2;
+  }
+
+  .workspace-menu.inline .current-actions-section {
+    order: -1;
   }
 
   .workspace-current {

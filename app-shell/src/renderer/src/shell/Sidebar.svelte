@@ -15,30 +15,34 @@
   import WebNavView from '../modules/web/NavView.svelte'
   // Prompt Studio
   import PromptStudioNavView from '../modules/promptstudio/NavView.svelte'
+  import WorkspaceSwitcher from './WorkspaceSwitcher.svelte'
 
   let props = $props<{ moduleId: string | null }>()
 </script>
 
 <aside class="sidebar">
-  {#if props.moduleId === 'shell.documents'}
-    <DocsNavView />
-  {:else if props.moduleId === 'shell.journal'}
-    <JournalNavView />
-  {:else if props.moduleId === 'shell.assets'}
-    <AssetsNavView />
-  {:else if props.moduleId === 'shell.workflow'}
-    <WorkflowNavView />
-  {:else if props.moduleId === 'shell.tableview'}
-    <TableNavView />
-  {:else if props.moduleId === 'shell.aichat'}
-    <AIChatNavView />
-  {:else if props.moduleId === 'shell.web'}
-    <WebNavView />
-  {:else if props.moduleId === 'shell.promptstudio'}
-    <PromptStudioNavView />
-  {:else}
-    <div class="empty">Nothing selected</div>
-  {/if}
+  <WorkspaceSwitcher mode="sidebar" />
+  <div class="module-navigation">
+    {#if props.moduleId === 'shell.documents'}
+      <DocsNavView />
+    {:else if props.moduleId === 'shell.journal'}
+      <JournalNavView />
+    {:else if props.moduleId === 'shell.assets'}
+      <AssetsNavView />
+    {:else if props.moduleId === 'shell.workflow'}
+      <WorkflowNavView />
+    {:else if props.moduleId === 'shell.tableview'}
+      <TableNavView />
+    {:else if props.moduleId === 'shell.aichat'}
+      <AIChatNavView />
+    {:else if props.moduleId === 'shell.web'}
+      <WebNavView />
+    {:else if props.moduleId === 'shell.promptstudio'}
+      <PromptStudioNavView />
+    {:else}
+      <div class="empty">Nothing selected</div>
+    {/if}
+  </div>
 </aside>
 
 <style>
@@ -50,6 +54,15 @@
     border-right: var(--border-zone);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 44%, transparent);
     overflow: hidden;
+  }
+
+  .module-navigation {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: var(--border-zone);
   }
 
   .empty {

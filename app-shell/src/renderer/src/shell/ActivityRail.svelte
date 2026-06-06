@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import WorkspaceSwitcher from './WorkspaceSwitcher.svelte'
 
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
@@ -192,7 +191,6 @@
 </script>
 
 <nav class="activity-rail" aria-label="Module navigation">
-  <WorkspaceSwitcher />
   {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
