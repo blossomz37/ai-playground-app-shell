@@ -1,6 +1,6 @@
 # Archive
 
-Point-in-time artifacts from the **2026-05-29 decision phase**. Kept for provenance — they are **not needed for forward development**. The decisions they produced are authoritative in `0-shell-platform-spec.md` §12.
+Point-in-time artifacts.
 
 If you're a new agent orienting to this workspace: you can safely skip this folder. Start with `CLAUDE.md` and `HANDOFF.md` at the root, then `reference/`.
 
@@ -9,6 +9,12 @@ If you're a new agent orienting to this workspace: you can safely skip this fold
 **Agent implementation plans and screenshot evidence of completion:**
 `plans-1-through-29.zip`
 `screenshots-20260529-20260605.zip`
+
+---
+
+Pre-spec-planning documents:
+
+From the **2026-05-29 decision phase**. Kept for provenance — they are **not needed for forward development**. 
 
 **Decision record (how the stack was chosen):**
 - `decision-questionnaire.md` — the 11-question framework, with leans and rationale
