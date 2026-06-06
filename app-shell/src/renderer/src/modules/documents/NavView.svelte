@@ -549,30 +549,40 @@
     </div>
   </header>
   <div class="nav-tree" role="tree" aria-label="Documents tree">
-    <DocumentTree
-      nodes={$docTree as DocNode[]}
-      activeDocId={$activeDocId}
-      {draggingDocId}
-      {dragOverDocId}
-      {dragOverPlacement}
-      {renamingDocId}
-      {renameValue}
-      {focusRenameInput}
-      {displayIcon}
-      {isExpanded}
-      onActivateIcon={activateIcon}
-      onActivateNode={activateNode}
-      onContextMenu={onTreeContextMenu}
-      onDragStart={onTreeDragStart}
-      onDragOver={onTreeDragOver}
-      onDragLeave={onTreeDragLeave}
-      onDrop={onTreeDrop}
-      onDragEnd={onTreeDragEnd}
-      onPointerDown={onTreePointerDown}
-      onRenameInput={updateRenameValue}
-      {onRenameKeydown}
-      onRenameBlur={() => void commitRename()}
-    />
+    {#if $docTree.length > 0}
+      <DocumentTree
+        nodes={$docTree as DocNode[]}
+        activeDocId={$activeDocId}
+        {draggingDocId}
+        {dragOverDocId}
+        {dragOverPlacement}
+        {renamingDocId}
+        {renameValue}
+        {focusRenameInput}
+        {displayIcon}
+        {isExpanded}
+        onActivateIcon={activateIcon}
+        onActivateNode={activateNode}
+        onContextMenu={onTreeContextMenu}
+        onDragStart={onTreeDragStart}
+        onDragOver={onTreeDragOver}
+        onDragLeave={onTreeDragLeave}
+        onDrop={onTreeDrop}
+        onDragEnd={onTreeDragEnd}
+        onPointerDown={onTreePointerDown}
+        onRenameInput={updateRenameValue}
+        {onRenameKeydown}
+        onRenameBlur={() => void commitRename()}
+      />
+    {:else}
+      <div class="empty-tree">
+        <p>Create or import a project to begin.</p>
+        <div class="empty-actions">
+          <button type="button" onclick={() => handleCreate('chapter')}>New chapter</button>
+          <button type="button" onclick={() => handleCreate('folder')}>New folder</button>
+        </div>
+      </div>
+    {/if}
   </div>
   {#if $archivedDocTree.length > 0}
     <section class="archived-section" aria-label="Archived documents">
@@ -696,6 +706,38 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--space-2) var(--space-2);
+  }
+
+  .empty-tree {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-2);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+
+  .empty-tree p {
+    margin: 0;
+  }
+
+  .empty-actions {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .empty-actions button {
+    min-height: 30px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-nav) 11%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-nav) 30%, var(--color-border));
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 650;
+  }
+
+  .empty-actions button:hover {
+    background: var(--color-hover);
   }
 
   .archived-section {

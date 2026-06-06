@@ -175,7 +175,10 @@
 
   {#if !$activeDoc}
     <div class="empty">
-      <p>Select a document from the sidebar to begin.</p>
+      <div class="empty-copy">
+        <h2>Create or import a project to begin.</h2>
+        <p>Use the project menu to create a project, import a folder, or add your first document.</p>
+      </div>
     </div>
   {/if}
 </div>
@@ -394,6 +397,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: var(--space-6);
     color: var(--color-fg-muted);
+  }
+
+  .empty-copy {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 420px;
+    text-align: center;
+  }
+
+  .empty-copy h2 {
+    margin: 0;
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xl);
+    font-weight: 650;
+  }
+
+  .empty-copy p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
   }
 </style>
