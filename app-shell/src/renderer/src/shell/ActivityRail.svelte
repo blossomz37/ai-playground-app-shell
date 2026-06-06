@@ -225,6 +225,17 @@
 
 <style>
   .activity-rail {
+    --_rail-spectrum: linear-gradient(
+      180deg,
+      var(--jewel-ruby) 0%,
+      var(--jewel-amber) 18%,
+      var(--jewel-citrine) 34%,
+      var(--jewel-emerald) 50%,
+      var(--jewel-sapphire) 68%,
+      var(--jewel-amethyst) 84%,
+      var(--jewel-tourmaline) 100%
+    );
+
     grid-area: rail;
     position: relative;
     display: flex;
@@ -265,6 +276,13 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 18%, transparent);
   }
 
+  .rail-btn.active:hover,
+  .rail-btn.active:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 20%, transparent),
+      0 0 14px color-mix(in srgb, var(--jewel-amethyst) 12%, transparent);
+  }
+
   .rail-btn.dragging {
     opacity: 0.46;
   }
@@ -278,8 +296,8 @@
     bottom: 5px;
     width: 3px;
     border-radius: 0 2px 2px 0;
-    background: var(--accent-nav);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-nav) 42%, transparent);
+    background: var(--_rail-spectrum);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--jewel-sapphire) 34%, transparent);
   }
 
   .rail-btn.drop-before::after,
