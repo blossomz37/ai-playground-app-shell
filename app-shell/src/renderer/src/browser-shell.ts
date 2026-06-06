@@ -10,6 +10,7 @@ import type {
   Workspace
 } from '@shared/module-contract'
 import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
+import { DEMO_MODE_SETTING_KEY } from '@shared/demo-mode'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -81,7 +82,7 @@ const DEFAULT_LAYOUT: LayoutState = {
 
 function createBrowserShell(): ShellApi {
   let layout = { ...DEFAULT_LAYOUT }
-  const settings = new Map<string, unknown>()
+  const settings = readBrowserSettings()
   const docs = new Map(DEMO_DOCS.map(doc => [doc.id, { ...doc }]))
   const now = new Date().toISOString()
   let activeWorkspace: Workspace = {
@@ -412,6 +413,7 @@ function createBrowserShell(): ShellApi {
       get: async (key) => settings.get(key),
       set: async (key, value) => {
         settings.set(key, value)
+        writeBrowserSetting(key, value)
       }
     },
     modules: {
@@ -666,4 +668,37 @@ function createBrowserShell(): ShellApi {
 export function installBrowserShell(): void {
   if (window.shell) return
   window.shell = createBrowserShell()
+}
+
+function readBrowserSettings(): Map<string, unknown> {
+  const settings = new Map<string, unknown>()
+  if (typeof window === 'undefined') return settings
+
+  try {
+    const raw = window.localStorage.getItem('app-shell.browser.settings')
+    if (raw) {
+      for (const [key, value] of Object.entries(JSON.parse(raw) as Record<string, unknown>)) {
+        settings.set(key, value)
+      }
+    }
+  } catch {
+    settings.clear()
+  }
+
+  if (!settings.has(DEMO_MODE_SETTING_KEY)) {
+    settings.set(DEMO_MODE_SETTING_KEY, false)
+  }
+  return settings
+}
+
+function writeBrowserSetting(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = window.localStorage.getItem('app-shell.browser.settings')
+    const settings = raw ? JSON.parse(raw) as Record<string, unknown> : {}
+    settings[key] = value
+    window.localStorage.setItem('app-shell.browser.settings', JSON.stringify(settings))
+  } catch {
+    // Browser preview settings are convenience state only.
+  }
 }

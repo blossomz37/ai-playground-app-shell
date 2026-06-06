@@ -10,6 +10,7 @@
   import { aiSecretNames, loadAiProviders } from '../store/ai'
   import AiProviderSettings from './AiProviderSettings.svelte'
   import AppearanceSettings from './AppearanceSettings.svelte'
+  import DemoModeSettings from './DemoModeSettings.svelte'
   import EditorSettings from './EditorSettings.svelte'
   import SecretsSettings from './SecretsSettings.svelte'
 
@@ -65,6 +66,7 @@
 
       <div class="settings-body">
         <AppearanceSettings />
+        <DemoModeSettings />
         <EditorSettings />
         <AiProviderSettings {secretNames} {markSecretStored} {loadSecrets} />
         <SecretsSettings {secretNames} {secretsLoading} {loadSecrets} />

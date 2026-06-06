@@ -5,6 +5,7 @@ import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
 import { initToasts } from './toasts'
 import { loadJobs } from './jobs'
+import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
 export type { ThemeMode }
 
@@ -47,6 +48,7 @@ export const editorSettings = writable<EditorSettings>({
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 export const themeMode = writable<ThemeMode>('system')
+export const demoModeEnabled = writable(false)
 
 let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -133,11 +135,25 @@ async function loadEditorSettings(): Promise<void> {
   }
 }
 
+async function loadDemoModePreference(): Promise<void> {
+  try {
+    demoModeEnabled.set(isDemoModeEnabled(await window.shell.settings.get(DEMO_MODE_SETTING_KEY)))
+  } catch {
+    demoModeEnabled.set(false)
+  }
+}
+
+export async function setDemoModePreference(enabled: boolean): Promise<void> {
+  demoModeEnabled.set(enabled)
+  await window.shell.settings.set(DEMO_MODE_SETTING_KEY, enabled)
+}
+
 export async function initStore(): Promise<void> {
   initToasts()
   await loadCommands()
   await loadThemePreference()
   await loadEditorSettings()
+  await loadDemoModePreference()
   documentsState.installChangeListener()
 
   const workspace = await window.shell.workspace.get()

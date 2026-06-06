@@ -18,6 +18,7 @@ import { aiChatModule } from './modules/aichat'
 import { webModule } from './modules/web'
 import { promptStudioModule } from './modules/promptstudio'
 import { registerIpcHandlers } from './ipc'
+import { DEMO_MODE_SETTING_KEY } from '@shared/demo-mode'
 import type { ThemeMode } from '@shared/module-contract'
 
 const APP_NAME = 'App Shell'
@@ -76,6 +77,7 @@ app.whenReady().then(async () => {
   const captureAiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
   const captureAiModel = process.env['SHELL_CAPTURE_AI_MODEL']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
+  const captureDemoMode = process.env['SHELL_CAPTURE_DEMO_MODE']
   if (process.env['SHELL_CAPTURE'] && captureAiProviderId) {
     shellSettings.set('ai.providerId', captureAiProviderId)
     if (captureAiModel) {
@@ -84,6 +86,9 @@ app.whenReady().then(async () => {
   }
   if (process.env['SHELL_CAPTURE'] && isThemeMode(captureTheme)) {
     shellSettings.set('theme', captureTheme)
+  }
+  if (process.env['SHELL_CAPTURE'] && (captureDemoMode === '0' || captureDemoMode === '1')) {
+    shellSettings.set(DEMO_MODE_SETTING_KEY, captureDemoMode === '1')
   }
   const savedThemeValue = shellSettings.get<string>('theme')
   const savedTheme: ThemeMode = isThemeMode(savedThemeValue) ? savedThemeValue : 'system'
