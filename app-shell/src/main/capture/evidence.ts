@@ -52,6 +52,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const tableBulkCount = Number(process.env['SHELL_CAPTURE_TABLE_BULK_COUNT'] ?? 3)
   const tableBulkKind = process.env['SHELL_CAPTURE_TABLE_BULK_KIND']
   const tableBulkTargetWords = process.env['SHELL_CAPTURE_TABLE_BULK_TARGET_WORDS']
+  const toastMessage = process.env['SHELL_CAPTURE_TOAST_MESSAGE']
+  const toastLevel = process.env['SHELL_CAPTURE_TOAST_LEVEL'] ?? 'info'
   const restoreWorkspaceId = process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID']
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
@@ -799,6 +801,13 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           document.querySelector('button[aria-haspopup="dialog"]')?.click()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (toastMessage) {
+        win.webContents.send('shell:notify', {
+          level: toastLevel === 'warn' || toastLevel === 'error' ? toastLevel : 'info',
+          message: toastMessage
+        })
+        await new Promise(resolve => setTimeout(resolve, 250))
       }
       await win.webContents.executeJavaScript('window.getSelection()?.removeAllRanges()')
       await waitForWebviewRender()
