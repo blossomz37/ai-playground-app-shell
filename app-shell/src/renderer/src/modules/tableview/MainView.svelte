@@ -31,6 +31,7 @@
     tableSelectedKinds,
     tableKindFilterMode,
     tableFilterSummary,
+    tableSearchMode,
     tableSearchQuery,
     tableSortBy,
     tableSomeVisibleSelected,
@@ -52,7 +53,7 @@
     updateDocMetadata
   } from '../../store'
   import { addToast } from '../../store/toasts'
-  import type { TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
+  import type { TableSearchMode, TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
 
   const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
   const baseKindOptions = [
@@ -161,6 +162,11 @@
     tableSearchQuery.set(value)
   }
 
+  function setSearchMode(value: TableSearchMode): void {
+    confirmDeleteKey = null
+    tableSearchMode.set(value)
+  }
+
   function clearKinds(): void {
     confirmDeleteKey = null
     setTableAllKinds()
@@ -199,7 +205,10 @@
   function activeFilterChips(): Array<{ id: string; label: string; clear: () => void }> {
     const chips: Array<{ id: string; label: string; clear: () => void }> = []
     const query = $tableSearchQuery.trim()
-    if (query) chips.push({ id: 'search', label: `Search: ${query}`, clear: clearSearch })
+    if (query) {
+      const prefix = $tableSearchMode === 'regex' ? 'Regex' : 'Search'
+      chips.push({ id: 'search', label: `${prefix}: ${query}`, clear: clearSearch })
+    }
 
     if ($tableKindFilterMode !== 'all') {
       chips.push({
@@ -399,10 +408,12 @@
         wordsMin?: number
         wordsMax?: number
         updatedRange?: TableUpdatedRange
+        searchMode?: TableSearchMode
         reset?: boolean
       }>).detail
 
       if (detail.reset) resetFilters()
+      if (detail.searchMode !== undefined) setSearchMode(detail.searchMode)
       if (detail.search !== undefined) setSearch(detail.search)
       if (detail.kinds !== undefined) {
         confirmDeleteKey = null
@@ -463,6 +474,27 @@
           oninput={(event) => setSearch(event.currentTarget.value)}
           data-capture-table-search
         />
+      </div>
+      <div class="search-mode" aria-label="Search mode">
+        <button
+          type="button"
+          class:active={$tableSearchMode === 'text'}
+          aria-pressed={$tableSearchMode === 'text'}
+          onclick={() => setSearchMode('text')}
+          title="Plain text search"
+        >
+          Text
+        </button>
+        <button
+          type="button"
+          class:active={$tableSearchMode === 'regex'}
+          aria-pressed={$tableSearchMode === 'regex'}
+          onclick={() => setSearchMode('regex')}
+          title="Regular expression search"
+          data-capture-table-search-regex
+        >
+          Regex
+        </button>
       </div>
       <div class="kind-filter">
         <button
@@ -735,6 +767,28 @@
     outline: none;
   }
   .search-input { padding: 0 var(--space-3); }
+  .search-mode {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex: 0 0 112px;
+    height: 30px;
+    padding: 2px;
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+  }
+  .search-mode button {
+    min-width: 0;
+    padding: 0 var(--space-2);
+    border-radius: calc(var(--radius-sm) - 2px);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+  .search-mode button.active {
+    background: var(--color-bg-active);
+    color: var(--color-fg-primary);
+  }
   .kind-filter {
     position: relative;
     flex: 0 0 auto;
@@ -815,6 +869,7 @@
     font-weight: 500;
   }
   .search-input:focus-visible,
+  .search-mode button:focus-visible,
   .toolbar-field select:focus-visible,
   .kind-filter-btn:focus-visible,
   .kind-actions button:focus-visible,

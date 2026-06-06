@@ -42,6 +42,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
+  const tableSearchMode = process.env['SHELL_CAPTURE_TABLE_SEARCH_MODE']
   const tableKind = process.env['SHELL_CAPTURE_TABLE_KIND']
   const tableKinds = process.env['SHELL_CAPTURE_TABLE_KINDS']
   const tableWordsMin = process.env['SHELL_CAPTURE_TABLE_WORDS_MIN']
@@ -844,6 +845,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       }
       if (
         tableSearch !== undefined
+        || tableSearchMode !== undefined
         || tableKind
         || tableKinds !== undefined
         || tableWordsMin !== undefined
@@ -858,6 +860,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             window.dispatchEvent(new CustomEvent('table:capture-set-filters', {
               detail: {
                 search: ${JSON.stringify(tableSearch)},
+                searchMode: ${JSON.stringify(tableSearchMode)},
                 kinds: ${JSON.stringify(tableKinds !== undefined
                   ? tableKinds.split(',').map(kind => kind.trim()).filter(Boolean)
                   : tableKind

@@ -5,6 +5,7 @@ import { documentKindValue, STRUCTURAL_FOLDER_KIND_VALUE } from '../document-kin
 export type TableFilterKind = 'all' | string
 export type TableSortBy = 'title' | 'updatedAt' | 'createdAt' | 'kind'
 export type TableKindFilterMode = 'all' | 'custom'
+export type TableSearchMode = 'text' | 'regex'
 export type TableUpdatedRange = 'all' | 'today' | '7d' | '30d'
 
 export interface TableViewState {
@@ -13,6 +14,7 @@ export interface TableViewState {
   kindFilterMode: TableKindFilterMode
   selectedKinds: string[]
   searchQuery: string
+  searchMode: TableSearchMode
   wordCountMin?: number
   wordCountMax?: number
   updatedRange: TableUpdatedRange
@@ -35,6 +37,7 @@ export interface TableViewPersistenceSnapshot {
   kindFilterMode?: TableKindFilterMode
   selectedKinds?: string[]
   searchQuery?: string
+  searchMode?: TableSearchMode
   wordCountMin?: number
   wordCountMax?: number
   updatedRange?: TableUpdatedRange
@@ -47,6 +50,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   private kindFilterMode: TableKindFilterMode = 'all'
   private selectedKinds: string[] = []
   private searchQuery = ''
+  private searchMode: TableSearchMode = 'text'
   private wordCountMin: number | undefined
   private wordCountMax: number | undefined
   private updatedRange: TableUpdatedRange = 'all'
@@ -66,6 +70,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       kindFilterMode: this.kindFilterMode,
       selectedKinds: [...this.selectedKinds],
       searchQuery: this.searchQuery,
+      searchMode: this.searchMode,
       wordCountMin: this.wordCountMin,
       wordCountMax: this.wordCountMax,
       updatedRange: this.updatedRange,
@@ -128,6 +133,13 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.emit()
   }
 
+  setSearchMode(searchMode: TableSearchMode): void {
+    this.searchMode = isSearchMode(searchMode) ? searchMode : 'text'
+    this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
+    this.emit()
+  }
+
   setSortBy(sortBy: TableSortBy): void {
     this.sortBy = sortBy
     this.ensureVisibleSelection()
@@ -155,6 +167,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.kindFilterMode = 'all'
     this.selectedKinds = []
     this.searchQuery = ''
+    this.searchMode = 'text'
     this.wordCountMin = undefined
     this.wordCountMax = undefined
     this.updatedRange = 'all'
@@ -248,6 +261,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.kindFilterMode = migrated.kindFilterMode
     this.selectedKinds = migrated.selectedKinds
     this.searchQuery = snapshot.searchQuery ?? ''
+    this.searchMode = isSearchMode(snapshot.searchMode) ? snapshot.searchMode : 'text'
     const normalizedRange = normalizeWordCountRange(snapshot.wordCountMin, snapshot.wordCountMax)
     this.wordCountMin = normalizedRange.min
     this.wordCountMax = normalizedRange.max
@@ -266,6 +280,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       kindFilterMode: this.kindFilterMode,
       selectedKinds: [...this.selectedKinds],
       searchQuery: this.searchQuery,
+      searchMode: this.searchMode,
       wordCountMin: this.wordCountMin,
       wordCountMax: this.wordCountMax,
       updatedRange: this.updatedRange,
@@ -275,17 +290,12 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   }
 
   private filteredDocuments(): Doc[] {
-    const query = this.searchQuery.trim().toLowerCase()
+    const query = this.searchQuery.trim()
     const kindFiltered = this.kindFilterMode === 'all'
       ? [...this.documents]
       : this.documents.filter(doc => this.selectedKinds.includes(tableKindValue(doc)))
 
-    const searchFiltered = query
-      ? kindFiltered.filter(doc =>
-          doc.title.toLowerCase().includes(query)
-          || doc.content.toLowerCase().includes(query)
-        )
-      : kindFiltered
+    const searchFiltered = this.searchFilteredDocuments(kindFiltered, query)
 
     const wordFiltered = searchFiltered.filter(doc => {
       const count = countWords(doc.content)
@@ -315,6 +325,26 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       || this.wordCountMin !== undefined
       || this.wordCountMax !== undefined
       || this.updatedRange !== 'all'
+  }
+
+  private searchFilteredDocuments(documents: Doc[], query: string): Doc[] {
+    if (!query) return documents
+
+    if (this.searchMode === 'regex') {
+      let matcher: RegExp
+      try {
+        matcher = new RegExp(query, 'i')
+      } catch {
+        return []
+      }
+      return documents.filter(doc => matcher.test(`${doc.title}\n${doc.content}`))
+    }
+
+    const normalizedQuery = query.toLowerCase()
+    return documents.filter(doc =>
+      doc.title.toLowerCase().includes(normalizedQuery)
+      || doc.content.toLowerCase().includes(normalizedQuery)
+    )
   }
 }
 
@@ -347,6 +377,10 @@ function normalizeWordCount(value: number | undefined): number | undefined {
 
 function isUpdatedRange(value: unknown): value is TableUpdatedRange {
   return value === 'all' || value === 'today' || value === '7d' || value === '30d'
+}
+
+function isSearchMode(value: unknown): value is TableSearchMode {
+  return value === 'text' || value === 'regex'
 }
 
 function migrateSnapshot(snapshot: TableViewPersistenceSnapshot): {
