@@ -91,13 +91,21 @@
   async function onDuplicateCurrent(): Promise<void> {
     const id = $activeWorkspace?.id
     if (!id) return
-    await runWorkspaceAction('duplicate-current', () => duplicateWorkspaceAction(id))
+    await onDuplicateWorkspace(id)
   }
 
   async function onArchiveCurrent(): Promise<void> {
     const id = $activeWorkspace?.id
     if (!id) return
-    await runWorkspaceAction('archive-current', () => archiveWorkspaceAction(id))
+    await onArchiveWorkspace(id)
+  }
+
+  async function onDuplicateWorkspace(id: string): Promise<void> {
+    await runWorkspaceAction(`duplicate:${id}`, () => duplicateWorkspaceAction(id))
+  }
+
+  async function onArchiveWorkspace(id: string): Promise<void> {
+    await runWorkspaceAction(`archive:${id}`, () => archiveWorkspaceAction(id))
   }
 
   async function onRestoreWorkspace(id: string): Promise<void> {
@@ -150,16 +158,52 @@
         {#if switchableWorkspaces.length > 0}
           <div class="workspace-list">
             {#each switchableWorkspaces as workspace (workspace.id)}
-              <button
-                class="workspace-row"
-                type="button"
-                role="menuitem"
-                disabled={busyAction !== null}
-                onclick={() => onWorkspaceSelect(workspace.id)}
-              >
-                <span>{workspace.name}</span>
-                <span>{workspace.type}</span>
-              </button>
+              <div class="project-row">
+                <button
+                  class="workspace-row"
+                  type="button"
+                  role="menuitem"
+                  disabled={busyAction !== null}
+                  onclick={() => onWorkspaceSelect(workspace.id)}
+                >
+                  <span>{workspace.name}</span>
+                  <span>{workspace.type}</span>
+                </button>
+                <button
+                  class="icon-action"
+                  type="button"
+                  title="Duplicate project"
+                  aria-label={`Duplicate ${workspace.name}`}
+                  disabled={busyAction !== null}
+                  onclick={() => onDuplicateWorkspace(workspace.id)}
+                >
+                  <CopyIcon size={14} weight="bold" />
+                </button>
+                <button
+                  class="icon-action"
+                  type="button"
+                  title="Archive project"
+                  aria-label={`Archive ${workspace.name}`}
+                  disabled={busyAction !== null}
+                  onclick={() => onArchiveWorkspace(workspace.id)}
+                >
+                  <ArchiveIcon size={14} weight="bold" />
+                </button>
+                <button
+                  class="icon-action danger"
+                  type="button"
+                  title={confirmDeleteId === workspace.id ? 'Confirm database delete' : 'Delete from app'}
+                  aria-label={`${confirmDeleteId === workspace.id ? 'Confirm delete' : 'Delete'} ${workspace.name}`}
+                  disabled={busyAction !== null}
+                  onclick={() => onDeleteWorkspace(workspace.id)}
+                >
+                  {#if confirmDeleteId === workspace.id}
+                    <CheckIcon size={14} weight="bold" />
+                  {:else}
+                    <TrashIcon size={14} weight="bold" />
+                  {/if}
+                </button>
+              </div>
             {/each}
           </div>
         {:else}
@@ -226,7 +270,7 @@
             onclick={() => onDuplicateCurrent()}
           >
             <CopyIcon size={14} weight="bold" />
-            <span>{busyAction === 'duplicate-current' ? 'Duplicating...' : 'Duplicate'}</span>
+            <span>{busyAction === `duplicate:${$activeWorkspace?.id}` ? 'Duplicating...' : 'Duplicate'}</span>
           </button>
           <button
             class="workspace-action"
@@ -235,7 +279,7 @@
             onclick={() => onArchiveCurrent()}
           >
             <ArchiveIcon size={14} weight="bold" />
-            <span>{busyAction === 'archive-current' ? 'Archiving...' : 'Archive'}</span>
+            <span>{busyAction === `archive:${$activeWorkspace?.id}` ? 'Archiving...' : 'Archive'}</span>
           </button>
         </div>
         <button
@@ -408,6 +452,7 @@
     gap: var(--space-1);
   }
 
+  .project-row,
   .workspace-row,
   .archived-row {
     display: grid;
@@ -422,6 +467,11 @@
     padding: 0 var(--space-2);
     color: var(--color-fg-secondary);
     text-align: left;
+  }
+
+  .project-row {
+    grid-template-columns: minmax(0, 1fr) 28px 28px 28px;
+    padding-left: 0;
   }
 
   .workspace-row span:first-child,
