@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { Doc, DocumentExportParams, DocumentExportResult, DocVersion } from '@shared/module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentMetadataPatch, DocVersion } from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
 import { exportDocumentSubtree } from './document-export'
@@ -19,6 +19,31 @@ function parentRows(db: ReturnType<typeof getDb>, workspaceId: string, parentId:
       ORDER BY sortOrder, createdAt
     `)
     .all(workspaceId, parentId) as Doc[]
+}
+
+function parseMetadata(metadataJson: string | null): Record<string, unknown> {
+  if (!metadataJson) return {}
+  try {
+    const parsed = JSON.parse(metadataJson) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function applyMetadataPatch(metadata: Record<string, unknown>, patch: DocumentMetadataPatch): Record<string, unknown> {
+  const next = { ...metadata }
+  if (Object.prototype.hasOwnProperty.call(patch, 'targetWordCount')) {
+    const value = patch.targetWordCount
+    if (value === null || value === undefined) {
+      delete next.targetWordCount
+    } else if (Number.isFinite(value)) {
+      next.targetWordCount = Math.max(0, Math.floor(value))
+    }
+  }
+  return next
 }
 
 export const documents = {
@@ -68,6 +93,19 @@ export const documents = {
     }
 
     db.prepare('UPDATE documents SET title = ?, kind = ?, icon = ?, updatedAt = ? WHERE id = ?').run(title, kind, icon, now, id)
+    events.emit('documents:changed', id)
+
+    return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc
+  },
+
+  updateMetadata(id: string, patch: DocumentMetadataPatch): Doc {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
+    if (!current) throw new Error(`Document not found: ${id}`)
+
+    const metadata = applyMetadataPatch(parseMetadata(current.metadataJson), patch)
+    db.prepare('UPDATE documents SET metadataJson = ?, updatedAt = ? WHERE id = ?').run(JSON.stringify(metadata), now, id)
     events.emit('documents:changed', id)
 
     return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc

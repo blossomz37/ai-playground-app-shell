@@ -1,4 +1,4 @@
-import type { Doc, DocumentExportParams, DocumentExportResult, DocVersion } from '../module-contract'
+import type { Doc, DocumentExportParams, DocumentExportResult, DocumentMetadataPatch, DocVersion } from '../module-contract'
 import { ObservableSlice } from './observable'
 
 export interface DocNode extends Doc {
@@ -14,6 +14,7 @@ export interface DocumentsPort {
   open(id: string): Promise<Doc | undefined>
   save(id: string, content: string): Promise<void>
   update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+  updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
   create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
   move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
   archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
@@ -119,6 +120,17 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.emit()
   }
 
+  async updateDocMetadata(id: string, patch: DocumentMetadataPatch): Promise<void> {
+    const updated = await this.port.updateMetadata(id, patch)
+    this.upsertDocument(updated)
+
+    if (this.activeDocId === id) {
+      this.versions = await this.port.versions(id)
+    }
+
+    this.emit()
+  }
+
   async createDoc(params: { workspaceId: string; kind: 'chapter' | 'scene' | 'folder'; targetId?: string | null }): Promise<Doc> {
     const placement = this.createPlacement(params.kind, params.targetId ?? this.activeDocId)
     const title = this.uniqueTitle(this.defaultTitle(params.kind), placement.parentId)
@@ -199,6 +211,69 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     const nextActiveId = activeWillArchive ? this.nextSelectionAfterArchive(this.activeDocId!, new Set(affectedBeforeArchive)) : this.activeDocId
     const archivedIds = await this.port.archive(id, { recursive: true })
     const archivedSet = new Set(archivedIds.length > 0 ? archivedIds : affectedBeforeArchive)
+
+    this.documents = this.documents.filter(doc => !archivedSet.has(doc.id))
+    if (this.workspaceId) {
+      this.archivedDocuments = await this.port.listArchived(this.workspaceId)
+    }
+    for (const archivedId of archivedSet) {
+      this.drafts.delete(archivedId)
+    }
+
+    if (activeWillArchive) {
+      this.activeDocId = null
+      this.editorContent = ''
+      this.isDirty = false
+      this.versions = []
+      this.emit()
+
+      if (nextActiveId) {
+        await this.selectDoc(nextActiveId)
+      }
+    } else {
+      this.emit()
+    }
+
+    return { archivedIds: Array.from(archivedSet), nextActiveId }
+  }
+
+  async archiveDocs(ids: string[]): Promise<{ archivedIds: string[]; nextActiveId: string | null }> {
+    const selectedIds = new Set(ids)
+    const rootIds = this.documents
+      .filter(doc => selectedIds.has(doc.id) && !this.hasSelectedAncestor(doc, selectedIds))
+      .map(doc => doc.id)
+
+    if (rootIds.length === 0) return { archivedIds: [], nextActiveId: this.activeDocId }
+
+    const affectedSet = new Set<string>()
+    for (const id of rootIds) {
+      for (const affectedId of this.collectDescendantIds(id)) {
+        affectedSet.add(affectedId)
+      }
+    }
+    if (affectedSet.size === 0) return { archivedIds: [], nextActiveId: this.activeDocId }
+
+    const activeWillArchive = this.activeDocId !== null && affectedSet.has(this.activeDocId)
+    if (activeWillArchive && this.activeDocId && this.isDirty) {
+      await this.port.save(this.activeDocId, this.editorContent)
+      this.drafts.delete(this.activeDocId)
+      this.isDirty = false
+    }
+
+    const nextActiveId = activeWillArchive ? this.nextSelectionAfterArchive(this.activeDocId!, affectedSet) : this.activeDocId
+    const archivedSet = new Set<string>()
+    for (const id of rootIds) {
+      const archivedIds = await this.port.archive(id, { recursive: true })
+      if (archivedIds.length === 0) {
+        for (const affectedId of this.collectDescendantIds(id)) {
+          archivedSet.add(affectedId)
+        }
+      } else {
+        for (const archivedId of archivedIds) {
+          archivedSet.add(archivedId)
+        }
+      }
+    }
 
     this.documents = this.documents.filter(doc => !archivedSet.has(doc.id))
     if (this.workspaceId) {
@@ -455,6 +530,15 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
 
   private isDescendant(candidateId: string, ancestorId: string): boolean {
     return this.collectDescendantIds(ancestorId).includes(candidateId)
+  }
+
+  private hasSelectedAncestor(doc: Doc, selectedIds: Set<string>): boolean {
+    let parentId = doc.parentId
+    while (parentId) {
+      if (selectedIds.has(parentId)) return true
+      parentId = this.documents.find(item => item.id === parentId)?.parentId ?? null
+    }
+    return false
   }
 
   private sortedSiblings(parentId: string | null): Doc[] {

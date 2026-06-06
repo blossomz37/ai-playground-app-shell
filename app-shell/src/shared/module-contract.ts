@@ -127,6 +127,10 @@ export interface DocumentSourceMetadata {
   rawText?: string
 }
 
+export interface DocumentMetadataPatch {
+  targetWordCount?: number | null
+}
+
 export interface DocVersion {
   id: string
   documentId: string
@@ -438,6 +442,7 @@ export interface ModuleContext {
     open(id: string): Promise<Doc>
     save(id: string, content: unknown): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>
@@ -487,6 +492,7 @@ export interface ShellApi {
     open(id: string): Promise<Doc>
     save(id: string, content: string): Promise<void>
     update(id: string, patch: { title?: string; kind?: string; icon?: string | null }): Promise<Doc>
+    updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     create(params: { workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number }): Promise<Doc>
     move(params: { id: string; parentId?: string | null; sortOrder: number }): Promise<Doc[]>
     archive(id: string, options?: { recursive?: boolean }): Promise<string[]>

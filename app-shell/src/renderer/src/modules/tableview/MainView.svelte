@@ -1,17 +1,22 @@
 <!-- Table View MainView — data table of documents -->
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { XIcon } from 'phosphor-svelte'
+  import { ArchiveIcon, XIcon } from 'phosphor-svelte'
 
   import {
+    clearTableSelection,
     filteredTableDocuments,
     resetTableFilters,
     selectTableDoc,
+    selectedTableDocIds,
+    selectedTableFileIds,
+    selectedTableFolderIds,
     selectedTableDocId,
     setTableAllKinds,
     setTableSelectedKinds,
     setTableUpdatedRange,
     setTableWordCountRange,
+    tableAllVisibleSelected,
     tableDocuments,
     tableHasActiveFilters,
     tableSelectedKinds,
@@ -19,18 +24,27 @@
     tableFilterSummary,
     tableSearchQuery,
     tableSortBy,
+    tableSomeVisibleSelected,
     tableUpdatedRange,
+    tableVisibleSelectedCount,
     tableWordCountMax,
-    tableWordCountMin
+    tableWordCountMin,
+    toggleTableDocSelection,
+    toggleTableVisibleSelection
   } from './state'
   import {
     activeModuleId,
-    selectDoc
+    archiveDocs,
+    selectDoc,
+    updateDoc,
+    updateDocMetadata
   } from '../../store'
+  import { addToast } from '../../store/toasts'
   import type { TableUpdatedRange } from '@shared/state/tableview-state'
 
-  const columns = ['Title', 'Kind', 'Updated', 'Words']
+  const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
   const baseKindOptions = ['chapter', 'scene', 'plan', 'folder']
+  const bulkKindOptions = ['chapter', 'scene', 'plan']
   const updatedRangeOptions: { value: TableUpdatedRange; label: string }[] = [
     { value: 'all', label: 'Date' },
     { value: 'today', label: 'Today' },
@@ -38,7 +52,11 @@
     { value: '30d', label: '30 days' }
   ]
   let kindPopoverOpen = $state(false)
+  let bulkKind = $state('chapter')
+  let bulkTargetWords = $state('')
+  let bulkBusy = $state(false)
   let captureFilterListener: ((event: Event) => void) | null = null
+  let captureBulkListener: ((event: Event) => void) | null = null
 
   const kindOptions = $derived(Array.from(new Set([
     ...baseKindOptions,
@@ -54,6 +72,13 @@
   )
 
   const filterChips = $derived(activeFilterChips())
+  const selectedCount = $derived($selectedTableDocIds.length)
+  const selectedFileCount = $derived($selectedTableFileIds.length)
+  const selectedFolderCount = $derived($selectedTableFolderIds.length)
+  const folderSkipText = $derived(selectedFolderCount > 0
+    ? `${selectedFolderCount} folder${selectedFolderCount === 1 ? '' : 's'} skipped for metadata`
+    : ''
+  )
 
   async function openDocument(event: MouseEvent, id: string): Promise<void> {
     event.stopPropagation()
@@ -151,6 +176,88 @@
     return text.trim().split(/\s+/).filter(Boolean).length
   }
 
+  function targetWordCount(metadataJson: string | null): number | null {
+    if (!metadataJson) return null
+    try {
+      const metadata = JSON.parse(metadataJson) as { targetWordCount?: unknown }
+      return typeof metadata.targetWordCount === 'number' && Number.isFinite(metadata.targetWordCount)
+        ? metadata.targetWordCount
+        : null
+    } catch {
+      return null
+    }
+  }
+
+  function parseTargetWords(value: string): number | null {
+    const parsed = parseWords(value)
+    return parsed === undefined ? null : parsed
+  }
+
+  function onSelectRow(event: MouseEvent, id: string): void {
+    event.stopPropagation()
+    toggleTableDocSelection(id, event.shiftKey)
+  }
+
+  async function archiveSelection(): Promise<void> {
+    if (selectedCount === 0 || bulkBusy) return
+    const selectedIds = [...$selectedTableDocIds]
+    bulkBusy = true
+    try {
+      const result = await archiveDocs(selectedIds)
+      clearTableSelection()
+      addToast('info', `Archived ${result.archivedIds.length} document${result.archivedIds.length === 1 ? '' : 's'}.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Selection could not be archived.')
+    } finally {
+      bulkBusy = false
+    }
+  }
+
+  async function applyBulkKind(): Promise<void> {
+    if (selectedFileCount === 0 || bulkBusy) {
+      addToast('warn', 'Select at least one file to change kind.')
+      return
+    }
+    const fileIds = [...$selectedTableFileIds]
+    bulkBusy = true
+    try {
+      for (const id of fileIds) {
+        await updateDoc(id, { kind: bulkKind })
+      }
+      clearTableSelection()
+      addToast('info', `Updated ${fileIds.length} file${fileIds.length === 1 ? '' : 's'}.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'File kind could not be updated.')
+    } finally {
+      bulkBusy = false
+    }
+  }
+
+  async function applyBulkTargetWords(): Promise<void> {
+    const target = parseTargetWords(bulkTargetWords)
+    if (target === null) {
+      addToast('warn', 'Enter a target word count.')
+      return
+    }
+    if (selectedFileCount === 0 || bulkBusy) {
+      addToast('warn', 'Select at least one file to update target words.')
+      return
+    }
+    const fileIds = [...$selectedTableFileIds]
+    bulkBusy = true
+    try {
+      for (const id of fileIds) {
+        await updateDocMetadata(id, { targetWordCount: target })
+      }
+      clearTableSelection()
+      addToast('info', `Set target words for ${fileIds.length} file${fileIds.length === 1 ? '' : 's'}.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Target word count could not be updated.')
+    } finally {
+      bulkBusy = false
+    }
+  }
+
   function onToolbarKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       kindPopoverOpen = false
@@ -179,11 +286,35 @@
       if (detail.updatedRange) setTableUpdatedRange(detail.updatedRange)
     }
     window.addEventListener('table:capture-set-filters', captureFilterListener)
+
+    captureBulkListener = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        count?: number
+        kind?: string
+        targetWords?: number
+        applyKind?: boolean
+        applyTargetWords?: boolean
+      }>).detail
+
+      const rows = $filteredTableDocuments.slice(0, Math.max(1, detail.count ?? 3))
+      clearTableSelection()
+      for (const row of rows) {
+        toggleTableDocSelection(row.id)
+      }
+      if (detail.kind) bulkKind = detail.kind
+      if (detail.targetWords !== undefined) bulkTargetWords = String(detail.targetWords)
+      if (detail.applyKind) void applyBulkKind()
+      if (detail.applyTargetWords) void applyBulkTargetWords()
+    }
+    window.addEventListener('table:capture-set-bulk', captureBulkListener)
   })
 
   onDestroy(() => {
     if (captureFilterListener) {
       window.removeEventListener('table:capture-set-filters', captureFilterListener)
+    }
+    if (captureBulkListener) {
+      window.removeEventListener('table:capture-set-bulk', captureBulkListener)
     }
   })
 </script>
@@ -292,6 +423,9 @@
     </header>
     <div class="filter-summary">
       <span>{$tableFilterSummary}</span>
+      {#if $tableVisibleSelectedCount > 0}
+        <span>{$tableVisibleSelectedCount} visible selected</span>
+      {/if}
       {#if filterChips.length}
         <div class="filter-chips" aria-label="Active filters">
           {#each filterChips as chip (chip.id)}
@@ -303,11 +437,70 @@
         </div>
       {/if}
     </div>
+    {#if selectedCount > 0}
+      <section class="bulk-bar" aria-label="Bulk document actions" data-capture-table-bulk-bar>
+        <div class="bulk-summary">
+          <strong>{selectedCount}</strong>
+          <span>selected</span>
+          {#if selectedFileCount > 0}
+            <span>{selectedFileCount} file{selectedFileCount === 1 ? '' : 's'}</span>
+          {/if}
+          {#if selectedFolderCount > 0}
+            <span>{selectedFolderCount} folder{selectedFolderCount === 1 ? '' : 's'}</span>
+          {/if}
+        </div>
+        <button class="bulk-btn" type="button" disabled={bulkBusy} onclick={archiveSelection}>
+          <ArchiveIcon size={14} weight="bold" aria-hidden="true" />
+          Archive
+        </button>
+        <div class="bulk-group" aria-label="Change file kind">
+          <select bind:value={bulkKind} disabled={bulkBusy || selectedFileCount === 0} data-capture-table-bulk-kind>
+            {#each bulkKindOptions as kind (kind)}
+              <option value={kind}>{kind}</option>
+            {/each}
+          </select>
+          <button class="bulk-btn" type="button" disabled={bulkBusy || selectedFileCount === 0} onclick={applyBulkKind}>Apply kind</button>
+        </div>
+        <div class="bulk-group" aria-label="Set target word count">
+          <input
+            class="bulk-number"
+            type="number"
+            min="0"
+            placeholder="Target words"
+            bind:value={bulkTargetWords}
+            disabled={bulkBusy || selectedFileCount === 0}
+            data-capture-table-bulk-target-words
+          />
+          <button class="bulk-btn" type="button" disabled={bulkBusy || selectedFileCount === 0} onclick={applyBulkTargetWords}>Set target</button>
+        </div>
+        {#if folderSkipText}
+          <span class="bulk-note">{folderSkipText}</span>
+        {/if}
+        <button class="bulk-clear" type="button" disabled={bulkBusy} onclick={clearTableSelection}>Clear</button>
+      </section>
+    {/if}
   </div>
   <div class="table-wrapper">
     <table class="data-table">
       <thead>
         <tr>
+          <th class="select-col">
+            <button
+              class="select-toggle"
+              type="button"
+              role="checkbox"
+              aria-label="Select all visible documents"
+              aria-checked={$tableAllVisibleSelected ? 'true' : $tableSomeVisibleSelected ? 'mixed' : 'false'}
+              disabled={$filteredTableDocuments.length === 0}
+              onclick={(event) => {
+                event.stopPropagation()
+                toggleTableVisibleSelection()
+              }}
+              data-capture-table-select-all
+            >
+              {$tableAllVisibleSelected ? '✓' : $tableSomeVisibleSelected ? '-' : ''}
+            </button>
+          </th>
           {#each columns as col (col)}
             <th>{col}</th>
           {/each}
@@ -317,8 +510,18 @@
         {#each $filteredTableDocuments as doc (doc.id)}
             <tr
               class:active={$selectedTableDocId === doc.id}
+              class:selected={$selectedTableDocIds.includes(doc.id)}
+              aria-selected={$selectedTableDocIds.includes(doc.id)}
               onclick={() => selectTableDoc(doc.id)}
             >
+              <td class="select-cell">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${doc.title}`}
+                  checked={$selectedTableDocIds.includes(doc.id)}
+                  onclick={(event) => onSelectRow(event, doc.id)}
+                />
+              </td>
               <td class="cell-title">
                 <button
                   class="doc-link"
@@ -334,10 +537,11 @@
               <td><span class="kind-badge">{doc.kind}</span></td>
               <td class="cell-date">{new Date(doc.updatedAt).toLocaleDateString()}</td>
               <td class="cell-num">{wordCount(doc.content)}</td>
+              <td class="cell-num">{targetWordCount(doc.metadataJson) ?? '-'}</td>
             </tr>
         {:else}
           <tr>
-            <td colspan="4" class="empty-cell">
+            <td colspan="6" class="empty-cell">
               {$tableHasActiveFilters ? 'No documents match the current filters.' : 'No documents'}
             </td>
           </tr>
@@ -512,6 +716,74 @@
     background: var(--color-bg-active);
     color: var(--color-fg-primary);
   }
+  .bulk-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 var(--space-2) var(--space-2);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+  }
+  .bulk-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding-right: var(--space-1);
+    color: var(--color-fg-primary);
+  }
+  .bulk-summary span:not(:first-of-type) {
+    color: var(--color-fg-muted);
+  }
+  .bulk-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .bulk-group select,
+  .bulk-number,
+  .bulk-btn,
+  .bulk-clear {
+    height: 28px;
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+    font: inherit;
+    font-size: var(--font-size-xs);
+  }
+  .bulk-group select {
+    width: 88px;
+    padding: 0 var(--space-2);
+  }
+  .bulk-number {
+    width: 104px;
+    padding: 0 var(--space-2);
+  }
+  .bulk-btn,
+  .bulk-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 var(--space-2);
+    font-weight: 700;
+  }
+  .bulk-btn:hover:not(:disabled),
+  .bulk-clear:hover:not(:disabled) {
+    background: var(--color-bg-active);
+  }
+  .bulk-btn:disabled,
+  .bulk-clear:disabled,
+  .bulk-number:disabled,
+  .bulk-group select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .bulk-note {
+    color: var(--color-fg-muted);
+  }
   .sr-only {
     position: absolute;
     width: 1px;
@@ -539,6 +811,36 @@
   .data-table tr:hover td { background: var(--color-bg-overlay); }
   .data-table tr { cursor: pointer; }
   .data-table tr.active td { background: var(--color-accent-dim); }
+  .data-table tr.selected td { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+  .select-col,
+  .select-cell {
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    padding-right: 0 !important;
+    text-align: center !important;
+  }
+  .select-toggle,
+  .select-cell input {
+    width: 15px;
+    height: 15px;
+  }
+  .select-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    background: var(--color-bg-overlay);
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .select-cell input {
+    accent-color: var(--color-accent);
+  }
   .cell-title { font-weight: 500; color: var(--color-fg-primary); }
   .doc-link {
     display: inline-flex;
@@ -560,6 +862,16 @@
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
+  }
+  .bulk-group select:focus-visible,
+  .bulk-number:focus-visible,
+  .bulk-btn:focus-visible,
+  .bulk-clear:focus-visible,
+  .select-toggle:focus-visible,
+  .select-cell input:focus-visible,
+  .doc-link:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
   }
   .cell-date { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
   .cell-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-fg-muted); }

@@ -204,6 +204,36 @@ function createBrowserShell(): ShellApi {
         docs.set(id, updated)
         return updated
       },
+      updateMetadata: async (id, patch) => {
+        const existing = docs.get(id)
+        if (!existing) throw new Error('Document not found.')
+        let metadata: Record<string, unknown> = {}
+        if (existing.metadataJson) {
+          try {
+            const parsed = JSON.parse(existing.metadataJson) as unknown
+            metadata = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+              ? parsed as Record<string, unknown>
+              : {}
+          } catch {
+            metadata = {}
+          }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'targetWordCount')) {
+          const value = patch.targetWordCount
+          if (value === null || value === undefined) {
+            delete metadata.targetWordCount
+          } else if (Number.isFinite(value)) {
+            metadata.targetWordCount = Math.max(0, Math.floor(value))
+          }
+        }
+        const updated = {
+          ...existing,
+          metadataJson: JSON.stringify(metadata),
+          updatedAt: new Date().toISOString()
+        }
+        docs.set(id, updated)
+        return updated
+      },
       create: async (params) => {
         const doc: Doc = {
           id: `demo-${Date.now()}`,

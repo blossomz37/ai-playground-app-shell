@@ -62,6 +62,12 @@ export const tableSortBy = writableTableField(
   value => tableViewState.setSortBy(value as TableSortBy)
 )
 export const selectedTableDocId = fromTableViewState(state => state.selectedDocId)
+export const selectedTableDocIds = fromTableViewState(state => state.selectedDocIds)
+export const selectedTableFileIds = fromTableViewState(state => state.selectedFileIds)
+export const selectedTableFolderIds = fromTableViewState(state => state.selectedFolderIds)
+export const tableVisibleSelectedCount = fromTableViewState(state => state.visibleSelectedCount)
+export const tableAllVisibleSelected = fromTableViewState(state => state.allVisibleSelected)
+export const tableSomeVisibleSelected = fromTableViewState(state => state.someVisibleSelected)
 export const tableDocuments = fromTableViewState(state => state.documents)
 export const filteredTableDocuments = fromTableViewState(state => state.filteredDocuments)
 export const selectedTableDoc = fromTableViewState(state => state.selectedDoc)
@@ -71,6 +77,18 @@ export const tableDocumentCount = fromTableViewState(state => state.documents.le
 
 export function selectTableDoc(id: string): void {
   tableViewState.selectDoc(id)
+}
+
+export function toggleTableDocSelection(id: string, range = false): void {
+  tableViewState.toggleDocSelection(id, range)
+}
+
+export function toggleTableVisibleSelection(): void {
+  tableViewState.toggleVisibleSelection()
+}
+
+export function clearTableSelection(): void {
+  tableViewState.clearSelection()
 }
 
 export function ensureVisibleSelection(): void {

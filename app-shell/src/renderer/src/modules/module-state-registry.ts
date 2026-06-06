@@ -57,6 +57,7 @@ registerModuleState('shell.documents', 'documents', () => new DocumentsStateSlic
   open: (id) => window.shell.documents.open(id),
   save: (id, content) => window.shell.documents.save(id, content),
   update: (id, patch) => window.shell.documents.update(id, patch),
+  updateMetadata: (id, patch) => window.shell.documents.updateMetadata(id, patch),
   create: (params) => window.shell.documents.create(params),
   move: (params) => window.shell.documents.move(params),
   archive: (id, options) => window.shell.documents.archive(id, options),

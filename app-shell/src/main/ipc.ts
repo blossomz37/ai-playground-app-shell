@@ -9,6 +9,7 @@ import type {
   AssetWorkspaceLinkParams,
   AssetWorkspaceLinkUpdateParams,
   DocumentExportParams,
+  DocumentMetadataPatch,
   JournalEntry,
   JournalExportParams,
   ThemeMode,
@@ -66,6 +67,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('documents:update', (_e, { id, patch }: {
     id: string; patch: { title?: string; kind?: string; icon?: string | null }
   }) => documents.update(id, patch))
+
+  ipcMain.handle('documents:updateMetadata', (_e, { id, patch }: {
+    id: string; patch: DocumentMetadataPatch
+  }) => documents.updateMetadata(id, patch))
 
   ipcMain.handle('documents:create', (_e, params: {
     workspaceId: string; kind: string; title: string; parentId?: string | null; sortOrder?: number

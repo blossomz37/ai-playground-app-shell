@@ -48,6 +48,10 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const tableWordsMax = process.env['SHELL_CAPTURE_TABLE_WORDS_MAX']
   const tableUpdatedRange = process.env['SHELL_CAPTURE_TABLE_UPDATED_RANGE']
   const tableReset = process.env['SHELL_CAPTURE_TABLE_RESET'] === '1'
+  const tableBulkState = process.env['SHELL_CAPTURE_TABLE_BULK_STATE']
+  const tableBulkCount = Number(process.env['SHELL_CAPTURE_TABLE_BULK_COUNT'] ?? 3)
+  const tableBulkKind = process.env['SHELL_CAPTURE_TABLE_BULK_KIND']
+  const tableBulkTargetWords = process.env['SHELL_CAPTURE_TABLE_BULK_TARGET_WORDS']
   const restoreWorkspaceId = process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID']
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
@@ -771,6 +775,22 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })()
         `)
         tableFilterCleanup = true
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (tableBulkState) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.tableview' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            window.dispatchEvent(new CustomEvent('table:capture-set-bulk', {
+              detail: {
+                count: ${JSON.stringify(Number.isFinite(tableBulkCount) ? Math.max(1, Math.floor(tableBulkCount)) : 3)},
+                kind: ${JSON.stringify(tableBulkKind ?? (tableBulkState === 'kind' ? 'scene' : undefined))},
+                targetWords: ${JSON.stringify(tableBulkTargetWords !== undefined ? Number(tableBulkTargetWords) : tableBulkState === 'target' ? 1200 : undefined)}
+              }
+            }))
+          })()
+        `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (openAiContext) {

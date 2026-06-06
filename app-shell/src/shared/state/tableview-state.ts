@@ -17,6 +17,12 @@ export interface TableViewState {
   updatedRange: TableUpdatedRange
   sortBy: TableSortBy
   selectedDocId: string | null
+  selectedDocIds: string[]
+  selectedFileIds: string[]
+  selectedFolderIds: string[]
+  visibleSelectedCount: number
+  allVisibleSelected: boolean
+  someVisibleSelected: boolean
   filteredDocuments: Doc[]
   selectedDoc: Doc | null
   hasActiveFilters: boolean
@@ -45,10 +51,14 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   private updatedRange: TableUpdatedRange = 'all'
   private sortBy: TableSortBy = 'title'
   private selectedDocId: string | null = null
+  private selectedDocIds = new Set<string>()
+  private lastSelectedDocId: string | null = null
 
   getSnapshot(): TableViewState {
     const filteredDocuments = this.filteredDocuments()
     const filterKind = this.filterKind()
+    const selectedDocs = this.documents.filter(doc => this.selectedDocIds.has(doc.id))
+    const visibleSelectedCount = filteredDocuments.filter(doc => this.selectedDocIds.has(doc.id)).length
     return {
       documents: this.documents,
       filterKind,
@@ -60,6 +70,12 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       updatedRange: this.updatedRange,
       sortBy: this.sortBy,
       selectedDocId: this.selectedDocId,
+      selectedDocIds: selectedDocs.map(doc => doc.id),
+      selectedFileIds: selectedDocs.filter(doc => doc.kind !== 'folder').map(doc => doc.id),
+      selectedFolderIds: selectedDocs.filter(doc => doc.kind === 'folder').map(doc => doc.id),
+      visibleSelectedCount,
+      allVisibleSelected: filteredDocuments.length > 0 && visibleSelectedCount === filteredDocuments.length,
+      someVisibleSelected: visibleSelectedCount > 0,
       filteredDocuments,
       selectedDoc: this.documents.find(doc => doc.id === this.selectedDocId) ?? null,
       hasActiveFilters: this.hasActiveFilters(),
@@ -70,6 +86,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   setDocuments(documents: Doc[]): void {
     this.documents = documents
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -82,6 +99,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       this.selectedKinds = [filterKind]
     }
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -90,6 +108,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.kindFilterMode = 'custom'
     this.selectedKinds = normalized
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -97,18 +116,21 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.kindFilterMode = 'all'
     this.selectedKinds = []
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
   setSearchQuery(searchQuery: string): void {
     this.searchQuery = searchQuery
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
   setSortBy(sortBy: TableSortBy): void {
     this.sortBy = sortBy
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -117,12 +139,14 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.wordCountMin = normalized.min
     this.wordCountMax = normalized.max
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
   setUpdatedRange(updatedRange: TableUpdatedRange): void {
     this.updatedRange = isUpdatedRange(updatedRange) ? updatedRange : 'all'
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -134,6 +158,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.wordCountMax = undefined
     this.updatedRange = 'all'
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 
@@ -142,10 +167,73 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.emit()
   }
 
+  toggleDocSelection(id: string, range = false): void {
+    const rows = this.filteredDocuments()
+    if (!rows.some(row => row.id === id)) return
+
+    if (range && this.lastSelectedDocId) {
+      const start = rows.findIndex(row => row.id === this.lastSelectedDocId)
+      const end = rows.findIndex(row => row.id === id)
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start]
+        for (const row of rows.slice(from, to + 1)) {
+          this.selectedDocIds.add(row.id)
+        }
+        this.selectedDocId = id
+        this.lastSelectedDocId = id
+        this.emit()
+        return
+      }
+    }
+
+    if (this.selectedDocIds.has(id)) {
+      this.selectedDocIds.delete(id)
+    } else {
+      this.selectedDocIds.add(id)
+    }
+    this.selectedDocId = id
+    this.lastSelectedDocId = id
+    this.emit()
+  }
+
+  toggleVisibleSelection(): void {
+    const rows = this.filteredDocuments()
+    const allSelected = rows.length > 0 && rows.every(row => this.selectedDocIds.has(row.id))
+    if (allSelected) {
+      for (const row of rows) {
+        this.selectedDocIds.delete(row.id)
+      }
+    } else {
+      for (const row of rows) {
+        this.selectedDocIds.add(row.id)
+      }
+    }
+    this.lastSelectedDocId = rows.at(-1)?.id ?? this.lastSelectedDocId
+    this.emit()
+  }
+
+  clearSelection(): void {
+    this.selectedDocIds.clear()
+    this.lastSelectedDocId = null
+    this.emit()
+  }
+
   ensureVisibleSelection(): void {
     const rows = this.filteredDocuments()
     if (this.selectedDocId && rows.some(row => row.id === this.selectedDocId)) return
     this.selectedDocId = rows[0]?.id ?? null
+  }
+
+  pruneSelectionToFiltered(): void {
+    const visibleIds = new Set(this.filteredDocuments().map(doc => doc.id))
+    for (const id of this.selectedDocIds) {
+      if (!visibleIds.has(id)) {
+        this.selectedDocIds.delete(id)
+      }
+    }
+    if (this.lastSelectedDocId && !this.selectedDocIds.has(this.lastSelectedDocId)) {
+      this.lastSelectedDocId = null
+    }
   }
 
   hydrate(snapshot: TableViewPersistenceSnapshot | undefined): void {
@@ -165,7 +253,10 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.updatedRange = isUpdatedRange(snapshot.updatedRange) ? snapshot.updatedRange : 'all'
     this.sortBy = snapshot.sortBy ?? 'title'
     this.selectedDocId = snapshot.selectedDocId
+    this.selectedDocIds.clear()
+    this.lastSelectedDocId = null
     this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
     this.emit()
   }
 

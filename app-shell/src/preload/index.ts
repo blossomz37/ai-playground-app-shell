@@ -8,6 +8,7 @@ const api: ShellApi = {
     open:     (id)          => ipcRenderer.invoke('documents:open', { id }),
     save:     (id, content) => ipcRenderer.invoke('documents:save', { id, content }),
     update:   (id, patch)   => ipcRenderer.invoke('documents:update', { id, patch }),
+    updateMetadata: (id, patch) => ipcRenderer.invoke('documents:updateMetadata', { id, patch }),
     create:   (params)      => ipcRenderer.invoke('documents:create', params),
     move:     (params)      => ipcRenderer.invoke('documents:move', params),
     archive:  (id, options) => ipcRenderer.invoke('documents:archive', { id, options }),

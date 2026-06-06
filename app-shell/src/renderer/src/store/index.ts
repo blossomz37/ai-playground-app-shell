@@ -1,5 +1,5 @@
 import { writable, readable, get } from 'svelte/store'
-import type { ThemeMode, Workspace } from '@shared/module-contract'
+import type { DocumentMetadataPatch, ThemeMode, Workspace } from '@shared/module-contract'
 import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
 import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
@@ -256,12 +256,20 @@ export async function updateDoc(id: string, patch: { title?: string; kind?: stri
   await documentsState.updateDoc(id, patch)
 }
 
+export async function updateDocMetadata(id: string, patch: DocumentMetadataPatch): Promise<void> {
+  await documentsState.updateDocMetadata(id, patch)
+}
+
 export async function createDoc(params: { workspaceId: string; kind: 'chapter' | 'scene' | 'folder'; targetId?: string | null }) {
   return documentsState.createDoc(params)
 }
 
 export async function archiveDoc(id: string) {
   return documentsState.archiveDoc(id)
+}
+
+export async function archiveDocs(ids: string[]) {
+  return documentsState.archiveDocs(ids)
 }
 
 export async function restoreDoc(id: string) {
