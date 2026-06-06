@@ -1,9 +1,13 @@
 import { mount } from 'svelte'
-import App from './App.svelte'
 import { installBrowserShell } from './browser-shell'
 import './styles/tokens.css'
 import './styles/global.css'
 
-installBrowserShell()
+async function bootstrap(): Promise<void> {
+  installBrowserShell()
 
-mount(App, { target: document.getElementById('app')! })
+  const { default: App } = await import('./App.svelte')
+  mount(App, { target: document.getElementById('app')! })
+}
+
+void bootstrap()
