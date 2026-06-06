@@ -1,6 +1,6 @@
 # Workspace Orientation - App Shell Project
 
-Last oriented: 2026-06-05
+Last oriented: 2026-06-06
 
 ## One-Line Summary
 
@@ -25,6 +25,7 @@ A reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persisten
 - Plan 34 landed on 2026-06-05: Documents now support selected subtree export to Markdown folders, archived document listing, and restore from the Documents nav. Export writes from SQLite content, handles filename collisions, and keeps source files/provenance untouched. Screenshot evidence lives in `implementation/screenshots/document-export-archive-restore-after-2026-06-05.png`; the capture smoke hook validates export files, archive/restore, collision handling, and cleanup with `SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE=1`.
 - Plan 35 landed on 2026-06-05: Journal entries now support Markdown/frontmatter import and export, active/archived state, and restore controls in the Journal nav. Screenshot evidence lives in `implementation/screenshots/journal-import-export-archive-restore-after-2026-06-05.png`; the capture smoke hook validates import defaults, exported frontmatter/body, filename collisions, archive/restore, and snapshot cleanup with `SHELL_CAPTURE_JOURNAL_LIFECYCLE_SMOKE=1`.
 - Plan 36 landed on 2026-06-05: Assets now use SQLite-backed global asset records with workspace/document link tables, comments/tags, archive/restore, database-only delete, and selected export with `assets-manifest.json`. Screenshot evidence lives in `implementation/screenshots/assets-db-library-foundation-after-2026-06-05.png`; the capture smoke hook validates sample import/export with `SHELL_CAPTURE_ASSETS_DB_SMOKE=1`, `/Users/carlo/Github/app-shell-project/sample-assets-import`, and `/Users/carlo/Github/app-shell-project/sample-assets-export`.
+- Demo Mode/no-mock defaults landed on 2026-06-06: empty startup now creates only a neutral workspace, browser preview defaults to no sample manuscript content, Settings exposes shell-level `demoMode.enabled`, and `mock-local` AI is hidden/blocked unless Demo Mode is enabled. Missing live AI credentials show `Save an API key before using AI tools.` Evidence lives in `implementation/screenshots/demo-mode-off-empty-preview-after-2026-06-06.png`, `implementation/screenshots/demo-mode-settings-off-after-2026-06-06.png`, `implementation/screenshots/demo-mode-on-browser-preview-after-2026-06-06.png`, and `implementation/screenshots/ai-missing-key-no-mock-after-2026-06-06.png`.
 
 Older handoffs contain historical "what's next" sections that are stale relative to the current code. Start from the newest numbered handoff, then use this orientation and the numbered implementation plans as the current map.
 

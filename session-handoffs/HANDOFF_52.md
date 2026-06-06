@@ -75,6 +75,14 @@ _Session: 2026-06-06 - Slice: Plan 37 multi-slice UX improvements_
 - PDF reader error-state UI exists and is exercised by read/render failures, but the final screenshot evidence focuses on successful page 1 and later-page reading.
 - Screenshots under `implementation/screenshots/` are ignored evidence files and are not part of the git commit.
 
+## Post-Handoff Discussion
+
+- 2026-06-06: Discussed making the App Shell available from an iPad on the same network.
+- Port `5183` is registered for `app-shell-ui` in `/Users/carlo/.myagents/ASSIGNED_PORTS.json` and `/Users/carlo/.myagents/ASSIGNED_PORTS.md`.
+- Browser/iPad preview can be exposed temporarily by restarting the dev server from `app-shell/` with `npm run start -- --host 0.0.0.0`, then opening `http://<Mac LAN IP>:5183/` from the iPad.
+- Important boundary: this exposes the Svelte browser preview path, which currently relies on the `browser-shell` mock shim. It is not the full Electron desktop app with real preload IPC, SQLite persistence, file access, safeStorage secrets, or Electron webview behavior.
+- Future full iPad/LAN work should be planned as a real local client/server slice: expose selected main-process services through a local HTTP/WebSocket API, add LAN auth/pairing, and keep SQLite/file/security-sensitive operations on the Mac.
+
 ## Next Recommended Action
 
 - Start a new focused plan for the next asset-library hardening area: likely asset search/filtering, asset-document linking UI, EPUB metadata/cover extraction, or audio metadata parsing.

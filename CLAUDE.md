@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-05, Plan 36's Assets database library foundation has landed.
+**Implementation in progress.** The foundational stack/architecture choices are committed as of 2026-05-29 (questionnaire resolved in `archive/decision-answers.md`, recorded in `0-shell-platform-spec.md` §12), and the runnable shell now lives in `app-shell/`. As of 2026-06-06, the shell defaults to no demo manuscript content and no mock AI fallback unless explicit Demo Mode is enabled.
 
 **Committed stack:** Electron desktop shell + Svelte 5 UI, with core logic (persistence, AI, file handling) in framework-agnostic TypeScript *outside* renderer components where practical (enables a future LAN/iPad client). SQLite is the source of truth for documents (files = import provenance + export targets); fixed-zone layout; documented theming token API; modules bundled at build time (template/fork model); macOS-first. First app = a local-first AI-assisted authoring workbench, reference implementation `draftwell` (see `reference/draftwell-anchor-analysis.md`).
 
@@ -81,6 +81,7 @@ The Q1–Q13 questions are resolved (§12). What remains is design, not decision
 - ~~**Document export and archive restore**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/34-document-export-archive-restore.md`): Added selected document/folder subtree export to Markdown folders, archived document listing, and restore controls in the Documents nav. Export writes from SQLite content, handles filename collisions, and keeps source files untouched.
 - ~~**Journal import/export and archive restore**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/35-journal-import-export-archive-restore.md`): Added Journal Markdown/frontmatter import and export through shell IPC/preload APIs, active/archived entry state, inline archived Journal nav restore controls, deterministic filename collision handling, and capture smoke cleanup back to the previous workspace journal snapshot.
 - ~~**Assets database library foundation**~~ — ✅ **DONE** (2026-06-05; `implementation/plans/36-assets-database-library-foundation.md`): Moved Assets from settings snapshots into SQLite-backed global records with workspace/document links, comments/tags, archive/restore, database-only delete, selected export with `assets-manifest.json`, and sample import/export capture evidence.
+- ~~**Demo Mode and no-mock defaults**~~ — ✅ **DONE** (2026-06-06; `implementation/plans/38-demo-mode-no-mock-defaults.md`): New installs seed only a neutral empty workspace, browser preview starts without demo manuscript content, Settings exposes shell-level Demo Mode, and AI tools no longer fall back to `mock-local` unless Demo Mode is enabled. Missing live credentials now show `Save an API key before using AI tools.`
 - **Next slice** — not selected. Start from the newest numbered `session-handoffs/HANDOFF_NN.md` and live repo evidence before planning the next narrow hardening pass.
 
 ## Workspace Layout
