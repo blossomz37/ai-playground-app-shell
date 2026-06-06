@@ -32,7 +32,7 @@
   const columns = ['Title', 'Kind', 'Updated', 'Words']
   const baseKindOptions = ['chapter', 'scene', 'plan', 'folder']
   const updatedRangeOptions: { value: TableUpdatedRange; label: string }[] = [
-    { value: 'all', label: 'Modified' },
+    { value: 'all', label: 'Date' },
     { value: 'today', label: 'Today' },
     { value: '7d', label: '7 days' },
     { value: '30d', label: '30 days' }
@@ -133,7 +133,7 @@
 
     if ($tableUpdatedRange !== 'all') {
       const label = updatedRangeOptions.find(option => option.value === $tableUpdatedRange)?.label ?? $tableUpdatedRange
-      chips.push({ id: 'updated', label: `Modified: ${label}`, clear: clearUpdatedRange })
+      chips.push({ id: 'updated', label: `Date: ${label}`, clear: clearUpdatedRange })
     }
 
     return chips
@@ -263,7 +263,7 @@
         />
       </div>
       <label class="toolbar-field" for="table-updated-filter">
-        <span class="sr-only">Modified range</span>
+        <span class="sr-only">Date range</span>
         <select id="table-updated-filter" bind:value={$tableUpdatedRange} data-capture-table-updated-range>
           {#each updatedRangeOptions as option (option.value)}
             <option value={option.value}>{option.label}</option>
