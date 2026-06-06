@@ -75,7 +75,8 @@
     inset: 0;
     z-index: 0;
     background-image: url('/status-bar-metallic-spectrum.svg');
-    background-position: center;
+    background-position: left center;
+    background-repeat: no-repeat;
     background-size: 100% 100%;
     filter: saturate(1.08) brightness(0.96);
     opacity: 1;
