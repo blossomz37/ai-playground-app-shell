@@ -110,30 +110,12 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-bg-overlay) 90%, black);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
-      inset 0 0 0 1px color-mix(in srgb, white 24%, transparent),
-      0 1px 1px rgb(0 0 0 / 0.24);
-    color: #ffffff;
-    text-shadow: 0 1px 1px rgb(0 0 0 / 0.42);
-    transform: translateY(1px);
-    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .item:hover {
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 34%, transparent),
-      inset 0 0 0 1px color-mix(in srgb, white 30%, transparent),
-      0 1px 2px rgb(0 0 0 / 0.28);
-    color: #ffffff;
+    padding: 0;
+    color: var(--color-fg-muted);
   }
 
   .word-count {
-    background: color-mix(in srgb, var(--accent-editor) 88%, black);
-    color: #eef6ff;
+    color: var(--color-fg-secondary);
     font-variant-numeric: tabular-nums;
   }
 
@@ -145,28 +127,17 @@
   }
 
   .save-indicator.clean {
-    background: color-mix(in srgb, var(--color-success) 86%, black);
-    color: #f0fdf4;
+    color: var(--color-fg-muted);
   }
 
   .save-indicator.dirty {
-    background: color-mix(in srgb, var(--color-warn) 88%, black);
-    color: #fff7ed;
+    color: var(--color-warn);
   }
 
   .save-icon {
     color: currentColor;
     font-size: 8px;
     line-height: 1;
-    transition: transform 0.2s ease;
-  }
-
-  .save-indicator.clean .save-icon {
-    transform: scale(1);
-  }
-
-  .save-indicator.dirty .save-icon {
-    animation: pulse-dot 1.5s ease-in-out infinite;
   }
 
   @keyframes pulse-dot {
