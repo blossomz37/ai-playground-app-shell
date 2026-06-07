@@ -210,7 +210,7 @@
   .tab.active {
     color: var(--color-fg-primary);
     background: var(--color-bg-surface);
-    box-shadow: inset 0 -2px 0 var(--color-accent);
+    box-shadow: inset 0 -1px 0 var(--color-accent);
   }
 
   .tab-open {
