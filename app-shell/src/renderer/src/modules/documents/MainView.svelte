@@ -9,21 +9,63 @@
   import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
-    activeDoc, editorContent, saveDoc, setEditorContent,
-    editorSettings, scheduleAutoSave, cancelAutoSave, isDirty
+    activeDoc, activeDocId, documents, editorContent, saveDoc, selectDoc, setEditorContent,
+    editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
-  import type { Disposable } from '@shared/module-contract'
+  import type { Disposable, Doc } from '@shared/module-contract'
+  import {
+    findDocumentMatches,
+    normalizeDocumentSearchState,
+    replaceDocumentMatches,
+    type DocumentSearchMatch,
+    type DocumentSearchMode,
+    type DocumentSearchScope
+  } from '@shared/document-search'
   import MarkdownBubbleToolbar from '../../shell/MarkdownBubbleToolbar.svelte'
+  import DocumentSearchPanel from './DocumentSearchPanel.svelte'
+  import { findEditorMatches, replaceEditorMatches, selectEditorMatch } from './editorSearch'
+  import { SearchHighlightExtension, setSearchDecorations } from './searchDecorations'
+
+  interface ProjectSearchResult {
+    documentId: string
+    title: string
+    count: number
+    matches: DocumentSearchMatch[]
+  }
 
   let element: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
-  let saveCommand: Disposable | null = null
+  let commandDisposables: Disposable[] = []
   let editorContentUnsubscribe: (() => void) | null = null
   let contextUnsubscribers: Array<() => void> = []
   let captureMarkdownListener: ((event: Event) => void) | null = null
+  let captureSearchListener: ((event: Event) => void) | null = null
+  let searchOpen = $state(false)
+  let searchQuery = $state('')
+  let searchReplacement = $state('')
+  let searchMode = $state<DocumentSearchMode>('word')
+  let searchScope = $state<DocumentSearchScope>('document')
+  let searchActiveIndex = $state(0)
+  let projectReplacePreview = $state(false)
+  let projectReplaceBusy = $state(false)
+  let loadingSearchWorkspaceId: string | null = null
+
+  const editorSearch = $derived(
+    editor && searchQuery.trim()
+      ? findEditorMatches(editor, searchQuery, searchMode)
+      : { matches: [], error: null }
+  )
+  const projectSearch = $derived(buildProjectSearchResults(
+    $documents,
+    $activeDocId,
+    $editorContent,
+    searchQuery,
+    searchMode
+  ))
+  const visibleSearchError = $derived(searchScope === 'project' ? projectSearch.error : editorSearch.error)
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
@@ -83,6 +125,203 @@
     element = node
   }
 
+  function searchStateKey(id: string): string {
+    return `documents.${id}.lastSearch`
+  }
+
+  async function loadPersistedSearchState(id: string): Promise<void> {
+    loadingSearchWorkspaceId = id
+    try {
+      const saved = normalizeDocumentSearchState(await window.shell.settings.get(searchStateKey(id)))
+      searchQuery = saved.query
+      searchReplacement = saved.replacement
+      searchMode = saved.mode
+      searchScope = saved.scope
+      searchActiveIndex = 0
+    } catch {
+      const saved = normalizeDocumentSearchState(null)
+      searchQuery = saved.query
+      searchReplacement = saved.replacement
+      searchMode = saved.mode
+      searchScope = saved.scope
+      searchActiveIndex = 0
+    } finally {
+      loadingSearchWorkspaceId = null
+    }
+  }
+
+  function persistSearchState(force = false): void {
+    const id = get(workspaceId)
+    if (!id || (!force && loadingSearchWorkspaceId === id)) return
+    void window.shell.settings.set(searchStateKey(id), {
+      query: searchQuery,
+      replacement: searchReplacement,
+      mode: searchMode,
+      scope: searchScope
+    })
+  }
+
+  function openSearch(focusReplace = false): void {
+    searchOpen = true
+    queueMicrotask(() => {
+      const selector = focusReplace
+        ? '[data-capture-document-replace-input]'
+        : '[data-capture-document-search-input]'
+      const input = document.querySelector<HTMLInputElement>(selector)
+        ?? document.querySelector<HTMLInputElement>('[data-capture-document-search-input]')
+      input?.focus()
+      input?.select()
+    })
+  }
+
+  function closeSearch(): void {
+    searchOpen = false
+    projectReplacePreview = false
+    persistSearchState()
+    editor?.commands.focus()
+  }
+
+  function setSearchQuery(value: string): void {
+    searchQuery = value
+    searchActiveIndex = 0
+    projectReplacePreview = false
+    persistSearchState()
+    queueMicrotask(renderSearchDecorations)
+  }
+
+  function setSearchReplacementValue(value: string): void {
+    searchReplacement = value
+    projectReplacePreview = false
+    persistSearchState()
+  }
+
+  function setSearchModeValue(value: DocumentSearchMode): void {
+    searchMode = value
+    searchActiveIndex = 0
+    projectReplacePreview = false
+    persistSearchState()
+    queueMicrotask(renderSearchDecorations)
+  }
+
+  function setSearchScopeValue(value: DocumentSearchScope): void {
+    searchScope = value
+    projectReplacePreview = false
+    persistSearchState()
+  }
+
+  function renderSearchDecorations(): void {
+    if (!editor) return
+    const activeIndex = Math.min(searchActiveIndex, Math.max(0, editorSearch.matches.length - 1))
+    setSearchDecorations(
+      editor,
+      editorSearch.matches.map((match, index) => ({
+        from: match.from,
+        to: match.to,
+        active: index === activeIndex
+      }))
+    )
+  }
+
+  function activateSearchMatch(index: number): void {
+    if (!editor || editorSearch.matches.length === 0) return
+    searchActiveIndex = (index + editorSearch.matches.length) % editorSearch.matches.length
+    renderSearchDecorations()
+    selectEditorMatch(editor, editorSearch.matches[searchActiveIndex])
+  }
+
+  function previousSearchMatch(): void {
+    activateSearchMatch(searchActiveIndex - 1)
+  }
+
+  function nextSearchMatch(): void {
+    activateSearchMatch(searchActiveIndex + 1)
+  }
+
+  function replaceCurrentMatch(): void {
+    if (!editor || editorSearch.matches.length === 0) return
+    replaceEditorMatches(editor, searchQuery, searchMode, searchReplacement, [editorSearch.matches[searchActiveIndex]])
+  }
+
+  function replaceNextMatch(): void {
+    replaceCurrentMatch()
+    queueMicrotask(() => nextSearchMatch())
+  }
+
+  function replaceAllMatches(): void {
+    if (searchScope === 'project') {
+      projectReplacePreview = projectSearch.results.length > 0
+      return
+    }
+    if (!editor || editorSearch.matches.length === 0) return
+    replaceEditorMatches(editor, searchQuery, searchMode, searchReplacement, editorSearch.matches)
+  }
+
+  async function openProjectResult(documentId: string): Promise<void> {
+    await selectDoc(documentId)
+    searchScope = 'document'
+    searchActiveIndex = 0
+    queueMicrotask(() => activateSearchMatch(0))
+  }
+
+  async function confirmProjectReplace(): Promise<void> {
+    if (projectSearch.results.length === 0) return
+    projectReplaceBusy = true
+    try {
+      if (get(isDirty)) {
+        await saveDoc()
+      }
+
+      const activeId = get(activeDocId)
+      const activeContent = get(editorContent)
+      for (const result of projectSearch.results) {
+        const doc = get(documents).find(item => item.id === result.documentId)
+        if (!doc) continue
+        const source = result.documentId === activeId ? activeContent : doc.content
+        const current = findDocumentMatches(source, searchQuery, searchMode)
+        if (current.error || current.matches.length === 0) continue
+        const next = replaceDocumentMatches(source, searchQuery, searchMode, searchReplacement, current.matches)
+        await window.shell.documents.save(result.documentId, next)
+        if (result.documentId === activeId) {
+          setEditorContent(next, { dirty: false })
+        }
+      }
+      projectReplacePreview = false
+    } finally {
+      projectReplaceBusy = false
+    }
+  }
+
+  function buildProjectSearchResults(
+    docs: Doc[],
+    activeId: string | null,
+    activeContent: string,
+    query: string,
+    mode: DocumentSearchMode
+  ): { results: ProjectSearchResult[]; error: string | null } {
+    if (!query.trim()) return { results: [], error: null }
+
+    const results: ProjectSearchResult[] = []
+    let error: string | null = null
+    for (const doc of docs) {
+      if (doc.nodeType === 'folder') continue
+      const content = doc.id === activeId ? activeContent : doc.content
+      const result = findDocumentMatches(content, query, mode)
+      if (result.error) {
+        error = result.error
+        break
+      }
+      if (result.matches.length > 0) {
+        results.push({
+          documentId: doc.id,
+          title: doc.title,
+          count: result.matches.length,
+          matches: result.matches
+        })
+      }
+    }
+    return { results, error }
+  }
+
   onMount(() => {
     if (!element) return
 
@@ -94,30 +333,41 @@
         TableRow,
         TableHeader,
         TableCell,
+        SearchHighlightExtension,
         Markdown.configure({ transformPastedText: true })
       ],
       content: get(editorContent),
       onUpdate: ({ editor }) => {
         setEditorContent(editor.storage.markdown.getMarkdown())
         scheduleAutoSave()
+        queueMicrotask(renderSearchDecorations)
       },
     })
 
     // Interactive handler for documents.save: the renderer owns it because the
     // content to save lives in the open editor / store. Keybinding (CmdOrCtrl+S)
     // and the command palette both dispatch here via executeCommand.
-    saveCommand = registerCommand('documents.save', () => saveDoc())
+    commandDisposables = [
+      registerCommand('documents.save', () => saveDoc()),
+      registerCommand('documents.find', () => openSearch(false)),
+      registerCommand('documents.replace', () => openSearch(true)),
+      registerCommand('documents.findNext', () => nextSearchMatch())
+    ]
 
     editorContentUnsubscribe = editorContent.subscribe((md) => {
       if (!editor) return
       if (md !== editor.storage.markdown.getMarkdown()) {
         editor.commands.setContent(md, { emitUpdate: false })
+        queueMicrotask(renderSearchDecorations)
       }
     })
 
     contextUnsubscribers = [
       activeDoc.subscribe(refreshDocumentContextDescriptor),
-      isDirty.subscribe(refreshDocumentContextDescriptor)
+      isDirty.subscribe(refreshDocumentContextDescriptor),
+      workspaceId.subscribe((id) => {
+        if (id) void loadPersistedSearchState(id)
+      })
     ]
 
     captureMarkdownListener = (event: Event) => {
@@ -127,6 +377,36 @@
       setEditorContent(editor.storage.markdown.getMarkdown(), { dirty: false })
     }
     window.addEventListener('shell:capture-document-markdown', captureMarkdownListener)
+
+    captureSearchListener = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<{
+        query: string
+        replacement: string
+        mode: DocumentSearchMode
+        scope: DocumentSearchScope
+        preview: boolean
+      }>>).detail ?? {}
+      if (typeof detail.query === 'string') searchQuery = detail.query
+      if (typeof detail.replacement === 'string') searchReplacement = detail.replacement
+      if (detail.mode === 'word' || detail.mode === 'regex') searchMode = detail.mode
+      if (detail.scope === 'document' || detail.scope === 'project') searchScope = detail.scope
+      searchActiveIndex = 0
+      searchOpen = true
+      projectReplacePreview = detail.preview === true
+      if (
+        typeof detail.query === 'string' ||
+        typeof detail.replacement === 'string' ||
+        detail.mode === 'word' ||
+        detail.mode === 'regex' ||
+        detail.scope === 'document' ||
+        detail.scope === 'project'
+      ) {
+        persistSearchState(true)
+      }
+      queueMicrotask(renderSearchDecorations)
+      queueMicrotask(() => document.querySelector<HTMLInputElement>('[data-capture-document-search-input]')?.focus())
+    }
+    window.addEventListener('shell:capture-open-document-search', captureSearchListener)
   })
 
   onDestroy(() => {
@@ -138,7 +418,10 @@
     if (captureMarkdownListener) {
       window.removeEventListener('shell:capture-document-markdown', captureMarkdownListener)
     }
-    saveCommand?.dispose()
+    if (captureSearchListener) {
+      window.removeEventListener('shell:capture-open-document-search', captureSearchListener)
+    }
+    for (const command of commandDisposables) command.dispose()
     editor?.destroy()
   })
 </script>
@@ -173,6 +456,34 @@
 
   <MarkdownBubbleToolbar {editor} />
 
+  {#if searchOpen && $activeDoc}
+    <DocumentSearchPanel
+      query={searchQuery}
+      replacement={searchReplacement}
+      mode={searchMode}
+      scope={searchScope}
+      matchCount={editorSearch.matches.length}
+      activeIndex={searchActiveIndex}
+      validationError={visibleSearchError}
+      projectResults={projectSearch.results}
+      {projectReplacePreview}
+      {projectReplaceBusy}
+      onQueryChange={setSearchQuery}
+      onReplacementChange={setSearchReplacementValue}
+      onModeChange={setSearchModeValue}
+      onScopeChange={setSearchScopeValue}
+      onPrevious={previousSearchMatch}
+      onNext={nextSearchMatch}
+      onReplace={replaceCurrentMatch}
+      onReplaceNext={replaceNextMatch}
+      onReplaceAll={replaceAllMatches}
+      onClose={closeSearch}
+      onOpenProjectResult={(id) => void openProjectResult(id)}
+      onConfirmProjectReplace={() => void confirmProjectReplace()}
+      onCancelProjectReplace={() => (projectReplacePreview = false)}
+    />
+  {/if}
+
   {#if !$activeDoc}
     <div class="empty">
       <div class="empty-copy">
@@ -185,6 +496,7 @@
 
 <style>
   .main-view {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -247,6 +559,17 @@
   .editor-area :global(.ProseMirror ::selection) {
     background: color-mix(in srgb, var(--accent-editor) 28%, transparent);
     color: var(--color-fg-primary);
+  }
+
+  .editor-area :global(.document-search-match) {
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--accent-editor) 24%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-editor) 24%, transparent);
+  }
+
+  .editor-area :global(.document-search-match.active) {
+    background: color-mix(in srgb, var(--accent-editor) 42%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-editor) 58%, transparent);
   }
 
   .editor-area.hidden {

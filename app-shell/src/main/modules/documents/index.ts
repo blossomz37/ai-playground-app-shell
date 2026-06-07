@@ -25,6 +25,9 @@ export const documentsModule: Module = {
         { id: 'documents.rename',     title: 'Rename' },
         { id: 'documents.export',     title: 'Export Document' },
         { id: 'documents.archive',    title: 'Archive' },
+        { id: 'documents.find',       title: 'Find in Document',  keybinding: 'CmdOrCtrl+F' },
+        { id: 'documents.replace',    title: 'Replace in Document', keybinding: 'CmdOrCtrl+H' },
+        { id: 'documents.findNext',   title: 'Find Next' },
         { id: 'shell.settings',       title: 'Open Settings',      keybinding: 'CmdOrCtrl+,' },
         { id: 'shell.layout.toggleSidebar',   title: 'Toggle Sidebar',   keybinding: 'CmdOrCtrl+B' },
         { id: 'shell.layout.toggleInspector', title: 'Toggle Inspector', keybinding: 'CmdOrCtrl+I' },
@@ -74,6 +77,18 @@ export const documentsModule: Module = {
 
     ctx.commands.register('documents.export', async () => {
       ctx.notify({ level: 'info', message: 'Export is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.find', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document to use Find.' })
+    })
+
+    ctx.commands.register('documents.replace', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document to use Replace.' })
+    })
+
+    ctx.commands.register('documents.findNext', async () => {
+      ctx.notify({ level: 'info', message: 'Open Find in a document to jump to the next match.' })
     })
 
     ctx.events.on('documents:changed', (id) => {

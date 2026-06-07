@@ -28,6 +28,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
   const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
+  const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
+  const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
+  const documentSearchReplacement = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_REPLACEMENT']
+  const documentSearchMode = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_MODE']
+  const documentSearchScope = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_SCOPE']
+  const documentSearchPreview = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_PREVIEW'] === '1'
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const settingsSearch = process.env['SHELL_CAPTURE_SETTINGS_SEARCH']
@@ -211,6 +217,18 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (documentMarkdown) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-document-markdown', { detail: ${JSON.stringify(documentMarkdown)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentSearchCapture) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-open-document-search', { detail: ${JSON.stringify({
+            query: documentSearchQuery,
+            replacement: documentSearchReplacement,
+            mode: documentSearchMode,
+            scope: documentSearchScope,
+            preview: documentSearchPreview
+          })} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
