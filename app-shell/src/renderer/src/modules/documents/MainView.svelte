@@ -25,7 +25,7 @@
     type DocumentSearchMode,
     type DocumentSearchScope
   } from '@shared/document-search'
-  import MarkdownBubbleToolbar from '../../shell/MarkdownBubbleToolbar.svelte'
+  import MarkdownBubbleToolbar, { type BubbleToolbarTextRange } from '../../shell/MarkdownBubbleToolbar.svelte'
   import DocumentSearchPanel from './DocumentSearchPanel.svelte'
   import { buildTextIndex, findEditorMatches, mapTextRangeToEditorRange, replaceEditorMatches, selectEditorMatch } from './editorSearch'
   import { AnnotationHighlightExtension, setAnnotationDecorations, type AnnotationDecorationRange } from './annotationDecorations'
@@ -330,7 +330,7 @@
     queueMicrotask(renderAnnotationDecorations)
   }
 
-  async function annotateSelection(range = hasAnnotationSelection ? lastAnnotationSelection : null): Promise<void> {
+  async function annotateSelection(range: BubbleToolbarTextRange | null = hasAnnotationSelection ? lastAnnotationSelection : null): Promise<void> {
     if (!editor || !$activeDoc) return
     const selection = editor.state.selection
     const activeRange = !selection.empty && selection.to > selection.from
@@ -809,7 +809,7 @@
     {/if}
   </div>
 
-  <MarkdownBubbleToolbar {editor} onAnnotate={() => void annotateSelection()} />
+  <MarkdownBubbleToolbar {editor} onAnnotate={(range) => void annotateSelection(range)} />
 
   {#if !$activeDoc}
     <div class="empty">

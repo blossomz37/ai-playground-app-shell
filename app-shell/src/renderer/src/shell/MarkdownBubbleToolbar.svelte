@@ -2,9 +2,14 @@
   import { onDestroy, onMount } from 'svelte'
   import type { Editor } from '@tiptap/core'
 
+  export interface BubbleToolbarTextRange {
+    from: number
+    to: number
+  }
+
   interface Props {
     editor: Editor | null
-    onAnnotate?: (() => void) | null
+    onAnnotate?: ((range: BubbleToolbarTextRange) => void) | null
   }
 
   let { editor, onAnnotate = null }: Props = $props()
@@ -19,6 +24,8 @@
   let isCode = $state(false)
   let isBlockquote = $state(false)
   let headingLevel = $state(0)
+  let selectedRange = $state<BubbleToolbarTextRange | null>(null)
+  let annotationPointerHandled = false
   let raf = 0
 
   function toolbarHost(node: HTMLDivElement): void {
@@ -28,10 +35,12 @@
   function updatePosition(): void {
     if (!editor || editor.state.selection.empty) {
       visible = false
+      selectedRange = null
       return
     }
 
     const { from, to } = editor.state.selection
+    selectedRange = { from, to }
     const start = editor.view.coordsAtPos(from)
     const end = editor.view.coordsAtPos(to)
     const midX = (start.left + end.right) / 2
@@ -97,6 +106,30 @@
     } else {
       editor?.chain().focus().toggleHeading({ level }).run()
     }
+  }
+
+  function requestAnnotation(range: BubbleToolbarTextRange): void {
+    window.setTimeout(() => {
+      onAnnotate?.(range)
+      window.setTimeout(() => {
+        annotationPointerHandled = false
+      }, 0)
+    }, 0)
+  }
+
+  function annotateFromPointer(event: PointerEvent): void {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!selectedRange) return
+    annotationPointerHandled = true
+    requestAnnotation(selectedRange)
+  }
+
+  function annotateFromClick(event: MouseEvent): void {
+    event.preventDefault()
+    event.stopPropagation()
+    if (annotationPointerHandled || !selectedRange) return
+    requestAnnotation(selectedRange)
   }
 </script>
 
@@ -173,10 +206,12 @@
       <span class="tb-sep"></span>
 
       <button
+        type="button"
         class="tb-btn comment"
         title="Add comment"
         aria-label="Add comment to selected text"
-        onmousedown={(e) => { e.preventDefault(); onAnnotate?.() }}
+        onpointerdown={annotateFromPointer}
+        onclick={annotateFromClick}
       >Comment</button>
     {/if}
   </div>
