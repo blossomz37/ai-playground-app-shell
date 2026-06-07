@@ -36,6 +36,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentSearchPreview = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_PREVIEW'] === '1'
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const webNav = process.env['SHELL_CAPTURE_WEB_NAV']
+  const clearWebHistory = process.env['SHELL_CAPTURE_CLEAR_WEB_HISTORY'] === '1'
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
   const openJobsPanel = process.env['SHELL_CAPTURE_OPEN_JOBS'] === '1'
   const settingsSearch = process.env['SHELL_CAPTURE_SETTINGS_SEARCH']
@@ -43,6 +44,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const commandPaletteQuery = process.env['SHELL_CAPTURE_COMMAND_PALETTE_QUERY']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
+  const exitZen = process.env['SHELL_CAPTURE_EXIT_ZEN'] === '1'
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
   const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
   const openAssetImagePreview = process.env['SHELL_CAPTURE_OPEN_ASSET_IMAGE_PREVIEW'] === '1'
@@ -202,6 +204,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (exitZen) {
+        await win.webContents.executeJavaScript(`
+          document.querySelector('button[aria-label="Exit zen mode"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (documentId) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
@@ -217,6 +225,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (webNav === 'bookmarks' || webNav === 'history') {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('web:capture-set-nav', { detail: ${JSON.stringify(webNav)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (clearWebHistory) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('web:capture-clear-history'))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

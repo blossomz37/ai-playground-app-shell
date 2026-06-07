@@ -59,6 +59,11 @@ export function openHistoryItem(id: string): void {
   webState.openHistoryItem(id)
 }
 
+export function clearWebHistory(): void {
+  webState.clearHistory()
+  addToast('info', 'Browsing history cleared')
+}
+
 export function syncLoadedPage(url: string, title?: string): void {
   webState.syncLoadedPage(url, title)
 }

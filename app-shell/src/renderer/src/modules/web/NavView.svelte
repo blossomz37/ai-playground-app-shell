@@ -1,10 +1,11 @@
 <!-- Web NavView — bookmarks and global history -->
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { PlusIcon } from 'phosphor-svelte'
+  import { PlusIcon, TrashSimpleIcon } from 'phosphor-svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import { addToast } from '../../store/toasts'
   import {
+    clearWebHistory,
     openBookmark,
     openBookmarkInNewTab,
     openHistoryItem,
@@ -18,6 +19,7 @@
   let renamingBookmarkId = $state<string | null>(null)
   let navMode = $state<'bookmarks' | 'history'>('bookmarks')
   let captureNavListener: EventListener | null = null
+  let captureClearHistoryListener: EventListener | null = null
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -38,16 +40,26 @@
     cancelRename()
   }
 
+  function clearHistory(): void {
+    if ($webHistory.length === 0) return
+    const confirmed = window.confirm('Clear all browsing history for this workspace?')
+    if (!confirmed) return
+    clearWebHistory()
+  }
+
   onMount(() => {
     captureNavListener = (event: Event) => {
       const mode = (event as CustomEvent<string>).detail
       if (mode === 'bookmarks' || mode === 'history') navMode = mode
     }
+    captureClearHistoryListener = () => clearWebHistory()
     window.addEventListener('web:capture-set-nav', captureNavListener)
+    window.addEventListener('web:capture-clear-history', captureClearHistoryListener)
   })
 
   onDestroy(() => {
     if (captureNavListener) window.removeEventListener('web:capture-set-nav', captureNavListener)
+    if (captureClearHistoryListener) window.removeEventListener('web:capture-clear-history', captureClearHistoryListener)
   })
 </script>
 
@@ -123,9 +135,24 @@
     </section>
   {:else}
     <section class="nav-section history" aria-label="History">
+      <div class="history-tools">
+        <span>{$webHistory.length} {$webHistory.length === 1 ? 'visit' : 'visits'}</span>
+        <button
+          type="button"
+          class="clear-history"
+          data-capture-clear-web-history
+          disabled={$webHistory.length === 0}
+          title="Clear browsing history"
+          aria-label="Clear browsing history"
+          onclick={clearHistory}
+        >
+          <TrashSimpleIcon size={13} weight="bold" />
+          Clear
+        </button>
+      </div>
       <div class="history-list">
         {#if $webHistory.length === 0}
-          <p class="empty-state">History appears after pages load.</p>
+          <p class="empty-state">Browsing history is clear.</p>
         {/if}
         {#each $webHistory as item (item.id)}
           <button class="history-item" onclick={() => openHistoryItem(item.id)}>
@@ -202,6 +229,42 @@
     margin: var(--space-3);
     color: var(--color-fg-muted);
     font-size: var(--font-size-sm);
+  }
+
+  .history-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2) 0;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .clear-history {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    height: 24px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    background: var(--color-bg-overlay);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .clear-history:hover:not(:disabled) {
+    color: var(--color-danger);
+    background: var(--color-bg-surface);
+  }
+
+  .clear-history:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .bm-row {
@@ -335,6 +398,10 @@
     .bookmark-list,
     .history-list {
       padding: var(--space-1);
+    }
+
+    .history-tools {
+      padding: var(--space-1) var(--space-1) 0;
     }
 
     .bm-row {

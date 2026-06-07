@@ -158,6 +158,22 @@ export class WebStateSlice extends ObservableSlice<WebState> {
     this.navigateTo(item.url, item.title)
   }
 
+  clearHistory(): void {
+    this.globalHistory = []
+    this.tabs = this.tabs.map(tab => {
+      const currentEntry = tab.historyStack[tab.historyIndex]
+      const retainedEntry = currentEntry
+        ? { ...currentEntry, title: tab.title, url: tab.url }
+        : this.createHistoryItem(tab.id, tab.url, tab.title, tab.lastVisitedAt)
+      return {
+        ...tab,
+        historyStack: [retainedEntry],
+        historyIndex: 0
+      }
+    })
+    this.emit()
+  }
+
   newTab(input = defaultUrl, explicitTitle?: string): void {
     const tab = this.createTab(input, explicitTitle)
     this.tabs = [...this.tabs, tab]
