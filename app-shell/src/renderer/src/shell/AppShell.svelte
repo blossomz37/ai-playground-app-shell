@@ -272,7 +272,7 @@
     {/key}
   {/if}
   {#if !zenMode}
-    <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} {partyMode} />
+    <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} />
   {/if}
 </div>
 

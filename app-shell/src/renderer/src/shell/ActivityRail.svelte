@@ -192,7 +192,7 @@
   }
 </script>
 
-<nav class="activity-rail" aria-label="Module navigation">
+<nav class="activity-rail" class:party={partyMode} aria-label="Module navigation">
   <button
     class="rail-logo"
     class:active={partyMode}
@@ -250,6 +250,7 @@
 
     grid-area: rail;
     position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -258,6 +259,36 @@
     border-right: 1px solid color-mix(in srgb, var(--color-border-strong) 80%, transparent);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 46%, transparent);
     gap: 2px;
+    overflow: hidden;
+  }
+
+  .activity-rail::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .activity-rail.party::before {
+    inset: 0 0 auto;
+    height: 260%;
+    background:
+      linear-gradient(
+        180deg,
+        var(--jewel-ruby) 0%,
+        var(--jewel-amber) 14%,
+        var(--jewel-citrine) 28%,
+        var(--jewel-emerald) 42%,
+        var(--jewel-sapphire) 56%,
+        var(--jewel-amethyst) 70%,
+        var(--jewel-tourmaline) 84%,
+        var(--jewel-ruby) 100%
+      );
+    filter: saturate(1.2) brightness(0.92);
+    opacity: 0.48;
+    animation: party-rail-aurora 12s ease-in-out infinite;
+    will-change: transform;
   }
 
   .rail-logo {
@@ -436,7 +467,18 @@
     }
   }
 
+  @keyframes party-rail-aurora {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-46%); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .activity-rail.party::before {
+      animation: none;
+      transform: none;
+      will-change: auto;
+    }
+
     .rail-logo.active::before {
       animation: none;
       opacity: 0.62;
