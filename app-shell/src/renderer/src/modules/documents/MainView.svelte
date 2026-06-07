@@ -386,18 +386,16 @@
       return
     }
 
-    const note = window.prompt('Annotation note', '')
-    if (note === null || note.trim() === '') return
-
     const prefix = editor.state.doc.textBetween(Math.max(0, from - 80), from)
     const suffix = editor.state.doc.textBetween(to, Math.min(editor.state.doc.content.size, to + 80))
     editor.chain().focus().setTextSelection({ from, to }).run()
     await createAnnotation({
       documentId: $activeDoc.id,
-      note,
+      note: 'New comment',
       color: 'yellow',
       target: { exact, prefix, suffix, from, to }
     })
+    addToast('info', 'Comment added.')
     trackAnnotationSelection()
     queueMicrotask(renderAnnotationDecorations)
   }
