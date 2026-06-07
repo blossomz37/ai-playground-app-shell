@@ -20,10 +20,7 @@
   })
 </script>
 
-<footer
-  class="status-bar"
-  style="--_status-spectrum-image: url('../status-bar-metallic-spectrum.svg')"
->
+<footer class="status-bar">
   <!-- Left zone: module-contributed status items -->
   <div class="zone zone-left">
     {#if props.moduleId === 'shell.documents' && $activeDoc}
@@ -70,20 +67,6 @@
     color: var(--color-fg-secondary);
     overflow: hidden;
     user-select: none;
-  }
-
-  .status-bar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background-image: var(--_status-spectrum-image);
-    background-position: left center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    filter: saturate(1.08) brightness(0.96);
-    opacity: 1;
-    pointer-events: none;
   }
 
   .status-bar::after {
