@@ -2,6 +2,7 @@
   import {
     ArrowsInIcon,
     ArrowsOutIcon,
+    BriefcaseIcon,
     CommandIcon,
     EyeClosedIcon,
     EyeIcon,
@@ -9,7 +10,7 @@
     SidebarIcon
   } from 'phosphor-svelte'
   import { executeCommand, paletteOpen } from '../store/commands'
-  import { toggleJobsPanel } from '../store/jobs'
+  import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
   import { shellContextDescriptors } from '../store/shell-context'
 
   interface Props {
@@ -36,6 +37,9 @@
   let inspectorLabel = $derived(inspectorVisible ? 'Hide inspector' : 'Show inspector')
   let sidebarLabel = $derived(sidebarVisible ? 'Hide sidebar' : 'Show sidebar')
   let zenLabel = $derived(zenMode ? 'Exit zen mode' : 'Enter zen mode')
+  let failedJob = $derived($recentJobs.find(job => job.status === 'failed') ?? null)
+  let jobsCount = $derived($activeJobs.length)
+  let jobsLabel = $derived(jobsCount > 0 ? `${jobsCount} active ${jobsCount === 1 ? 'job' : 'jobs'}` : failedJob ? 'Recent job failed' : 'Open jobs')
 </script>
 
 <section class="context-strip" aria-label="View toolbar">
@@ -106,8 +110,20 @@
       <CommandIcon size={16} weight="regular" />
     </button>
 
-    <button class="icon-button text-action" type="button" title="Jobs" aria-label="Open jobs" onclick={toggleJobsPanel}>
-      Jobs
+    <button
+      class="icon-button jobs-button"
+      class:active={jobsCount > 0}
+      class:failed={jobsCount === 0 && Boolean(failedJob)}
+      type="button"
+      title={jobsLabel}
+      aria-label={jobsLabel}
+      onclick={toggleJobsPanel}
+    >
+      <BriefcaseIcon size={16} weight={jobsCount > 0 ? 'fill' : 'regular'} />
+      <span class="jobs-label">Jobs</span>
+      {#if jobsCount > 0 || failedJob}
+        <span class="jobs-badge">{jobsCount > 0 ? jobsCount : '!'}</span>
+      {/if}
     </button>
 
     <button
@@ -171,7 +187,9 @@
   }
 
   .icon-button:hover,
-  .icon-button[aria-pressed='true'] {
+  .icon-button[aria-pressed='true'],
+  .icon-button.active,
+  .icon-button.failed {
     background: var(--color-hover);
     color: var(--color-fg-primary);
   }
@@ -219,5 +237,60 @@
     font-size: var(--font-size-xs);
     font-weight: 700;
     text-transform: uppercase;
+  }
+
+  .jobs-button {
+    gap: 5px;
+    max-width: 112px;
+  }
+
+  .jobs-label {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .jobs-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--accent-status);
+    color: #0f172a;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .jobs-button.failed .jobs-badge {
+    background: var(--color-danger);
+    color: #ffffff;
+  }
+
+  @media (max-width: 900px) {
+    .context-actions {
+      right: var(--space-1);
+      gap: 2px;
+      padding-right: var(--space-1);
+    }
+
+    .icon-button {
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+    }
+
+    .jobs-label,
+    .text-action {
+      display: none;
+    }
+
+    .jobs-button {
+      gap: 0;
+      max-width: 36px;
+    }
   }
 </style>

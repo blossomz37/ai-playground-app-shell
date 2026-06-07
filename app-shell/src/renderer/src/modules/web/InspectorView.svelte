@@ -1,38 +1,43 @@
 <!-- Web InspectorView — active tab and session info -->
 <script lang="ts">
-  import { activeTab, activeTabHistory, currentBookmarked, currentTitle, currentUrl, webTabs } from './state'
+  import { activeTabHistory, currentBookmarked, currentTitle, currentUrl, toggleCurrentBookmark, webLoading, webTabs } from './state'
+  import { formatUrlSecondary, getWebUrlMetadata } from './url-display'
 
-  const protocol = $derived($currentUrl.startsWith('https://') ? 'HTTPS' : $currentUrl.startsWith('http://') ? 'HTTP' : 'Pending')
+  let urlMetadata = $derived(getWebUrlMetadata($currentUrl))
 </script>
 
 <div class="inspector-view">
   <section class="section">
-    <h3 class="section-title">Page Info</h3>
-    <div class="meta-grid">
-      <span class="meta-label">Title</span><span class="meta-value">{$currentTitle}</span>
-      <span class="meta-label">URL</span><span class="meta-value url">{$currentUrl}</span>
-      <span class="meta-label">Protocol</span><span class="meta-value">{protocol}</span>
-      <span class="meta-label">Bookmark</span><span class="meta-value">{$currentBookmarked ? 'Saved' : 'Not saved'}</span>
+    <h3 class="section-title">Page</h3>
+    <div class="page-card">
+      <span class="page-domain">{urlMetadata.domain}</span>
+      <h4>{$currentTitle}</h4>
+      <p>{urlMetadata.displayUrl}</p>
+      <div class="page-actions">
+        <span class="load-state" class:loading={$webLoading}>{$webLoading ? 'Loading' : 'Ready'}</span>
+        <button type="button" class:active={$currentBookmarked} onclick={toggleCurrentBookmark}>
+          {$currentBookmarked ? 'Bookmarked' : 'Bookmark'}
+        </button>
+      </div>
     </div>
   </section>
 
   <section class="section">
-    <h3 class="section-title">Tab</h3>
+    <h3 class="section-title">Open Work</h3>
     <div class="meta-grid">
-      <span class="meta-label">Open tabs</span><span class="meta-value">{$webTabs.length}</span>
-      <span class="meta-label">Tab history</span><span class="meta-value">{$activeTab.historyStack.length}</span>
-      <span class="meta-label">History index</span><span class="meta-value">{$activeTab.historyIndex + 1}</span>
-      <span class="meta-label">Session</span><span class="meta-value">Persistent</span>
+      <span class="meta-label">Tabs</span><span class="meta-value">{$webTabs.length} open</span>
+      <span class="meta-label">Status</span><span class="meta-value">{urlMetadata.securityLabel}</span>
+      <span class="meta-label">Saved</span><span class="meta-value">{$currentBookmarked ? 'In bookmarks' : 'Not bookmarked'}</span>
     </div>
   </section>
 
   <section class="section">
-    <h3 class="section-title">Current Tab History</h3>
+    <h3 class="section-title">Recent In This Tab</h3>
     <div class="history-stack">
       {#each $activeTabHistory.slice(0, 6) as item (item.id)}
         <div class="history-row">
           <span class="history-title">{item.title}</span>
-          <span class="history-url">{item.url}</span>
+          <span class="history-url">{formatUrlSecondary(item.url)}</span>
         </div>
       {/each}
     </div>
@@ -57,6 +62,75 @@
     margin-bottom: var(--space-3);
   }
 
+  .page-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-overlay);
+  }
+
+  .page-domain {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-card h4 {
+    margin: 0;
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-md);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .page-card p {
+    margin: 0;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .page-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  .load-state {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .load-state.loading {
+    color: var(--color-accent);
+  }
+
+  .page-actions button {
+    min-width: 0;
+    padding: 4px var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    background: var(--color-bg-surface);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .page-actions button.active {
+    color: var(--color-accent);
+  }
+
   .meta-grid {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -71,12 +145,6 @@
   .meta-value {
     color: var(--color-fg-secondary);
     min-width: 0;
-  }
-
-  .meta-value.url {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-xs);
-    word-break: break-all;
   }
 
   .history-stack {
@@ -108,5 +176,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .inspector-view {
+      padding: var(--space-3);
+    }
   }
 </style>

@@ -45,9 +45,12 @@
   let zenMode = $state(false)
   let partyMode = $state(false)
   let layoutLoaded = $state(false)
+  let narrowViewport = $state(false)
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
   let captureJobsListener: (() => void) | null = null
+  let viewportMedia: MediaQueryList | null = null
+  let viewportMediaListener: ((event: MediaQueryListEvent) => void) | null = null
 
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
@@ -60,10 +63,12 @@
 
   // Compute shared shell tracks dynamically. Rows that represent the same zones
   // consume these variables so titlebar/context/body/status stay aligned.
-  let railColumn = $derived(zenMode ? '0px' : '46px')
-  let sidebarColumn = $derived(zenMode ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
-  let inspectorColumn = $derived(zenMode ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
+  let railColumn = $derived(zenMode ? '0px' : narrowViewport ? '40px' : '46px')
+  let sidebarColumn = $derived(zenMode || narrowViewport ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
+  let inspectorColumn = $derived(zenMode || narrowViewport ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
   let gridColumns = $derived('var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col)')
+  let effectiveSidebarVisible = $derived(sidebarVisible && !zenMode && !narrowViewport)
+  let effectiveInspectorVisible = $derived(inspectorVisible && !zenMode && !narrowViewport)
 
   function applyLayout(state: LayoutState) {
     sidebarWidth = state.sidebarWidth
@@ -144,6 +149,13 @@
   }
 
   onMount(async () => {
+    viewportMedia = window.matchMedia('(max-width: 900px)')
+    narrowViewport = viewportMedia.matches
+    viewportMediaListener = (event: MediaQueryListEvent) => {
+      narrowViewport = event.matches
+    }
+    viewportMedia.addEventListener('change', viewportMediaListener)
+
     // Restore persisted layout
     try {
       const state = await window.shell.layout.get()
@@ -195,6 +207,9 @@
     if (captureJobsListener) {
       window.removeEventListener('shell:capture-open-jobs', captureJobsListener)
     }
+    if (viewportMedia && viewportMediaListener) {
+      viewportMedia.removeEventListener('change', viewportMediaListener)
+    }
     for (const d of commandDisposables) d.dispose()
   })
 </script>
@@ -215,8 +230,8 @@
   <div class="topbar" aria-hidden="true"></div>
   <ContextStrip
     moduleId={$activeModuleId}
-    {sidebarVisible}
-    {inspectorVisible}
+    sidebarVisible={effectiveSidebarVisible}
+    inspectorVisible={effectiveInspectorVisible}
     {zenMode}
     onToggleSidebar={toggleSidebar}
     onToggleInspector={toggleInspector}
@@ -230,7 +245,7 @@
       onTogglePartyMode={togglePartyMode}
     />
   {/if}
-  {#if sidebarVisible && !zenMode}
+  {#if effectiveSidebarVisible}
     {#key $activeModuleId}
       <Sidebar moduleId={$activeModuleId} />
     {/key}
@@ -240,7 +255,7 @@
   {/key}
 
   <!-- Sidebar resize handle -->
-  {#if sidebarVisible && !zenMode}
+  {#if effectiveSidebarVisible}
     <div
       class="resize-handle resize-sidebar"
       class:active={resizing === 'sidebar'}
@@ -254,7 +269,7 @@
     ></div>
   {/if}
 
-  {#if inspectorVisible && !zenMode}
+  {#if effectiveInspectorVisible}
     <!-- Inspector resize handle -->
     <div
       class="resize-handle resize-inspector"
@@ -363,5 +378,13 @@
   .resize-inspector {
     /* Positioned at the left edge of the inspector column */
     right: calc(var(--_inspector-w, 280px) - 2px);
+  }
+
+  @media (max-width: 900px) {
+    .app-shell {
+      --_topbar-h: 32px;
+      --_context-h: 32px;
+      --_status-h: 22px;
+    }
   }
 </style>

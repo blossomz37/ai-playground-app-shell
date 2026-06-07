@@ -35,8 +35,11 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentSearchScope = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_SCOPE']
   const documentSearchPreview = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_PREVIEW'] === '1'
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
+  const webNav = process.env['SHELL_CAPTURE_WEB_NAV']
   const openSettings = process.env['SHELL_CAPTURE_SETTINGS'] === '1'
+  const openJobsPanel = process.env['SHELL_CAPTURE_OPEN_JOBS'] === '1'
   const settingsSearch = process.env['SHELL_CAPTURE_SETTINGS_SEARCH']
+  const viewport = process.env['SHELL_CAPTURE_VIEWPORT']
   const commandPaletteQuery = process.env['SHELL_CAPTURE_COMMAND_PALETTE_QUERY']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
@@ -96,6 +99,18 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let assetLinksTempPaths: string[] = []
   let tableFilterCleanup = false
   let documentKindSmokeCleanupIds: string[] = []
+
+  if (viewport) {
+    const match = viewport.match(/^(\d+)x(\d+)$/i)
+    if (match) {
+      const width = Number(match[1])
+      const height = Number(match[2])
+      if (Number.isFinite(width) && Number.isFinite(height)) {
+        win.setMinimumSize(Math.min(width, 800), Math.min(height, 600))
+        win.setSize(width, height)
+      }
+    }
+  }
 
   async function waitForWebviewRender(): Promise<void> {
     if (moduleId !== 'shell.web') return
@@ -199,6 +214,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (webNav === 'bookmarks' || webNav === 'history') {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('web:capture-set-nav', { detail: ${JSON.stringify(webNav)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (jobType) {
         await win.webContents.executeJavaScript(`
           (async () => {
@@ -209,6 +230,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             window.dispatchEvent(new CustomEvent('shell:capture-open-jobs'))
           })()
         `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openJobsPanel) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-open-jobs'))`
+        )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (markdownMessage) {

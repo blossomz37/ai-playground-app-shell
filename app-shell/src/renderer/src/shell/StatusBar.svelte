@@ -42,7 +42,14 @@
   <!-- Center zone: reserved for notifications / progress bar -->
   <div class="zone zone-center">
     {#if visibleJob && jobLabel}
-      <button class="jobs-item" class:failed={visibleJob.status === 'failed'} type="button" onclick={toggleJobsPanel}>
+      <button
+        class="jobs-item"
+        class:failed={visibleJob.status === 'failed'}
+        type="button"
+        aria-label="Open jobs panel"
+        title="Open jobs panel"
+        onclick={toggleJobsPanel}
+      >
         <span class:active={$activeJobs.length > 0} class:failed={visibleJob.status === 'failed'}></span>
         {jobLabel}
       </button>
@@ -211,5 +218,21 @@
 
   .jobs-item span.failed {
     background: var(--color-danger);
+  }
+
+  @media (max-width: 900px) {
+    .status-bar {
+      grid-template-columns: var(--_rail-col) minmax(0, 1fr);
+      gap: var(--space-1);
+    }
+
+    .zone-left,
+    .zone-center {
+      grid-column: 2;
+    }
+
+    .jobs-item {
+      max-width: 100%;
+    }
   }
 </style>

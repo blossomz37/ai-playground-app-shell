@@ -5,8 +5,11 @@
     ArrowClockwiseIcon,
     ArrowLeftIcon,
     ArrowRightIcon,
+    GlobeIcon,
+    LockIcon,
     PlusIcon,
     StarIcon,
+    WarningCircleIcon,
     XIcon
   } from 'phosphor-svelte'
   import {
@@ -29,10 +32,12 @@
     webLoading,
     webTabs
   } from './state'
+  import { getWebUrlMetadata } from './url-display'
 
   let reloadListener: EventListener | null = null
   let captureNavigateListener: EventListener | null = null
   let addressInput = $derived($currentUrl)
+  let urlMetadata = $derived(getWebUrlMetadata($currentUrl))
 
   function reload(): void {
     reloadPage()
@@ -115,16 +120,28 @@
     <button class="icon-btn" title="Reload" aria-label="Reload" onclick={reload} class:spinning={$webLoading}>
       <ArrowClockwiseIcon size={17} weight="bold" />
     </button>
-    <input
-      class="url-input"
-      type="url"
-      value={addressInput}
-      aria-label="URL"
-      oninput={(event) => {
-        addressInput = event.currentTarget.value
-      }}
-      onkeydown={(event) => event.key === 'Enter' && navigateTo(addressInput)}
-    />
+    <div class="address-field" class:secure={urlMetadata.tone === 'secure'} class:plain={urlMetadata.tone === 'plain'}>
+      <span class="security-indicator" title={urlMetadata.securityDescription} aria-label={urlMetadata.securityDescription}>
+        {#if urlMetadata.tone === 'secure'}
+          <LockIcon size={15} weight="fill" />
+        {:else if urlMetadata.tone === 'plain'}
+          <WarningCircleIcon size={15} weight="fill" />
+        {:else}
+          <GlobeIcon size={15} weight="regular" />
+        {/if}
+      </span>
+      <input
+        class="url-input"
+        type="url"
+        value={addressInput}
+        aria-label={`URL, ${urlMetadata.securityLabel}`}
+        oninput={(event) => {
+          addressInput = event.currentTarget.value
+        }}
+        onkeydown={(event) => event.key === 'Enter' && navigateTo(addressInput)}
+      />
+      <span class="address-status" aria-hidden="true">{urlMetadata.securityLabel}</span>
+    </div>
     <button
       class="icon-btn"
       class:bookmarked={$currentBookmarked}
@@ -248,6 +265,53 @@
     background: var(--color-bg-surface);
   }
 
+  .address-field {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 80px;
+    height: 30px;
+    border: var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-muted);
+    overflow: hidden;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+
+  .address-field:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+
+  .address-field.secure .security-indicator {
+    color: var(--color-success);
+  }
+
+  .address-field.plain .security-indicator {
+    color: var(--color-warn);
+  }
+
+  .security-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 100%;
+    flex-shrink: 0;
+  }
+
+  .address-status {
+    max-width: 76px;
+    padding-right: var(--space-3);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--color-fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .icon-btn {
     width: 28px;
     height: 28px;
@@ -291,10 +355,10 @@
   .url-input {
     flex: 1;
     min-width: 80px;
-    padding: var(--space-1) var(--space-3);
-    background: var(--color-bg-overlay);
-    border: var(--border-subtle);
-    border-radius: var(--radius-md);
+    height: 100%;
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: 0;
     color: var(--color-fg-primary);
     font-family: var(--font-sans);
     font-size: var(--font-size-sm);
@@ -302,7 +366,7 @@
   }
 
   .url-input:focus {
-    border-color: var(--color-accent);
+    border-color: transparent;
   }
 
   .browser-area {
@@ -323,5 +387,30 @@
     min-height: 0;
     border: 0;
     background: white;
+  }
+
+  @media (max-width: 900px) {
+    .tab {
+      min-width: 104px;
+      width: 128px;
+    }
+
+    .url-bar {
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-2);
+    }
+
+    .icon-btn {
+      width: 26px;
+      height: 26px;
+    }
+
+    .address-status {
+      display: none;
+    }
+
+    .browser-area {
+      padding: var(--space-1);
+    }
   }
 </style>

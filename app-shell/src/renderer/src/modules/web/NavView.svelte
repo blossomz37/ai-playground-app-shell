@@ -1,5 +1,6 @@
 <!-- Web NavView — bookmarks and global history -->
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte'
   import { PlusIcon } from 'phosphor-svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import { addToast } from '../../store/toasts'
@@ -12,8 +13,11 @@
     webBookmarks,
     webHistory
   } from './state'
+  import { formatUrlSecondary, formatVisitedAt } from './url-display'
 
   let renamingBookmarkId = $state<string | null>(null)
+  let navMode = $state<'bookmarks' | 'history'>('bookmarks')
+  let captureNavListener: EventListener | null = null
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -33,68 +37,106 @@
     renameBookmark(id, title)
     cancelRename()
   }
+
+  onMount(() => {
+    captureNavListener = (event: Event) => {
+      const mode = (event as CustomEvent<string>).detail
+      if (mode === 'bookmarks' || mode === 'history') navMode = mode
+    }
+    window.addEventListener('web:capture-set-nav', captureNavListener)
+  })
+
+  onDestroy(() => {
+    if (captureNavListener) window.removeEventListener('web:capture-set-nav', captureNavListener)
+  })
 </script>
 
 <div class="nav-view">
-  <section class="nav-section bookmarks">
-    <header class="zone-header nav-header"><span class="zone-title nav-title">Bookmarks</span></header>
-    <div class="bookmark-list">
-      {#each $webBookmarks as bm (bm.id)}
-        <div class="bm-row" class:active={$selectedBookmarkId === bm.id}>
-          {#if renamingBookmarkId === bm.id}
-            <InlineRename
-              value={bm.title}
-              ariaLabel="Rename bookmark"
-              onCommit={(title) => commitRename(bm.id, title)}
-              onCancel={cancelRename}
-            />
-          {:else}
-            <button
-              class="bm-item"
-              aria-pressed={$selectedBookmarkId === bm.id}
-              onclick={() => openBookmark(bm.id)}
-            >
-              <span class="bm-icon">{bm.icon}</span>
-              <span class="bm-info">
-                <span class="bm-title">{bm.title}</span>
-                <span class="bm-url">{bm.url}</span>
-              </span>
-            </button>
-            <div class="row-actions">
-              <button
-                class="row-action"
-                title="Rename"
-                aria-label={`Rename ${bm.title}`}
-                onclick={(event) => startRename(event, bm.id)}
-              >
-                ✎
-              </button>
-              <button
-                class="row-action"
-                title="Open in new tab"
-                aria-label="Open bookmark in new tab"
-                onclick={() => openBookmarkInNewTab(bm.id)}
-              >
-                <PlusIcon size={13} weight="bold" />
-              </button>
-            </div>
-          {/if}
-        </div>
-      {/each}
+  <header class="zone-header nav-header">
+    <div class="segmented-control" role="group" aria-label="Web navigation">
+      <button
+        class:active={navMode === 'bookmarks'}
+        aria-pressed={navMode === 'bookmarks'}
+        onclick={() => navMode = 'bookmarks'}
+      >
+        Bookmarks
+      </button>
+      <button
+        class:active={navMode === 'history'}
+        aria-pressed={navMode === 'history'}
+        onclick={() => navMode = 'history'}
+      >
+        History
+      </button>
     </div>
-  </section>
+  </header>
 
-  <section class="nav-section history">
-    <header class="zone-header nav-header"><span class="zone-title nav-title">History</span></header>
-    <div class="history-list">
-      {#each $webHistory as item (item.id)}
-        <button class="history-item" onclick={() => openHistoryItem(item.id)}>
-          <span class="history-title">{item.title}</span>
-          <span class="history-url">{item.url}</span>
-        </button>
-      {/each}
-    </div>
-  </section>
+  {#if navMode === 'bookmarks'}
+    <section class="nav-section bookmarks" aria-label="Bookmarks">
+      <div class="bookmark-list">
+        {#if $webBookmarks.length === 0}
+          <p class="empty-state">No bookmarks saved yet.</p>
+        {/if}
+        {#each $webBookmarks as bm (bm.id)}
+          <div class="bm-row" class:active={$selectedBookmarkId === bm.id}>
+            {#if renamingBookmarkId === bm.id}
+              <InlineRename
+                value={bm.title}
+                ariaLabel="Rename bookmark"
+                onCommit={(title) => commitRename(bm.id, title)}
+                onCancel={cancelRename}
+              />
+            {:else}
+              <button
+                class="bm-item"
+                aria-pressed={$selectedBookmarkId === bm.id}
+                onclick={() => openBookmark(bm.id)}
+              >
+                <span class="bm-icon">{bm.icon}</span>
+                <span class="bm-info">
+                  <span class="bm-title">{bm.title}</span>
+                  <span class="bm-url">{formatUrlSecondary(bm.url)}</span>
+                </span>
+              </button>
+              <div class="row-actions">
+                <button
+                  class="row-action"
+                  title="Rename"
+                  aria-label={`Rename ${bm.title}`}
+                  onclick={(event) => startRename(event, bm.id)}
+                >
+                  ✎
+                </button>
+                <button
+                  class="row-action"
+                  title="Open in new tab"
+                  aria-label="Open bookmark in new tab"
+                  onclick={() => openBookmarkInNewTab(bm.id)}
+                >
+                  <PlusIcon size={13} weight="bold" />
+                </button>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </section>
+  {:else}
+    <section class="nav-section history" aria-label="History">
+      <div class="history-list">
+        {#if $webHistory.length === 0}
+          <p class="empty-state">History appears after pages load.</p>
+        {/if}
+        {#each $webHistory as item (item.id)}
+          <button class="history-item" onclick={() => openHistoryItem(item.id)}>
+            <span class="history-title">{item.title}</span>
+            <span class="history-url">{formatUrlSecondary(item.url)}</span>
+            <span class="history-time">{formatVisitedAt(item.visitedAt)}</span>
+          </button>
+        {/each}
+      </div>
+    </section>
+  {/if}
 </div>
 
 <style>
@@ -105,15 +147,45 @@
     overflow: hidden;
   }
 
+  .nav-header {
+    padding: var(--space-2);
+  }
+
+  .segmented-control {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    padding: 2px;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-overlay);
+  }
+
+  .segmented-control button {
+    min-width: 0;
+    height: 24px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .segmented-control button.active {
+    background: var(--color-bg-surface);
+    color: var(--color-fg-primary);
+    box-shadow: var(--shadow-subtle);
+  }
+
   .nav-section {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    flex: 1;
   }
 
   .bookmarks {
-    flex: 0 0 auto;
-    max-height: 44%;
+    min-height: 0;
   }
 
   .history {
@@ -124,6 +196,12 @@
   .history-list {
     overflow-y: auto;
     padding: var(--space-2);
+  }
+
+  .empty-state {
+    margin: var(--space-3);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
   }
 
   .bm-row {
@@ -220,9 +298,9 @@
   }
 
   .history-item {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1px var(--space-2);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     background: var(--color-bg-overlay);
@@ -233,5 +311,38 @@
 
   .history-item:hover {
     background: var(--color-accent-dim);
+  }
+
+  .history-title,
+  .history-url {
+    grid-column: 1;
+  }
+
+  .history-time {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .nav-header {
+      padding: var(--space-1);
+    }
+
+    .bookmark-list,
+    .history-list {
+      padding: var(--space-1);
+    }
+
+    .bm-row {
+      grid-template-columns: minmax(0, 1fr) 46px;
+    }
+
+    .history-time {
+      display: none;
+    }
   }
 </style>
