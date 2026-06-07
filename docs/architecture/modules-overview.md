@@ -12,7 +12,7 @@ draftwell's rooms are the candidate module boundaries. Mapping to first-party mo
 
 | draftwell room | Module | Notes |
 |---|---|---|
-| Write + Plan | **Documents** | Core: manuscript tree, rich editor, save + version history, planning materials |
+| Write + Plan | **Documents** | Core: manuscript tree, rich editor, save + version history, planning materials, document-local annotations, split editing, read-only diff |
 | Today | **Journal** | Diary entries, today plan, tasks, calendar items |
 | Assets | **Assets** | Image upload/register, prompt/generation metadata, usage links |
 | Export | **Workflow Runner** + Jobs | Markdown/HTML/PDF/EPUB export jobs + profiles |
@@ -25,6 +25,8 @@ draftwell's rooms are the candidate module boundaries. Mapping to first-party mo
 
 ## 3. What stays shell-owned (not modules)
 Chrome + primitives: activity rail, zone layout/resize/toggle/persistence, zen state, top-bar workspace switcher, theming token service, status bar, command palette + keybindings + context menus, Jobs queue, document open/save pipeline + version history, secrets/credentials service (OS-keychain-backed — §12 Q12), the local API/service split. See `docs/reference/draftwell-anchor-analysis.md` §6.
+
+Document annotations and two-document diff remain Documents features in v1. They may be extracted later only if annotations or compare workflows need to span PDFs, Web, Assets, or other non-document surfaces.
 
 ## 4. Current implementation status
 - ✅ Module contract designed — `docs/architecture/module-contract.md`.

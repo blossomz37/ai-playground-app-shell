@@ -2,6 +2,8 @@ import type {
   CommandCatalogEntry,
   AssetRecord,
   Doc,
+  DocumentAnnotation,
+  DocumentAnnotationSession,
   DocVersion,
   JobSnapshot,
   LayoutState,
@@ -97,6 +99,8 @@ function createBrowserShell(): ShellApi {
     ? DEMO_DOCS.map(doc => ({ ...doc, createdAt: now, updatedAt: now }))
     : []
   const docs = new Map(initialDocs.map(doc => [doc.id, doc]))
+  const annotationSessions = new Map<string, DocumentAnnotationSession>()
+  const annotations = new Map<string, DocumentAnnotation>()
   let activeWorkspace: Workspace = {
     id: 'ws-browser-preview',
     name: demoMode ? 'Browser Preview' : 'Local Preview',
@@ -436,6 +440,87 @@ function createBrowserShell(): ShellApi {
         foldersWritten: []
       }),
       versions: async (): Promise<DocVersion[]> => [],
+      restoreVersion: async (versionId, params) => {
+        const source = docs.get(versionId) ?? Array.from(docs.values()).find(doc => doc.nodeType === 'document')
+        if (!source) throw new Error('Document not found.')
+        if (params.mode === 'copy') {
+          const restored: Doc = {
+            ...source,
+            id: `demo-restored-${Date.now()}`,
+            title: params.title?.trim() || `${source.title} Restored`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+          docs.set(restored.id, restored)
+          return restored
+        }
+        return source
+      },
+      listAnnotationSessions: async (documentId) => Array.from(annotationSessions.values())
+        .filter(session => session.documentId === documentId && !session.archivedAt),
+      createAnnotationSession: async (params) => {
+        const createdAt = new Date().toISOString()
+        const session: DocumentAnnotationSession = {
+          id: `browser-annotation-session-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          documentId: params.documentId,
+          documentVersionId: params.documentVersionId ?? null,
+          title: params.title ?? 'Annotations',
+          createdAt,
+          updatedAt: createdAt,
+          archivedAt: null
+        }
+        annotationSessions.set(session.id, session)
+        return session
+      },
+      listAnnotations: async (documentId, options = {}) => Array.from(annotations.values())
+        .filter(annotation => annotation.documentId === documentId)
+        .filter(annotation => options.includeDeleted || !annotation.deletedAt)
+        .filter(annotation => !options.statuses?.length || options.statuses.includes(annotation.status)),
+      createAnnotation: async (params) => {
+        const createdAt = new Date().toISOString()
+        const annotation: DocumentAnnotation = {
+          id: `browser-annotation-${Date.now()}`,
+          sessionId: params.sessionId,
+          workspaceId: params.workspaceId,
+          documentId: params.documentId,
+          note: params.note,
+          color: params.color ?? 'yellow',
+          status: 'active',
+          targetJson: JSON.stringify(params.target),
+          createdAt,
+          updatedAt: createdAt,
+          resolvedAt: null,
+          deletedAt: null
+        }
+        annotations.set(annotation.id, annotation)
+        return annotation
+      },
+      updateAnnotation: async (id, patch) => {
+        const annotation = annotations.get(id)
+        if (!annotation) throw new Error('Annotation not found.')
+        const status = patch.status ?? annotation.status
+        const updated: DocumentAnnotation = {
+          ...annotation,
+          note: patch.note ?? annotation.note,
+          color: patch.color ?? annotation.color,
+          status,
+          targetJson: patch.target ? JSON.stringify(patch.target) : annotation.targetJson,
+          updatedAt: new Date().toISOString(),
+          resolvedAt: status === 'resolved' ? annotation.resolvedAt ?? new Date().toISOString() : null
+        }
+        annotations.set(id, updated)
+        return updated
+      },
+      resolveAnnotation: async (id) => window.shell.documents.updateAnnotation(id, { status: 'resolved' }),
+      reopenAnnotation: async (id) => window.shell.documents.updateAnnotation(id, { status: 'active' }),
+      deleteAnnotation: async (id) => {
+        const annotation = annotations.get(id)
+        if (!annotation) throw new Error('Annotation not found.')
+        const updated = { ...annotation, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        annotations.set(id, updated)
+        return updated
+      },
       onChanged: () => {}
     },
     workspace: {

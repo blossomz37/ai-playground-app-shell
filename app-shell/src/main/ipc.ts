@@ -8,10 +8,15 @@ import type {
   AssetUpdatePatch,
   AssetWorkspaceLinkParams,
   AssetWorkspaceLinkUpdateParams,
+  CreateDocumentAnnotationParams,
+  CreateDocumentAnnotationSessionParams,
+  DocumentAnnotationPatch,
   DocumentExportParams,
   DocumentLifecycleOptions,
   DocumentMetadataPatch,
   DocumentNodeType,
+  DocumentVersionRestoreParams,
+  ListDocumentAnnotationsOptions,
   JournalEntry,
   JournalExportParams,
   ThemeMode,
@@ -119,6 +124,42 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('documents:versions', (_e, { id }: { id: string }) =>
     documents.versions(id)
+  )
+
+  ipcMain.handle('documents:restoreVersion', (_e, { versionId, params }: {
+    versionId: string; params: DocumentVersionRestoreParams
+  }) => documents.restoreVersion(versionId, params))
+
+  ipcMain.handle('documents:listAnnotationSessions', (_e, { documentId }: { documentId: string }) =>
+    documents.listAnnotationSessions(documentId)
+  )
+
+  ipcMain.handle('documents:createAnnotationSession', (_e, params: CreateDocumentAnnotationSessionParams) =>
+    documents.createAnnotationSession(params)
+  )
+
+  ipcMain.handle('documents:listAnnotations', (_e, { documentId, options }: {
+    documentId: string; options?: ListDocumentAnnotationsOptions
+  }) => documents.listAnnotations(documentId, options))
+
+  ipcMain.handle('documents:createAnnotation', (_e, params: CreateDocumentAnnotationParams) =>
+    documents.createAnnotation(params)
+  )
+
+  ipcMain.handle('documents:updateAnnotation', (_e, { id, patch }: {
+    id: string; patch: DocumentAnnotationPatch
+  }) => documents.updateAnnotation(id, patch))
+
+  ipcMain.handle('documents:resolveAnnotation', (_e, { id }: { id: string }) =>
+    documents.resolveAnnotation(id)
+  )
+
+  ipcMain.handle('documents:reopenAnnotation', (_e, { id }: { id: string }) =>
+    documents.reopenAnnotation(id)
+  )
+
+  ipcMain.handle('documents:deleteAnnotation', (_e, { id }: { id: string }) =>
+    documents.deleteAnnotation(id)
   )
 
   ipcMain.handle('workspace:get', () => workspaceService.getActive())

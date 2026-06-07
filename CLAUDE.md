@@ -72,8 +72,8 @@ app-shell-project/
 
 Read the newest numbered handoff first:
 
-- `workspace-agents/session-handoffs/HANDOFF_56.md` is the latest handoff at the time of this cleanup.
-- `workspace-agents/session-handoffs/HANDOFF_54.md` and `HANDOFF_55.md` are retained for immediate recent context.
+- `workspace-agents/session-handoffs/HANDOFF_58.md` is the latest handoff at the time of this update.
+- `workspace-agents/session-handoffs/HANDOFF_56.md` and `HANDOFF_57.md` are retained for immediate recent context.
 - Older handoffs are archived in `archive/workspace-agents/session-handoffs/`.
 
 Visible recent plans:
@@ -81,6 +81,7 @@ Visible recent plans:
 - `workspace-agents/implementation/plans/39-core-and-custom-modules.md`
 - `workspace-agents/implementation/plans/40-enhanced-table-view-filters.md`
 - `workspace-agents/implementation/plans/41-assets-project-document-links.md`
+- `workspace-agents/implementation/plans/47-documents-annotations-compare-restore.md`
 
 Older plans are archived in `archive/workspace-agents/implementation/`.
 

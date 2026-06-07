@@ -1,5 +1,5 @@
 import { writable, readable, get } from 'svelte/store'
-import type { DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, ThemeMode, Workspace } from '@shared/module-contract'
+import type { DocumentAnnotationPatch, DocumentAnnotationTarget, DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, DocumentVersionRestoreParams, ThemeMode, Workspace } from '@shared/module-contract'
 import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
 import { DEFAULT_DOCUMENT_KIND_OPTIONS, normalizeDocumentKindOptions, slugifyDocumentKindLabel } from '@shared/document-kinds'
 import { getModuleState } from '../modules/module-state-registry'
@@ -34,6 +34,8 @@ export const activeDoc = fromDocumentsState(state => state.activeDoc)
 export const editorContent = fromDocumentsState(state => state.editorContent)
 export const isDirty = fromDocumentsState(state => state.isDirty)
 export const versions = fromDocumentsState(state => state.versions)
+export const annotationSessions = fromDocumentsState(state => state.annotationSessions)
+export const annotations = fromDocumentsState(state => state.annotations)
 export const docTree = fromDocumentsState(state => state.docTree)
 export const archivedDocTree = fromDocumentsState(state => state.archivedDocTree)
 export const documentsSortMode = fromDocumentsState(state => state.sortMode)
@@ -307,6 +309,10 @@ export async function selectDoc(id: string): Promise<void> {
   await documentsState.selectDoc(id)
 }
 
+export function closeDoc(): void {
+  documentsState.closeDoc()
+}
+
 export async function updateDoc(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<void> {
   await documentsState.updateDoc(id, patch)
 }
@@ -337,6 +343,34 @@ export async function deleteDocs(ids: string[]) {
 
 export async function restoreDoc(id: string) {
   return documentsState.restoreDoc(id)
+}
+
+export async function restoreDocVersion(versionId: string, params: DocumentVersionRestoreParams) {
+  return documentsState.restoreVersion(versionId, params)
+}
+
+export async function createAnnotation(params: { documentId: string; note: string; color?: string; target: DocumentAnnotationTarget }) {
+  return documentsState.createAnnotation(params)
+}
+
+export async function updateAnnotation(id: string, patch: DocumentAnnotationPatch) {
+  return documentsState.updateAnnotation(id, patch)
+}
+
+export async function resolveAnnotation(id: string) {
+  return documentsState.resolveAnnotation(id)
+}
+
+export async function reopenAnnotation(id: string) {
+  return documentsState.reopenAnnotation(id)
+}
+
+export async function deleteAnnotation(id: string) {
+  return documentsState.deleteAnnotation(id)
+}
+
+export async function refreshAnnotations() {
+  return documentsState.refreshAnnotations()
 }
 
 export async function exportDocSubtree(id: string, params?: { targetDir?: string }) {

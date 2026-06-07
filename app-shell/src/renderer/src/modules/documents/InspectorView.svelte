@@ -1,10 +1,17 @@
 <script lang="ts">
-  import type { DocumentSourceMetadata } from '@shared/module-contract'
+  import type { DocumentAnnotation, DocumentAnnotationStatus, DocumentAnnotationTarget, DocumentSourceMetadata, DocVersion } from '@shared/module-contract'
   import { documentKindFromValue, documentKindValue, labelForDocumentKind, UNCATEGORIZED_KIND_LABEL, UNCATEGORIZED_KIND_VALUE } from '@shared/document-kinds'
-  import { activeDoc, versions, editorContent, countWords, updateDoc, documents, documentKindOptions, updateDocMetadata } from '../../store'
+  import {
+    activeDoc, annotations, versions, editorContent, countWords, updateDoc, documents, documentKindOptions,
+    updateDocMetadata, restoreDocVersion, updateAnnotation, resolveAnnotation, reopenAnnotation, deleteAnnotation
+  } from '../../store'
+  import { addToast } from '../../store/toasts'
 
   type SourceField = { label: string; value: string; title?: string }
   type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
+  type AnnotationFilter = DocumentAnnotationStatus
+
+  let annotationFilter = $state<AnnotationFilter>('active')
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
@@ -116,6 +123,61 @@
     if (targetWordCount !== null && !Number.isFinite(targetWordCount)) return
     if (targetWordCount === targetWords) return
     await updateDocMetadata(doc.id, { targetWordCount })
+  }
+
+  function parseAnnotationTarget(annotation: DocumentAnnotation): DocumentAnnotationTarget | null {
+    try {
+      const target = JSON.parse(annotation.targetJson) as Partial<DocumentAnnotationTarget>
+      if (typeof target.exact === 'string') return target as DocumentAnnotationTarget
+    } catch {
+      return null
+    }
+    return null
+  }
+
+  let filteredAnnotations = $derived(
+    $annotations.filter(annotation => annotation.status === annotationFilter && annotation.deletedAt === null)
+  )
+
+  function annotationExcerpt(annotation: DocumentAnnotation): string {
+    const target = parseAnnotationTarget(annotation)
+    return target?.exact || 'Original text unavailable'
+  }
+
+  function jumpToAnnotation(annotation: DocumentAnnotation): void {
+    window.dispatchEvent(new CustomEvent('documents:jump-to-annotation', { detail: annotation.id }))
+  }
+
+  async function editAnnotation(annotation: DocumentAnnotation): Promise<void> {
+    const note = window.prompt('Annotation note', annotation.note)
+    if (note === null || note.trim() === annotation.note.trim()) return
+    await updateAnnotation(annotation.id, { note })
+  }
+
+  async function onResolveAnnotation(annotation: DocumentAnnotation): Promise<void> {
+    await resolveAnnotation(annotation.id)
+  }
+
+  async function onReopenAnnotation(annotation: DocumentAnnotation): Promise<void> {
+    await reopenAnnotation(annotation.id)
+  }
+
+  async function onDeleteAnnotation(annotation: DocumentAnnotation): Promise<void> {
+    if (!window.confirm('Delete this annotation?')) return
+    await deleteAnnotation(annotation.id)
+  }
+
+  async function restoreVersionAsCopy(version: DocVersion): Promise<void> {
+    const title = window.prompt('Restored copy name', `${$activeDoc?.title ?? 'Document'} Restored`)
+    if (title === null) return
+    const restored = await restoreDocVersion(version.id, { mode: 'copy', title })
+    addToast('info', `Restored ${restored.title}.`)
+  }
+
+  async function replaceCurrentWithVersion(version: DocVersion): Promise<void> {
+    if (!window.confirm('Replace the current document with this snapshot? A safety snapshot will be created first.')) return
+    await restoreDocVersion(version.id, { mode: 'replace' })
+    addToast('info', 'Document replaced from snapshot.')
   }
 </script>
 
@@ -244,6 +306,51 @@
               <li class="version-item">
                 <span class="v-date">{fmt(v.createdAt)}</span>
                 {#if v.label}<span class="v-label">{v.label}</span>{/if}
+                <div class="version-actions">
+                  <button type="button" class="mini-btn" onclick={() => void restoreVersionAsCopy(v)}>Copy</button>
+                  <button type="button" class="mini-btn danger" onclick={() => void replaceCurrentWithVersion(v)}>Replace</button>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h3 class="section-title">Annotations</h3>
+      </div>
+      <div class="annotation-tabs" role="tablist" aria-label="Annotation filters">
+        <button type="button" class:active={annotationFilter === 'active'} onclick={() => (annotationFilter = 'active')}>Active</button>
+        <button type="button" class:active={annotationFilter === 'resolved'} onclick={() => (annotationFilter = 'resolved')}>Resolved</button>
+        <button type="button" class:active={annotationFilter === 'orphaned'} onclick={() => (annotationFilter = 'orphaned')}>Orphaned</button>
+      </div>
+      <div class="section-body">
+        {#if filteredAnnotations.length === 0}
+          <p class="empty-text">No {annotationFilter} annotations.</p>
+        {:else}
+          <ul class="annotation-list" aria-label="Annotations">
+            {#each filteredAnnotations as annotation (annotation.id)}
+              <li class="annotation-item" class:orphaned={annotation.status === 'orphaned'}>
+                <button
+                  type="button"
+                  class="annotation-target"
+                  disabled={annotation.status === 'orphaned'}
+                  onclick={() => jumpToAnnotation(annotation)}
+                >
+                  {annotationExcerpt(annotation)}
+                </button>
+                <p class="annotation-note">{annotation.note}</p>
+                <div class="annotation-actions">
+                  <button type="button" class="mini-btn" onclick={() => void editAnnotation(annotation)}>Edit</button>
+                  {#if annotation.status === 'resolved'}
+                    <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
+                  {:else}
+                    <button type="button" class="mini-btn" onclick={() => void onResolveAnnotation(annotation)}>Resolve</button>
+                  {/if}
+                  <button type="button" class="mini-btn danger" onclick={() => void onDeleteAnnotation(annotation)}>Delete</button>
+                </div>
               </li>
             {/each}
           </ul>
@@ -414,6 +521,97 @@
 
   .v-date  { font-size: var(--font-size-xs); color: var(--color-fg-secondary); }
   .v-label { font-size: var(--font-size-xs); color: var(--color-fg-muted); font-style: italic; }
+
+  .version-actions,
+  .annotation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .mini-btn {
+    height: 24px;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 20%, var(--color-border));
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .mini-btn:hover:not(:disabled) {
+    background: var(--color-hover);
+    color: var(--color-fg-primary);
+  }
+
+  .mini-btn.danger {
+    color: color-mix(in srgb, #e06c75 70%, var(--color-fg-secondary));
+  }
+
+  .annotation-tabs {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4) 0;
+  }
+
+  .annotation-tabs button {
+    height: 24px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .annotation-tabs button.active {
+    background: color-mix(in srgb, var(--accent-inspector) 18%, transparent);
+    color: var(--color-fg-primary);
+  }
+
+  .annotation-list {
+    list-style: none;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .annotation-item {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in srgb, var(--color-shell-main) 40%, transparent);
+    border: 1px solid color-mix(in srgb, #f7c948 24%, var(--color-border));
+    border-left: 3px solid #f7c948;
+    border-radius: var(--radius-md);
+  }
+
+  .annotation-item.orphaned {
+    border-color: color-mix(in srgb, var(--color-fg-muted) 22%, var(--color-border));
+    border-left-color: var(--color-fg-muted);
+  }
+
+  .annotation-target {
+    min-width: 0;
+    padding: 0;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .annotation-target:disabled {
+    color: var(--color-fg-muted);
+    cursor: default;
+  }
+
+  .annotation-note {
+    margin: 0;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+  }
 
   .empty {
     padding: var(--space-4);

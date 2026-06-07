@@ -9,13 +9,13 @@
   import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
-    activeDoc, activeDocId, documents, editorContent, saveDoc, selectDoc, setEditorContent,
-    editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId
+    activeDoc, activeDocId, annotations, closeDoc, createAnnotation, documents, editorContent, refreshAnnotations,
+    saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
-  import type { Disposable, Doc } from '@shared/module-contract'
+  import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
   import {
     findDocumentMatches,
     normalizeDocumentSearchState,
@@ -26,7 +26,8 @@
   } from '@shared/document-search'
   import MarkdownBubbleToolbar from '../../shell/MarkdownBubbleToolbar.svelte'
   import DocumentSearchPanel from './DocumentSearchPanel.svelte'
-  import { findEditorMatches, replaceEditorMatches, selectEditorMatch } from './editorSearch'
+  import { buildTextIndex, findEditorMatches, mapTextRangeToEditorRange, replaceEditorMatches, selectEditorMatch } from './editorSearch'
+  import { AnnotationHighlightExtension, setAnnotationDecorations, type AnnotationDecorationRange } from './annotationDecorations'
   import { SearchHighlightExtension, setSearchDecorations } from './searchDecorations'
 
   interface ProjectSearchResult {
@@ -37,12 +38,19 @@
   }
 
   let element: HTMLDivElement | null = null
+  let secondaryElement: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
+  let secondaryEditor = $state<Editor | null>(null)
   let commandDisposables: Disposable[] = []
   let editorContentUnsubscribe: (() => void) | null = null
+  let secondaryDocId = $state<string | null>(null)
+  let secondaryContent = $state('')
+  let secondaryDirty = $state(false)
+  let splitDiffMode = $state(false)
   let contextUnsubscribers: Array<() => void> = []
   let captureMarkdownListener: ((event: Event) => void) | null = null
   let captureSearchListener: ((event: Event) => void) | null = null
+  let capturePlan47Listener: ((event: Event) => void) | null = null
   let searchOpen = $state(false)
   let searchQuery = $state('')
   let searchReplacement = $state('')
@@ -52,7 +60,10 @@
   let projectReplacePreview = $state(false)
   let projectReplaceBusy = $state(false)
   let loadingSearchWorkspaceId: string | null = null
+  let annotationJumpListener: ((event: Event) => void) | null = null
 
+  const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
+  const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
   const editorSearch = $derived(
     editor && searchQuery.trim()
       ? findEditorMatches(editor, searchQuery, searchMode)
@@ -66,6 +77,7 @@
     searchMode
   ))
   const visibleSearchError = $derived(searchScope === 'project' ? projectSearch.error : editorSearch.error)
+  const splitDiffRows = $derived(buildLineDiff($editorContent, secondaryContent))
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
@@ -123,6 +135,24 @@
 
   function editorHost(node: HTMLDivElement): void {
     element = node
+  }
+
+  function secondaryEditorHost(node: HTMLDivElement): void {
+    secondaryElement = node
+    mountSecondaryEditor()
+  }
+
+  function editorExtensions(includeAnnotations = false) {
+    return [
+      StarterKit,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      SearchHighlightExtension,
+      ...(includeAnnotations ? [AnnotationHighlightExtension] : []),
+      Markdown.configure({ transformPastedText: true })
+    ]
   }
 
   function searchStateKey(id: string): string {
@@ -222,6 +252,92 @@
     )
   }
 
+  function parseAnnotationTarget(annotation: DocumentAnnotation): DocumentAnnotationTarget | null {
+    try {
+      const target = JSON.parse(annotation.targetJson) as Partial<DocumentAnnotationTarget>
+      if (
+        typeof target.exact === 'string' &&
+        typeof target.prefix === 'string' &&
+        typeof target.suffix === 'string' &&
+        typeof target.from === 'number' &&
+        typeof target.to === 'number'
+      ) {
+        return target as DocumentAnnotationTarget
+      }
+    } catch {
+      return null
+    }
+    return null
+  }
+
+  function locateAnnotation(editorInstance: Editor, annotation: DocumentAnnotation): AnnotationDecorationRange | null {
+    const target = parseAnnotationTarget(annotation)
+    if (!target) return null
+    const directText = editorInstance.state.doc.textBetween(target.from, target.to)
+    if (directText === target.exact) {
+      return { id: annotation.id, from: target.from, to: target.to, status: annotation.status, color: annotation.color }
+    }
+
+    const index = buildTextIndex(editorInstance)
+    const exactIndex = index.text.indexOf(target.exact)
+    if (exactIndex >= 0) {
+      const range = mapTextRangeToEditorRange(editorInstance, exactIndex, exactIndex + target.exact.length)
+      if (range) return { id: annotation.id, ...range, status: annotation.status, color: annotation.color }
+    }
+    return null
+  }
+
+  function renderAnnotationDecorations(): void {
+    if (!editor) return
+    const ranges: AnnotationDecorationRange[] = []
+    for (const annotation of $annotations) {
+      if (annotation.deletedAt || annotation.status === 'orphaned') continue
+      const range = locateAnnotation(editor, annotation)
+      if (range) ranges.push(range)
+    }
+    setAnnotationDecorations(editor, ranges)
+  }
+
+  async function refreshAnnotationAnchors(): Promise<void> {
+    if (!editor) return
+    for (const annotation of $annotations) {
+      if (annotation.deletedAt || annotation.status === 'orphaned') continue
+      if (!locateAnnotation(editor, annotation)) {
+        await window.shell.documents.updateAnnotation(annotation.id, { status: 'orphaned' })
+      }
+    }
+    await refreshAnnotations()
+    queueMicrotask(renderAnnotationDecorations)
+  }
+
+  async function annotateSelection(): Promise<void> {
+    if (!editor || !$activeDoc) return
+    const { from, to, empty } = editor.state.selection
+    if (empty || to <= from) return
+
+    const exact = editor.state.doc.textBetween(from, to)
+    const note = window.prompt('Annotation note', '')
+    if (note === null || note.trim() === '') return
+
+    const prefix = editor.state.doc.textBetween(Math.max(0, from - 80), from)
+    const suffix = editor.state.doc.textBetween(to, Math.min(editor.state.doc.content.size, to + 80))
+    await createAnnotation({
+      documentId: $activeDoc.id,
+      note,
+      color: 'yellow',
+      target: { exact, prefix, suffix, from, to }
+    })
+    queueMicrotask(renderAnnotationDecorations)
+  }
+
+  function jumpToAnnotation(annotation: DocumentAnnotation): void {
+    if (!editor) return
+    const range = locateAnnotation(editor, annotation)
+    if (!range) return
+    selectEditorMatch(editor, { from: range.from, to: range.to, text: parseAnnotationTarget(annotation)?.exact ?? '' })
+    renderAnnotationDecorations()
+  }
+
   function activateSearchMatch(index: number): void {
     if (!editor || editorSearch.matches.length === 0) return
     searchActiveIndex = (index + editorSearch.matches.length) % editorSearch.matches.length
@@ -261,6 +377,78 @@
     searchScope = 'document'
     searchActiveIndex = 0
     queueMicrotask(() => activateSearchMatch(0))
+  }
+
+  function closePrimaryDocument(): void {
+    closeSearch()
+    closeDoc()
+  }
+
+  async function openSecondaryDocument(id: string): Promise<void> {
+    const doc = $documents.find(item => item.id === id)
+    if (!doc || doc.nodeType === 'folder') return
+    secondaryDocId = doc.id
+    secondaryContent = doc.content
+    secondaryDirty = false
+    splitDiffMode = false
+    queueMicrotask(mountSecondaryEditor)
+  }
+
+  async function saveSecondaryDocument(): Promise<void> {
+    if (!secondaryDocId || !secondaryDirty) return
+    await window.shell.documents.save(secondaryDocId, secondaryContent)
+    secondaryDirty = false
+  }
+
+  function closeSecondaryDocument(): void {
+    secondaryEditor?.destroy()
+    secondaryEditor = null
+    secondaryDocId = null
+    secondaryContent = ''
+    secondaryDirty = false
+    splitDiffMode = false
+  }
+
+  function mountSecondaryEditor(): void {
+    if (!secondaryElement || !secondaryDocId || splitDiffMode) return
+    if (secondaryEditor) {
+      if (secondaryEditor.storage.markdown.getMarkdown() !== secondaryContent) {
+        secondaryEditor.commands.setContent(secondaryContent, { emitUpdate: false })
+      }
+      return
+    }
+
+    secondaryEditor = new Editor({
+      element: secondaryElement,
+      extensions: editorExtensions(false),
+      content: secondaryContent,
+      onUpdate: ({ editor }) => {
+        secondaryContent = editor.storage.markdown.getMarkdown()
+        secondaryDirty = true
+      }
+    })
+  }
+
+  function setSplitDiffMode(value: boolean): void {
+    splitDiffMode = value
+    if (value) {
+      secondaryEditor?.destroy()
+      secondaryEditor = null
+    } else {
+      queueMicrotask(mountSecondaryEditor)
+    }
+  }
+
+  function buildLineDiff(left: string, right: string): Array<{ index: number; left: string; right: string; changed: boolean }> {
+    const leftLines = left.split('\n')
+    const rightLines = right.split('\n')
+    const length = Math.max(leftLines.length, rightLines.length)
+    return Array.from({ length }, (_, index) => ({
+      index,
+      left: leftLines[index] ?? '',
+      right: rightLines[index] ?? '',
+      changed: (leftLines[index] ?? '') !== (rightLines[index] ?? '')
+    }))
   }
 
   async function confirmProjectReplace(): Promise<void> {
@@ -328,19 +516,15 @@
     editor = new Editor({
       element,
       extensions: [
-        StarterKit,
-        Table.configure({ resizable: true }),
-        TableRow,
-        TableHeader,
-        TableCell,
-        SearchHighlightExtension,
-        Markdown.configure({ transformPastedText: true })
+        ...editorExtensions(true)
       ],
       content: get(editorContent),
       onUpdate: ({ editor }) => {
         setEditorContent(editor.storage.markdown.getMarkdown())
         scheduleAutoSave()
         queueMicrotask(renderSearchDecorations)
+        queueMicrotask(renderAnnotationDecorations)
+        void refreshAnnotationAnchors()
       },
     })
 
@@ -351,7 +535,9 @@
       registerCommand('documents.save', () => saveDoc()),
       registerCommand('documents.find', () => openSearch(false)),
       registerCommand('documents.replace', () => openSearch(true)),
-      registerCommand('documents.findNext', () => nextSearchMatch())
+      registerCommand('documents.findNext', () => nextSearchMatch()),
+      registerCommand('documents.close', () => closePrimaryDocument()),
+      registerCommand('documents.annotateSelection', () => void annotateSelection())
     ]
 
     editorContentUnsubscribe = editorContent.subscribe((md) => {
@@ -359,12 +545,14 @@
       if (md !== editor.storage.markdown.getMarkdown()) {
         editor.commands.setContent(md, { emitUpdate: false })
         queueMicrotask(renderSearchDecorations)
+        queueMicrotask(renderAnnotationDecorations)
       }
     })
 
     contextUnsubscribers = [
       activeDoc.subscribe(refreshDocumentContextDescriptor),
       isDirty.subscribe(refreshDocumentContextDescriptor),
+      annotations.subscribe(() => queueMicrotask(renderAnnotationDecorations)),
       workspaceId.subscribe((id) => {
         if (id) void loadPersistedSearchState(id)
       })
@@ -407,6 +595,27 @@
       queueMicrotask(() => document.querySelector<HTMLInputElement>('[data-capture-document-search-input]')?.focus())
     }
     window.addEventListener('shell:capture-open-document-search', captureSearchListener)
+
+    capturePlan47Listener = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<{ secondaryDocumentId: string; diff: boolean; close: boolean }>>).detail ?? {}
+      if (detail.secondaryDocumentId) {
+        void openSecondaryDocument(detail.secondaryDocumentId).then(() => {
+          if (detail.diff) setSplitDiffMode(true)
+        })
+      }
+      if (detail.close) {
+        closePrimaryDocument()
+      }
+      queueMicrotask(renderAnnotationDecorations)
+    }
+    window.addEventListener('shell:capture-plan47-documents', capturePlan47Listener)
+
+    annotationJumpListener = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail
+      const annotation = get(annotations).find(item => item.id === id)
+      if (annotation) jumpToAnnotation(annotation)
+    }
+    window.addEventListener('documents:jump-to-annotation', annotationJumpListener)
   })
 
   onDestroy(() => {
@@ -421,8 +630,15 @@
     if (captureSearchListener) {
       window.removeEventListener('shell:capture-open-document-search', captureSearchListener)
     }
+    if (capturePlan47Listener) {
+      window.removeEventListener('shell:capture-plan47-documents', capturePlan47Listener)
+    }
+    if (annotationJumpListener) {
+      window.removeEventListener('documents:jump-to-annotation', annotationJumpListener)
+    }
     for (const command of commandDisposables) command.dispose()
     editor?.destroy()
+    secondaryEditor?.destroy()
   })
 </script>
 
@@ -439,6 +655,33 @@
         <button type="button" class="tool-btn" aria-label="Italic" disabled={!editor} onclick={toggleItalic}><em>I</em></button>
         <button type="button" class="tool-btn" aria-label="Strikethrough" disabled={!editor} onclick={toggleStrike}><s>S</s></button>
         <button type="button" class="tool-btn" aria-label="Blockquote" disabled={!editor} onclick={toggleBlockquote}>&gt;</button>
+      </div>
+      <div class="toolbar-group" role="group" aria-label="Document actions">
+        <button type="button" class="tool-btn" aria-label="Annotate selection" disabled={!editor} onclick={() => void annotateSelection()}>Note</button>
+        <button type="button" class="tool-btn" aria-label="Close document" onclick={closePrimaryDocument}>Close</button>
+      </div>
+      <div class="toolbar-group split-controls" role="group" aria-label="Split editor">
+        <select
+          class="split-select"
+          aria-label="Open second document"
+          value={secondaryDocId ?? ''}
+          onchange={(event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value
+            if (value) void openSecondaryDocument(value)
+          }}
+        >
+          <option value="">Second document</option>
+          {#each editableDocuments.filter(doc => doc.id !== $activeDocId) as doc (doc.id)}
+            <option value={doc.id}>{doc.title}</option>
+          {/each}
+        </select>
+        {#if secondaryDoc}
+          <button type="button" class="tool-btn" aria-label="Toggle diff mode" onclick={() => setSplitDiffMode(!splitDiffMode)}>
+            {splitDiffMode ? 'Edit' : 'Diff'}
+          </button>
+          <button type="button" class="tool-btn" aria-label="Save second document" disabled={!secondaryDirty} onclick={() => void saveSecondaryDocument()}>Save 2</button>
+          <button type="button" class="tool-btn" aria-label="Close second document" onclick={closeSecondaryDocument}>Close 2</button>
+        {/if}
       </div>
     </header>
   {/if}
@@ -471,24 +714,62 @@
     />
   {/if}
 
-  <!-- TipTap mounts into this element; always present so the editor instance is stable -->
-  <div
-    class="editor-area"
-    class:hidden={!$activeDoc}
-    {@attach editorHost}
-    role="textbox"
-    tabindex="-1"
-    style:--editor-font={$editorSettings.fontFamily}
-    style:--editor-font-size={$editorSettings.fontSize}
-  ></div>
+  <div class="editor-shell" class:split={Boolean(secondaryDoc)} class:diffing={splitDiffMode && Boolean(secondaryDoc)}>
+    <section class="editor-pane primary-pane" aria-label={$activeDoc ? `Primary editor: ${$activeDoc.title}` : 'Primary editor'}>
+      <!-- TipTap mounts into this element; always present so the editor instance is stable -->
+      <div
+        class="editor-area"
+        class:hidden={!$activeDoc || (splitDiffMode && Boolean(secondaryDoc))}
+        {@attach editorHost}
+        role="textbox"
+        tabindex="-1"
+        style:--editor-font={$editorSettings.fontFamily}
+        style:--editor-font-size={$editorSettings.fontSize}
+      ></div>
+    </section>
+
+    {#if secondaryDoc}
+      {#if splitDiffMode}
+        <section class="diff-view" aria-label="Document diff">
+          <header class="diff-header">
+            <span>{$activeDoc?.title}</span>
+            <span>{secondaryDoc.title}</span>
+          </header>
+          <div class="diff-rows">
+            {#each splitDiffRows as row (row.index)}
+              <div class="diff-row" class:changed={row.changed}>
+                <pre>{row.left || ' '}</pre>
+                <pre>{row.right || ' '}</pre>
+              </div>
+            {/each}
+          </div>
+        </section>
+      {:else}
+        <section class="editor-pane secondary-pane" aria-label={`Second editor: ${secondaryDoc.title}`}>
+          <header class="secondary-title">
+            <span>{secondaryDoc.title}</span>
+            {#if secondaryDirty}<span class="dirty-pill">Unsaved</span>{/if}
+          </header>
+          <div
+            class="editor-area secondary-editor"
+            {@attach secondaryEditorHost}
+            role="textbox"
+            tabindex="-1"
+            style:--editor-font={$editorSettings.fontFamily}
+            style:--editor-font-size={$editorSettings.fontSize}
+          ></div>
+        </section>
+      {/if}
+    {/if}
+  </div>
 
   <MarkdownBubbleToolbar {editor} />
 
   {#if !$activeDoc}
     <div class="empty">
       <div class="empty-copy">
-        <h2>Create or import a project to begin.</h2>
-        <p>Use the project menu to create a project, import a folder, or add your first document.</p>
+        <h2>No document open.</h2>
+        <p>Select a document in the manuscript tree to open it.</p>
       </div>
     </div>
   {/if}
@@ -524,6 +805,20 @@
     border-right: none;
   }
 
+  .split-controls {
+    margin-left: auto;
+  }
+
+  .split-select {
+    height: 28px;
+    max-width: 180px;
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+  }
+
   .tool-btn {
     min-width: 30px;
     height: 28px;
@@ -543,6 +838,51 @@
   .tool-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  .editor-shell {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-shell.split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .editor-shell.diffing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-pane {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: var(--border-subtle);
+  }
+
+  .editor-pane:last-child {
+    border-right: none;
+  }
+
+  .secondary-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 34px;
+    padding: 0 var(--space-4);
+    border-bottom: var(--border-subtle);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .dirty-pill {
+    color: var(--accent-editor);
+    font-weight: 700;
   }
 
   .editor-area {
@@ -572,6 +912,17 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-editor) 58%, transparent);
   }
 
+  .editor-area :global(.document-annotation) {
+    border-radius: 2px;
+    background: color-mix(in srgb, #f7c948 34%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, #f7c948 34%, transparent);
+  }
+
+  .editor-area :global(.document-annotation-resolved) {
+    background: color-mix(in srgb, var(--color-fg-muted) 16%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-fg-muted) 18%, transparent);
+  }
+
   .editor-area.hidden {
     display: none;
   }
@@ -588,6 +939,70 @@
     padding: clamp(34px, 6vh, 70px) clamp(var(--space-5), 7vw, 84px) 96px;
     max-width: 78ch;
     margin: 0 auto;
+  }
+
+  .secondary-editor :global(.ProseMirror) {
+    max-width: 70ch;
+    padding-inline: clamp(var(--space-4), 5vw, 56px);
+  }
+
+  .diff-view {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    grid-column: 1 / -1;
+    overflow: hidden;
+  }
+
+  .diff-header,
+  .diff-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .diff-header {
+    min-height: 34px;
+    border-bottom: var(--border-subtle);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .diff-header span {
+    padding: var(--space-2) var(--space-4);
+    border-right: var(--border-subtle);
+  }
+
+  .diff-header span:last-child {
+    border-right: none;
+  }
+
+  .diff-rows {
+    flex: 1;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+  }
+
+  .diff-row {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 38%, transparent);
+  }
+
+  .diff-row.changed {
+    background: color-mix(in srgb, var(--accent-editor) 9%, transparent);
+  }
+
+  .diff-row pre {
+    min-width: 0;
+    white-space: pre-wrap;
+    margin: 0;
+    padding: 6px var(--space-4);
+    color: var(--color-fg-secondary);
+    border-right: var(--border-subtle);
+  }
+
+  .diff-row pre:last-child {
+    border-right: none;
   }
 
   .editor-area :global(.ProseMirror p) {

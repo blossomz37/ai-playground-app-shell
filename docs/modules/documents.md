@@ -10,6 +10,8 @@ _The first real module — draftwell's **Write** room (with **Plan** folded in, 
 
 Manuscript tree (folder / chapter / scene + planning materials), the rich-text editor, save + version history, word count. Persistence is **not** here — it belongs to the shell (`ctx.documents`, DB-as-truth). This module is views + commands + a state slice over that pipeline.
 
+As of Plan 47, Documents also owns document-local close/open editor state, side-by-side editing, read-only split diff viewing, and the UI workflows for document annotations. Annotation and version persistence remain shell document primitives; the annotation UI is not a new module in v1.
+
 ---
 
 ## 1. Face 1 — Manifest (declares)
@@ -64,8 +66,10 @@ const manifest: ModuleManifest = {
 ### Views (per zone)
 - `navigation` — manuscript tree: collapsible folder/chapter/scene, drag-reorder, selection. Reads the tree + expansion from the state slice.
 - `main` — the rich-text editor. **Editor-agnostic (F1):** the component reads/writes the active document's content through the slice + `ctx.documents`; the concrete engine (likely TipTap/ProseMirror in a thin Svelte wrapper) is a scaffolding decision and never leaks past this view.
+- `main` also supports a non-persistent secondary editor inside the Documents main pane. The secondary editor can be closed independently and can be toggled into a read-only text diff against the primary document. Split state resets on app restart.
 - `inspector` — `InspectorSection[]`:
   - `{ id: "history", title: "Version History" }` — lists `ctx.documents.versions(id)`, restore.
+  - `{ id: "annotations", title: "Annotations" }` — lists sidecar annotations, with active/resolved/orphaned filters and edit/resolve/reopen/delete actions.
   - `{ id: "metadata", title: "Details" }` — kind, word count, source provenance, timestamps.
   - `{ id: "plan", title: "Planning" }` — linked planning-material docs (F2).
 - `statusBar` — `wordCount` and `saveState` items, driven by the slice.
@@ -78,6 +82,8 @@ interface DocumentsState {
   treeExpansion: Set<string>;      // which folders are open
   selection: string[];             // selected tree nodes
   wordCount: number;
+  annotationSessions: DocumentAnnotationSession[];
+  annotations: DocumentAnnotation[];
 
   subscribe(listener: () => void): Disposable;   // views re-read on change
 }
@@ -137,6 +143,9 @@ const module: Module = {
 | word count / save state (header + rail-status) | `views.statusBar` items |
 | ~40 `useState` hooks (active doc, dirty, expansion, selection, word count) | `DocumentsState` slice |
 | save / new chapter / new scene / rename / move / archive / delete | declared commands → handlers in `activate()` |
+| close open document | Documents state/UI; tree selection and editor open state are deliberately separate |
+| side-by-side editing + read-only diff | Documents main view; not a shell pane primitive in v1 |
+| sidecar text annotations | Documents UI over shell-owned `document_annotation_sessions` + `document_annotations` |
 | chapter / folder / scene kinds | `contributes.documentTypes` |
 | **Plan** room (planning materials, relate to docs) | `kind: "plan"` + `inspector` `plan` section (F2) |
 | open / save / version persistence | `ctx.documents.*` (shell, not module) |
@@ -149,6 +158,13 @@ const module: Module = {
 ## 5. Document schema note
 
 The `documents` + `document_versions` tables are **shell-owned** (the `ctx.documents` pipeline), defined in `docs/architecture/shell-spec.md` §3. This module contributes only the `kind` values (`folder|chapter|scene|plan`). Authoring-specific grouping (draftwell's `manuscriptId`) stays **module-level**, not in the shell's universal document model — see §3 of the shell spec for the shell-universal vs. module-extension split.
+
+Plan 47 adds shell-owned annotation sidecars:
+
+- `document_annotation_sessions` ties a commenting pass to a `documentId` and optionally a `documentVersionId`.
+- `document_annotations` stores note text, color, status (`active|resolved|orphaned`), soft-delete state, and a JSON text target (`exact`, `prefix`, `suffix`, `from`, `to`).
+- Annotation records are independent from document versions. Restoring a document version does not restore or delete annotations; annotations may become orphaned if their target text no longer maps.
+- Version restore supports `Restore as Copy` and `Replace Current`; replace-current creates a safety snapshot first.
 
 ---
 

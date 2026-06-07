@@ -17,6 +17,15 @@ const api: ShellApi = {
     restore:  (id, options) => ipcRenderer.invoke('documents:restore', { id, options }),
     exportSubtree: (id, params) => ipcRenderer.invoke('documents:exportSubtree', { id, params }),
     versions: (id)          => ipcRenderer.invoke('documents:versions', { id }),
+    restoreVersion: (versionId, params) => ipcRenderer.invoke('documents:restoreVersion', { versionId, params }),
+    listAnnotationSessions: (documentId) => ipcRenderer.invoke('documents:listAnnotationSessions', { documentId }),
+    createAnnotationSession: (params) => ipcRenderer.invoke('documents:createAnnotationSession', params),
+    listAnnotations: (documentId, options) => ipcRenderer.invoke('documents:listAnnotations', { documentId, options }),
+    createAnnotation: (params) => ipcRenderer.invoke('documents:createAnnotation', params),
+    updateAnnotation: (id, patch) => ipcRenderer.invoke('documents:updateAnnotation', { id, patch }),
+    resolveAnnotation: (id) => ipcRenderer.invoke('documents:resolveAnnotation', { id }),
+    reopenAnnotation: (id) => ipcRenderer.invoke('documents:reopenAnnotation', { id }),
+    deleteAnnotation: (id) => ipcRenderer.invoke('documents:deleteAnnotation', { id }),
     onChanged: (cb) => {
       ipcRenderer.on('documents:changed', (_event, id: string) => cb(id))
     }

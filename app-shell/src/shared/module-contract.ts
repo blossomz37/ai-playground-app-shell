@@ -148,6 +148,77 @@ export interface DocVersion {
   label: string | null
 }
 
+export type DocumentAnnotationStatus = 'active' | 'resolved' | 'orphaned'
+
+export interface DocumentAnnotationTarget {
+  exact: string
+  prefix: string
+  suffix: string
+  from: number
+  to: number
+}
+
+export interface DocumentAnnotationSession {
+  id: string
+  workspaceId: string
+  documentId: string
+  documentVersionId: string | null
+  title: string
+  createdAt: string
+  updatedAt: string
+  archivedAt: string | null
+}
+
+export interface DocumentAnnotation {
+  id: string
+  sessionId: string
+  workspaceId: string
+  documentId: string
+  note: string
+  color: string
+  status: DocumentAnnotationStatus
+  targetJson: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  deletedAt: string | null
+}
+
+export interface CreateDocumentAnnotationSessionParams {
+  workspaceId: string
+  documentId: string
+  documentVersionId?: string | null
+  title?: string
+}
+
+export interface CreateDocumentAnnotationParams {
+  sessionId: string
+  workspaceId: string
+  documentId: string
+  note: string
+  color?: string
+  target: DocumentAnnotationTarget
+}
+
+export interface DocumentAnnotationPatch {
+  note?: string
+  color?: string
+  status?: DocumentAnnotationStatus
+  target?: DocumentAnnotationTarget
+}
+
+export interface ListDocumentAnnotationsOptions {
+  includeDeleted?: boolean
+  statuses?: DocumentAnnotationStatus[]
+}
+
+export type DocumentVersionRestoreMode = 'copy' | 'replace'
+
+export interface DocumentVersionRestoreParams {
+  mode: DocumentVersionRestoreMode
+  title?: string
+}
+
 export interface DocumentExportParams {
   targetDir?: string
 }
@@ -463,6 +534,15 @@ export interface ModuleContext {
     restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
     exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
     versions(id: string): Promise<DocVersion[]>
+    restoreVersion(versionId: string, params: DocumentVersionRestoreParams): Promise<Doc>
+    listAnnotationSessions(documentId: string): Promise<DocumentAnnotationSession[]>
+    createAnnotationSession(params: CreateDocumentAnnotationSessionParams): Promise<DocumentAnnotationSession>
+    listAnnotations(documentId: string, options?: ListDocumentAnnotationsOptions): Promise<DocumentAnnotation[]>
+    createAnnotation(params: CreateDocumentAnnotationParams): Promise<DocumentAnnotation>
+    updateAnnotation(id: string, patch: DocumentAnnotationPatch): Promise<DocumentAnnotation>
+    resolveAnnotation(id: string): Promise<DocumentAnnotation>
+    reopenAnnotation(id: string): Promise<DocumentAnnotation>
+    deleteAnnotation(id: string): Promise<DocumentAnnotation>
     onChanged(cb: (id: string) => void): Disposable
   }
 
@@ -515,6 +595,15 @@ export interface ShellApi {
     restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
     exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
     versions(id: string): Promise<DocVersion[]>
+    restoreVersion(versionId: string, params: DocumentVersionRestoreParams): Promise<Doc>
+    listAnnotationSessions(documentId: string): Promise<DocumentAnnotationSession[]>
+    createAnnotationSession(params: CreateDocumentAnnotationSessionParams): Promise<DocumentAnnotationSession>
+    listAnnotations(documentId: string, options?: ListDocumentAnnotationsOptions): Promise<DocumentAnnotation[]>
+    createAnnotation(params: CreateDocumentAnnotationParams): Promise<DocumentAnnotation>
+    updateAnnotation(id: string, patch: DocumentAnnotationPatch): Promise<DocumentAnnotation>
+    resolveAnnotation(id: string): Promise<DocumentAnnotation>
+    reopenAnnotation(id: string): Promise<DocumentAnnotation>
+    deleteAnnotation(id: string): Promise<DocumentAnnotation>
     onChanged(cb: (id: string) => void): void
   }
   workspace: {

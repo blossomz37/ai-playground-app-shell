@@ -25,6 +25,8 @@ export const documentsModule: Module = {
         { id: 'documents.rename',     title: 'Rename' },
         { id: 'documents.export',     title: 'Export Document' },
         { id: 'documents.archive',    title: 'Archive' },
+        { id: 'documents.close',      title: 'Close Document' },
+        { id: 'documents.annotateSelection', title: 'Annotate Selection' },
         { id: 'documents.find',       title: 'Find in Document',  keybinding: 'CmdOrCtrl+F' },
         { id: 'documents.replace',    title: 'Replace in Document', keybinding: 'CmdOrCtrl+H' },
         { id: 'documents.findNext',   title: 'Find Next' },
@@ -77,6 +79,14 @@ export const documentsModule: Module = {
 
     ctx.commands.register('documents.export', async () => {
       ctx.notify({ level: 'info', message: 'Export is available from the Documents tree.' })
+    })
+
+    ctx.commands.register('documents.close', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document to close it.' })
+    })
+
+    ctx.commands.register('documents.annotateSelection', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document and select text to annotate.' })
     })
 
     ctx.commands.register('documents.find', async () => {

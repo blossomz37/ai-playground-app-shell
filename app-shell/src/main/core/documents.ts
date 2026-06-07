@@ -1,5 +1,21 @@
 import { randomUUID } from 'crypto'
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocumentNodeType, DocVersion } from '@shared/module-contract'
+import type {
+  CreateDocumentAnnotationParams,
+  CreateDocumentAnnotationSessionParams,
+  Doc,
+  DocumentAnnotation,
+  DocumentAnnotationPatch,
+  DocumentAnnotationSession,
+  DocumentAnnotationStatus,
+  DocumentExportParams,
+  DocumentExportResult,
+  DocumentLifecycleOptions,
+  DocumentMetadataPatch,
+  DocumentNodeType,
+  DocumentVersionRestoreParams,
+  DocVersion,
+  ListDocumentAnnotationsOptions
+} from '@shared/module-contract'
 import { getDb } from './db'
 import { events } from './events'
 import { exportDocumentSubtree } from './document-export'
@@ -77,6 +93,16 @@ function applyMetadataPatch(metadata: Record<string, unknown>, patch: DocumentMe
     }
   }
   return next
+}
+
+function normalizeAnnotationStatus(status: unknown): DocumentAnnotationStatus {
+  return status === 'resolved' || status === 'orphaned' ? status : 'active'
+}
+
+function annotationById(db: ReturnType<typeof getDb>, id: string): DocumentAnnotation {
+  const row = db.prepare('SELECT * FROM document_annotations WHERE id = ?').get(id) as DocumentAnnotation | undefined
+  if (!row) throw new Error(`Annotation not found: ${id}`)
+  return row
 }
 
 export const documents = {
@@ -391,6 +417,8 @@ export const documents = {
 
     const placeholders = deletedIds.map(() => '?').join(', ')
     db.transaction(() => {
+      db.prepare(`DELETE FROM document_annotations WHERE documentId IN (${placeholders})`).run(...deletedIds)
+      db.prepare(`DELETE FROM document_annotation_sessions WHERE documentId IN (${placeholders})`).run(...deletedIds)
       db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...deletedIds)
       db.prepare(`DELETE FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`).run(...deletedIds)
       db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...deletedIds)
@@ -489,5 +517,196 @@ export const documents = {
     return getDb()
       .prepare('SELECT * FROM document_versions WHERE documentId = ? ORDER BY createdAt DESC')
       .all(id) as DocVersion[]
+  },
+
+  restoreVersion(versionId: string, params: DocumentVersionRestoreParams): Doc {
+    const db = getDb()
+    const version = db.prepare('SELECT * FROM document_versions WHERE id = ?').get(versionId) as DocVersion | undefined
+    if (!version) throw new Error(`Document version not found: ${versionId}`)
+
+    const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(version.documentId) as Doc | undefined
+    if (!current) throw new Error(`Document not found: ${version.documentId}`)
+
+    const now = new Date().toISOString()
+    let resultId = current.id
+
+    db.transaction(() => {
+      if (params.mode === 'copy') {
+        const copyId = randomUUID()
+        resultId = copyId
+        const title = uniqueSiblingTitle(
+          db,
+          current.workspaceId,
+          current.parentId,
+          params.title?.trim() || `${current.title} Restored`
+        )
+        const sortOrder = current.sortOrder + 1
+
+        db.prepare(`
+          UPDATE documents
+          SET sortOrder = sortOrder + 1, updatedAt = ?
+          WHERE workspaceId = ?
+            AND parentId IS ?
+            AND archivedAt IS NULL
+            AND sortOrder >= ?
+        `).run(now, current.workspaceId, current.parentId, sortOrder)
+
+        db.prepare(`
+          INSERT INTO documents
+            (id, workspaceId, parentId, nodeType, kind, title, icon, sortOrder, content, contentFormat, sourcePath, sourceChecksum, metadataJson, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          copyId,
+          current.workspaceId,
+          current.parentId,
+          current.nodeType,
+          current.kind,
+          title,
+          current.icon,
+          sortOrder,
+          version.content,
+          version.contentFormat,
+          current.sourcePath,
+          current.sourceChecksum,
+          current.metadataJson,
+          now,
+          now
+        )
+        return
+      }
+
+      if (current.content !== version.content || current.contentFormat !== version.contentFormat) {
+        db.prepare(`
+          INSERT INTO document_versions (id, documentId, content, contentFormat, createdAt, label)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(randomUUID(), current.id, current.content, current.contentFormat, now, 'Before version restore')
+      }
+
+      db.prepare(`
+        UPDATE documents
+        SET content = ?, contentFormat = ?, updatedAt = ?
+        WHERE id = ?
+      `).run(version.content, version.contentFormat, now, current.id)
+    })()
+
+    events.emit('documents:changed', resultId)
+    return db.prepare('SELECT * FROM documents WHERE id = ?').get(resultId) as Doc
+  },
+
+  listAnnotationSessions(documentId: string): DocumentAnnotationSession[] {
+    return getDb()
+      .prepare(`
+        SELECT *
+        FROM document_annotation_sessions
+        WHERE documentId = ? AND archivedAt IS NULL
+        ORDER BY createdAt DESC
+      `)
+      .all(documentId) as DocumentAnnotationSession[]
+  },
+
+  createAnnotationSession(params: CreateDocumentAnnotationSessionParams): DocumentAnnotationSession {
+    const db = getDb()
+    const doc = db.prepare('SELECT * FROM documents WHERE id = ?').get(params.documentId) as Doc | undefined
+    if (!doc) throw new Error(`Document not found: ${params.documentId}`)
+
+    const now = new Date().toISOString()
+    const id = randomUUID()
+    const title = params.title?.trim() || `Annotations - ${doc.title}`
+    db.prepare(`
+      INSERT INTO document_annotation_sessions
+        (id, workspaceId, documentId, documentVersionId, title, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, params.workspaceId, params.documentId, params.documentVersionId ?? null, title, now, now)
+
+    return db.prepare('SELECT * FROM document_annotation_sessions WHERE id = ?').get(id) as DocumentAnnotationSession
+  },
+
+  listAnnotations(documentId: string, options: ListDocumentAnnotationsOptions = {}): DocumentAnnotation[] {
+    const statuses = options.statuses?.map(normalizeAnnotationStatus).filter(Boolean) ?? []
+    const clauses = ['documentId = ?']
+    const args: unknown[] = [documentId]
+
+    if (!options.includeDeleted) {
+      clauses.push('deletedAt IS NULL')
+    }
+    if (statuses.length > 0) {
+      clauses.push(`status IN (${statuses.map(() => '?').join(', ')})`)
+      args.push(...statuses)
+    }
+
+    return getDb()
+      .prepare(`
+        SELECT *
+        FROM document_annotations
+        WHERE ${clauses.join(' AND ')}
+        ORDER BY createdAt DESC
+      `)
+      .all(...args) as DocumentAnnotation[]
+  },
+
+  createAnnotation(params: CreateDocumentAnnotationParams): DocumentAnnotation {
+    const db = getDb()
+    const session = db
+      .prepare('SELECT * FROM document_annotation_sessions WHERE id = ? AND archivedAt IS NULL')
+      .get(params.sessionId) as DocumentAnnotationSession | undefined
+    if (!session) throw new Error(`Annotation session not found: ${params.sessionId}`)
+
+    const now = new Date().toISOString()
+    const id = randomUUID()
+    const color = params.color?.trim() || 'yellow'
+    db.prepare(`
+      INSERT INTO document_annotations
+        (id, sessionId, workspaceId, documentId, note, color, status, targetJson, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+    `).run(
+      id,
+      params.sessionId,
+      params.workspaceId,
+      params.documentId,
+      params.note.trim(),
+      color,
+      JSON.stringify(params.target),
+      now,
+      now
+    )
+
+    return annotationById(db, id)
+  },
+
+  updateAnnotation(id: string, patch: DocumentAnnotationPatch): DocumentAnnotation {
+    const db = getDb()
+    const current = annotationById(db, id)
+    const now = new Date().toISOString()
+    const note = Object.prototype.hasOwnProperty.call(patch, 'note') ? patch.note?.trim() ?? current.note : current.note
+    const color = Object.prototype.hasOwnProperty.call(patch, 'color') ? patch.color?.trim() || current.color : current.color
+    const status = Object.prototype.hasOwnProperty.call(patch, 'status') ? normalizeAnnotationStatus(patch.status) : current.status
+    const targetJson = patch.target ? JSON.stringify(patch.target) : current.targetJson
+    const resolvedAt = status === 'resolved'
+      ? (current.resolvedAt ?? now)
+      : null
+
+    db.prepare(`
+      UPDATE document_annotations
+      SET note = ?, color = ?, status = ?, targetJson = ?, updatedAt = ?, resolvedAt = ?
+      WHERE id = ?
+    `).run(note, color, status, targetJson, now, resolvedAt, id)
+
+    return annotationById(db, id)
+  },
+
+  resolveAnnotation(id: string): DocumentAnnotation {
+    return documents.updateAnnotation(id, { status: 'resolved' })
+  },
+
+  reopenAnnotation(id: string): DocumentAnnotation {
+    return documents.updateAnnotation(id, { status: 'active' })
+  },
+
+  deleteAnnotation(id: string): DocumentAnnotation {
+    const db = getDb()
+    annotationById(db, id)
+    const now = new Date().toISOString()
+    db.prepare('UPDATE document_annotations SET deletedAt = ?, updatedAt = ? WHERE id = ?').run(now, now, id)
+    return annotationById(db, id)
   }
 }

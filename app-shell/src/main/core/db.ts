@@ -58,6 +58,32 @@ function migrate(db: Database.Database): void {
       label         TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS document_annotation_sessions (
+      id                TEXT PRIMARY KEY,
+      workspaceId       TEXT NOT NULL REFERENCES workspaces(id),
+      documentId        TEXT NOT NULL REFERENCES documents(id),
+      documentVersionId TEXT,
+      title             TEXT NOT NULL,
+      createdAt         TEXT NOT NULL,
+      updatedAt         TEXT NOT NULL,
+      archivedAt        TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS document_annotations (
+      id          TEXT PRIMARY KEY,
+      sessionId   TEXT NOT NULL REFERENCES document_annotation_sessions(id),
+      workspaceId TEXT NOT NULL REFERENCES workspaces(id),
+      documentId  TEXT NOT NULL REFERENCES documents(id),
+      note        TEXT NOT NULL,
+      color       TEXT NOT NULL DEFAULT 'yellow',
+      status      TEXT NOT NULL DEFAULT 'active',
+      targetJson  TEXT NOT NULL,
+      createdAt   TEXT NOT NULL,
+      updatedAt   TEXT NOT NULL,
+      resolvedAt  TEXT,
+      deletedAt   TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS shell_settings (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL

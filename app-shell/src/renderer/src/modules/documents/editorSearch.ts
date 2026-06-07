@@ -17,7 +17,7 @@ export interface EditorSearchResult {
   error: string | null
 }
 
-interface TextSegment {
+export interface TextSegment {
   textStart: number
   textEnd: number
   from: number
@@ -73,7 +73,7 @@ export function replaceEditorMatches(
   editor.commands.focus()
 }
 
-function buildTextIndex(editor: Editor): { text: string; segments: TextSegment[] } {
+export function buildTextIndex(editor: Editor): { text: string; segments: TextSegment[] } {
   let text = ''
   const segments: TextSegment[] = []
 
@@ -93,6 +93,17 @@ function buildTextIndex(editor: Editor): { text: string; segments: TextSegment[]
   return { text, segments }
 }
 
-function findSegment(segments: TextSegment[], offset: number): TextSegment | null {
+export function findSegment(segments: TextSegment[], offset: number): TextSegment | null {
   return segments.find(segment => offset >= segment.textStart && offset < segment.textEnd) ?? null
+}
+
+export function mapTextRangeToEditorRange(editor: Editor, start: number, end: number): { from: number; to: number } | null {
+  const index = buildTextIndex(editor)
+  const startSegment = findSegment(index.segments, start)
+  const endSegment = findSegment(index.segments, Math.max(start, end - 1))
+  if (!startSegment || !endSegment) return null
+  return {
+    from: startSegment.from + (start - startSegment.textStart),
+    to: endSegment.from + (end - endSegment.textStart)
+  }
 }

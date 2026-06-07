@@ -66,6 +66,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const restoreWorkspaceId = process.env['SHELL_CAPTURE_RESTORE_WORKSPACE_ID']
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
+  const documentPlan47State = process.env['SHELL_CAPTURE_DOCUMENT_PLAN47_STATE']
   const documentExportDir = process.env['SHELL_CAPTURE_DOCUMENT_EXPORT_DIR']
     ?? join(app.getPath('temp'), `app-shell-document-export-${Date.now()}`)
   const journalLifecycleSmoke = process.env['SHELL_CAPTURE_JOURNAL_LIFECYCLE_SMOKE'] === '1'
@@ -85,6 +86,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let workspaceSmokeCleanup: { initialWorkspaceId: string; workspaceIds: string[] } | null = null
   let workspaceSmokeDocumentId: string | null = null
   let documentSmokeCleanupIds: string[] = []
+  let documentPlan47CleanupIds: string[] = []
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
@@ -410,6 +412,93 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           cleanupScheduled: documentSmokeCleanupIds.length > 0
         }
         console.log('[SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE]', JSON.stringify(smokeResult))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentPlan47State) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const main = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: 'chapter',
+              title: 'Plan 47 Primary',
+              parentId: null,
+              sortOrder: 0
+            })
+            await window.shell.documents.save(main.id, [
+              'Opening paragraph for Plan 47 evidence.',
+              '',
+              'This highlighted sentence carries a sidecar annotation note.',
+              '',
+              'The ending paragraph differs between the two documents.'
+            ].join('\\n'))
+            await window.shell.documents.save(main.id, [
+              'Opening paragraph for Plan 47 evidence.',
+              '',
+              'This highlighted sentence carries a sidecar annotation note.',
+              '',
+              'The restored snapshot has older wording.'
+            ].join('\\n'))
+            const versions = await window.shell.documents.versions(main.id)
+            const secondary = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: 'scene',
+              title: 'Plan 47 Secondary',
+              parentId: null,
+              sortOrder: 1
+            })
+            await window.shell.documents.save(secondary.id, [
+              'Opening paragraph for Plan 47 evidence.',
+              '',
+              'This second document is open beside the first.',
+              '',
+              'The ending paragraph uses alternate wording.'
+            ].join('\\n'))
+            const session = await window.shell.documents.createAnnotationSession({
+              workspaceId: workspace.id,
+              documentId: main.id,
+              documentVersionId: versions[0]?.id ?? null,
+              title: 'Plan 47 Evidence Session'
+            })
+            await window.shell.documents.createAnnotation({
+              sessionId: session.id,
+              workspaceId: workspace.id,
+              documentId: main.id,
+              note: 'Sidecar note attached to selectable highlighted text.',
+              color: 'yellow',
+              target: {
+                exact: 'This highlighted sentence carries a sidecar annotation note.',
+                prefix: 'Opening paragraph for Plan 47 evidence.\\n\\n',
+                suffix: '\\n\\nThe restored snapshot has older wording.',
+                from: 42,
+                to: 101
+              }
+            })
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.documents' }))
+            window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: main.id }))
+            await new Promise(resolve => setTimeout(resolve, 600))
+            window.dispatchEvent(new CustomEvent('shell:capture-plan47-documents', {
+              detail: {
+                secondaryDocumentId: ${JSON.stringify(documentPlan47State === 'split' || documentPlan47State === 'diff' ? '__SECONDARY__' : '')}.replace('__SECONDARY__', secondary.id),
+                diff: ${JSON.stringify(documentPlan47State === 'diff')},
+                close: ${JSON.stringify(documentPlan47State === 'close')}
+              }
+            }))
+            return {
+              mainDocumentId: main.id,
+              secondaryDocumentId: secondary.id,
+              generatedDocumentIds: [main.id, secondary.id],
+              versionCount: versions.length,
+              state: ${JSON.stringify(documentPlan47State)}
+            }
+          })()
+        `)
+        documentPlan47CleanupIds = Array.isArray(result.generatedDocumentIds)
+          ? result.generatedDocumentIds.map(String)
+          : []
+        console.log('[SHELL_CAPTURE_DOCUMENT_PLAN47]', JSON.stringify(result))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (journalLifecycleSmoke) {
@@ -982,6 +1071,21 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           }))
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_DOCUMENT_LIFECYCLE_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (documentPlan47CleanupIds.length > 0) {
+        try {
+          const db = getDb()
+          const placeholders = documentPlan47CleanupIds.map(() => '?').join(', ')
+          db.prepare(`DELETE FROM document_annotations WHERE documentId IN (${placeholders})`).run(...documentPlan47CleanupIds)
+          db.prepare(`DELETE FROM document_annotation_sessions WHERE documentId IN (${placeholders})`).run(...documentPlan47CleanupIds)
+          db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...documentPlan47CleanupIds)
+          db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...documentPlan47CleanupIds)
+          console.log('[SHELL_CAPTURE_DOCUMENT_PLAN47_CLEANUP]', JSON.stringify({
+            deletedDocumentIds: documentPlan47CleanupIds
+          }))
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_DOCUMENT_PLAN47_CLEANUP] failed:', cleanupErr)
         }
       }
       if (journalSmokeCleanup) {

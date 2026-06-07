@@ -13,8 +13,8 @@ Reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persistence
 - Runtime stack: Electron, Svelte 5, TypeScript, SQLite via `better-sqlite3`, TipTap editor
 - Current docs root: `docs/`
 - Current agent workspace: `workspace-agents/`
-- Current newest handoff at cleanup time: `workspace-agents/session-handoffs/HANDOFF_56.md`
-- Current visible plan range after cleanup: plans 39-41
+- Current newest handoff: `workspace-agents/session-handoffs/HANDOFF_58.md`
+- Current visible plan range includes plans 39-47
 - Older plans/handoffs/evidence: archived under `archive/workspace-agents/`
 
 ## Canonical Reading Order

@@ -1,4 +1,19 @@
-import type { Doc, DocumentExportParams, DocumentExportResult, DocumentLifecycleOptions, DocumentMetadataPatch, DocumentNodeType, DocVersion } from '../module-contract'
+import type {
+  CreateDocumentAnnotationParams,
+  CreateDocumentAnnotationSessionParams,
+  Doc,
+  DocumentAnnotation,
+  DocumentAnnotationPatch,
+  DocumentAnnotationSession,
+  DocumentExportParams,
+  DocumentExportResult,
+  DocumentLifecycleOptions,
+  DocumentMetadataPatch,
+  DocumentNodeType,
+  DocumentVersionRestoreParams,
+  DocVersion,
+  ListDocumentAnnotationsOptions
+} from '../module-contract'
 import { ObservableSlice } from './observable'
 
 export interface DocNode extends Doc {
@@ -23,6 +38,15 @@ export interface DocumentsPort {
   restore(id: string, options?: { recursive?: boolean }): Promise<Doc[]>
   exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult>
   versions(id: string): Promise<DocVersion[]>
+  restoreVersion(versionId: string, params: DocumentVersionRestoreParams): Promise<Doc>
+  listAnnotationSessions(documentId: string): Promise<DocumentAnnotationSession[]>
+  createAnnotationSession(params: CreateDocumentAnnotationSessionParams): Promise<DocumentAnnotationSession>
+  listAnnotations(documentId: string, options?: ListDocumentAnnotationsOptions): Promise<DocumentAnnotation[]>
+  createAnnotation(params: CreateDocumentAnnotationParams): Promise<DocumentAnnotation>
+  updateAnnotation(id: string, patch: DocumentAnnotationPatch): Promise<DocumentAnnotation>
+  resolveAnnotation(id: string): Promise<DocumentAnnotation>
+  reopenAnnotation(id: string): Promise<DocumentAnnotation>
+  deleteAnnotation(id: string): Promise<DocumentAnnotation>
   onChanged(cb: (id: string) => void): void
   getSortMode(): Promise<unknown>
   setSortMode(mode: DocumentsSortMode): Promise<void>
@@ -36,6 +60,8 @@ export interface DocumentsState {
   editorContent: string
   isDirty: boolean
   versions: DocVersion[]
+  annotationSessions: DocumentAnnotationSession[]
+  annotations: DocumentAnnotation[]
   docTree: DocNode[]
   archivedDocTree: DocNode[]
   sortMode: DocumentsSortMode
@@ -52,6 +78,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
   private editorContent = ''
   private isDirty = false
   private versions: DocVersion[] = []
+  private annotationSessions: DocumentAnnotationSession[] = []
+  private annotations: DocumentAnnotation[] = []
   private sortMode: DocumentsSortMode = 'manual'
   private drafts = new Map<string, string>()
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -70,6 +98,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       editorContent: this.editorContent,
       isDirty: this.isDirty,
       versions: this.versions,
+      annotationSessions: this.annotationSessions,
+      annotations: this.annotations,
       docTree: this.buildTree(this.documents),
       archivedDocTree: this.buildTree(this.archivedDocuments),
       sortMode: this.sortMode
@@ -95,6 +125,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.editorContent = ''
     this.isDirty = false
     this.versions = []
+    this.annotationSessions = []
+    this.annotations = []
     this.emit()
   }
 
@@ -112,6 +144,19 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.editorContent = draft ?? doc.content
     this.isDirty = draft !== undefined
     this.versions = await this.port.versions(id)
+    await this.loadAnnotationsFor(id)
+    this.emit()
+  }
+
+  closeDoc(): void {
+    this.rememberActiveDraft()
+    this.cancelAutoSave()
+    this.activeDocId = null
+    this.editorContent = ''
+    this.isDirty = false
+    this.versions = []
+    this.annotationSessions = []
+    this.annotations = []
     this.emit()
   }
 
@@ -230,6 +275,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       this.editorContent = ''
       this.isDirty = false
       this.versions = []
+      this.annotationSessions = []
+      this.annotations = []
       this.emit()
 
       if (nextActiveId) {
@@ -290,6 +337,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       this.editorContent = ''
       this.isDirty = false
       this.versions = []
+      this.annotationSessions = []
+      this.annotations = []
       this.emit()
 
       if (nextActiveId) {
@@ -364,6 +413,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       this.editorContent = ''
       this.isDirty = false
       this.versions = []
+      this.annotationSessions = []
+      this.annotations = []
       this.emit()
 
       if (nextActiveId) {
@@ -385,6 +436,80 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.upsertDocuments(restored)
     await this.selectDoc(id)
     return restored
+  }
+
+  async restoreVersion(versionId: string, params: DocumentVersionRestoreParams): Promise<Doc> {
+    if (this.activeDocId && this.isDirty) {
+      await this.saveDoc()
+    }
+
+    const restored = await this.port.restoreVersion(versionId, params)
+    this.upsertDocument(restored)
+    await this.selectDoc(restored.id)
+    return restored
+  }
+
+  async ensureAnnotationSession(documentId: string): Promise<DocumentAnnotationSession> {
+    const existing = this.annotationSessions.find(session => session.documentId === documentId && session.archivedAt === null)
+    if (existing) return existing
+
+    const doc = this.documents.find(item => item.id === documentId)
+    const latestVersion = this.versions[0]
+    const created = await this.port.createAnnotationSession({
+      workspaceId: doc?.workspaceId ?? this.workspaceId ?? '',
+      documentId,
+      documentVersionId: latestVersion?.id ?? null,
+      title: doc ? `Annotations - ${doc.title}` : 'Annotations'
+    })
+    this.annotationSessions = [created, ...this.annotationSessions]
+    this.emit()
+    return created
+  }
+
+  async createAnnotation(params: Omit<CreateDocumentAnnotationParams, 'sessionId' | 'workspaceId'>): Promise<DocumentAnnotation> {
+    const session = await this.ensureAnnotationSession(params.documentId)
+    const created = await this.port.createAnnotation({
+      ...params,
+      sessionId: session.id,
+      workspaceId: session.workspaceId
+    })
+    this.annotations = [created, ...this.annotations]
+    this.emit()
+    return created
+  }
+
+  async updateAnnotation(id: string, patch: DocumentAnnotationPatch): Promise<DocumentAnnotation> {
+    const updated = await this.port.updateAnnotation(id, patch)
+    this.upsertAnnotation(updated)
+    this.emit()
+    return updated
+  }
+
+  async resolveAnnotation(id: string): Promise<DocumentAnnotation> {
+    const updated = await this.port.resolveAnnotation(id)
+    this.upsertAnnotation(updated)
+    this.emit()
+    return updated
+  }
+
+  async reopenAnnotation(id: string): Promise<DocumentAnnotation> {
+    const updated = await this.port.reopenAnnotation(id)
+    this.upsertAnnotation(updated)
+    this.emit()
+    return updated
+  }
+
+  async deleteAnnotation(id: string): Promise<DocumentAnnotation> {
+    const updated = await this.port.deleteAnnotation(id)
+    this.annotations = this.annotations.filter(annotation => annotation.id !== id)
+    this.emit()
+    return updated
+  }
+
+  async refreshAnnotations(): Promise<void> {
+    if (!this.activeDocId) return
+    await this.loadAnnotationsFor(this.activeDocId)
+    this.emit()
   }
 
   async exportSubtree(id: string, params?: DocumentExportParams): Promise<DocumentExportResult> {
@@ -424,6 +549,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.drafts.delete(this.activeDocId)
     this.isDirty = false
     this.versions = await this.port.versions(this.activeDocId)
+    await this.loadAnnotationsFor(this.activeDocId)
     this.emit()
   }
 
@@ -449,6 +575,8 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
         this.editorContent = ''
         this.isDirty = false
         this.versions = []
+        this.annotationSessions = []
+        this.annotations = []
       }
       this.emit()
       return
@@ -460,6 +588,7 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
         this.editorContent = updated.content
       }
       this.versions = await this.port.versions(id)
+      await this.loadAnnotationsFor(id)
     }
     this.emit()
   }
@@ -495,6 +624,24 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
       }
     }
     this.documents = [...this.documents].sort(compareManualDocuments)
+  }
+
+  private upsertAnnotation(annotation: DocumentAnnotation): void {
+    if (annotation.deletedAt) {
+      this.annotations = this.annotations.filter(item => item.id !== annotation.id)
+      return
+    }
+    const existingIndex = this.annotations.findIndex(item => item.id === annotation.id)
+    if (existingIndex === -1) {
+      this.annotations = [annotation, ...this.annotations]
+      return
+    }
+    this.annotations = this.annotations.map(item => item.id === annotation.id ? annotation : item)
+  }
+
+  private async loadAnnotationsFor(documentId: string): Promise<void> {
+    this.annotationSessions = await this.port.listAnnotationSessions(documentId)
+    this.annotations = await this.port.listAnnotations(documentId)
   }
 
   private activeDoc(): Doc | null {
