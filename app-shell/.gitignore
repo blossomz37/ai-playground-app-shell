@@ -2,6 +2,7 @@ node_modules/
 .electron-dev/
 out/
 dist/
+release/
 *.tsbuildinfo
 .DS_Store
 *.db

@@ -1,12 +1,13 @@
 {
   "name": "app-shell",
   "productName": "App Shell",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reusable desktop shell — Electron + Svelte + SQLite",
   "main": "./out/main/index.js",
   "scripts": {
     "start": "node scripts/start-dev.mjs",
     "build": "electron-vite build",
+    "package:mac": "npm run build && node scripts/package-mac.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
     "audit:contrast": "node scripts/audit-contrast.mjs",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@electron/packager": "^20.0.1",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
