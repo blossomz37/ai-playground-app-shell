@@ -10,7 +10,8 @@
   import { Markdown } from 'tiptap-markdown'
   import {
     activeDoc, activeDocId, annotations, closeDoc, createAnnotation, documents, editorContent, refreshAnnotations,
-    saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId
+    saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId,
+    lockDocumentSelection, unlockDocumentSelection
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
@@ -64,6 +65,8 @@
   let annotationJumpListener: ((event: Event) => void) | null = null
   let lastAnnotationSelection = $state<{ from: number; to: number } | null>(null)
   let hasAnnotationSelection = $state(false)
+  let commentMode = $state(false)
+  let commentModeDocId = $state<string | null>(null)
 
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
@@ -135,6 +138,36 @@
   function toggleBlockquote(): void {
     editor?.chain().focus().toggleBlockquote().run()
   }
+
+  function enterCommentMode(): void {
+    const id = get(activeDocId)
+    if (!id) return
+    commentMode = true
+    commentModeDocId = id
+    lockDocumentSelection(id)
+    closeSearch()
+    addToast('info', 'Comment mode enabled.')
+    editor?.commands.focus()
+  }
+
+  function exitCommentMode(): void {
+    unlockDocumentSelection(commentModeDocId)
+    commentMode = false
+    commentModeDocId = null
+    lastAnnotationSelection = null
+    hasAnnotationSelection = false
+    addToast('info', 'Comment mode disabled.')
+    editor?.commands.focus()
+  }
+
+  function toggleCommentMode(): void {
+    if (commentMode) {
+      exitCommentMode()
+    } else {
+      enterCommentMode()
+    }
+  }
+
 
   function editorHost(node: HTMLDivElement): void {
     element = node
@@ -332,6 +365,10 @@
 
   async function annotateSelection(range: BubbleToolbarTextRange | null = hasAnnotationSelection ? lastAnnotationSelection : null): Promise<void> {
     if (!editor || !$activeDoc) return
+    if (!commentMode) {
+      addToast('warn', 'Turn on comment mode before adding comments.')
+      return
+    }
     const selection = editor.state.selection
     const activeRange = !selection.empty && selection.to > selection.from
       ? { from: selection.from, to: selection.to }
@@ -408,6 +445,10 @@
   }
 
   async function openProjectResult(documentId: string): Promise<void> {
+    if (commentMode) {
+      addToast('warn', 'Exit comment mode before switching documents.')
+      return
+    }
     await selectDoc(documentId)
     searchScope = 'document'
     searchActiveIndex = 0
@@ -415,11 +456,19 @@
   }
 
   function closePrimaryDocument(): void {
+    if (commentMode) {
+      addToast('warn', 'Exit comment mode before closing this document.')
+      return
+    }
     closeSearch()
     closeDoc()
   }
 
   async function openSecondaryDocument(id: string): Promise<void> {
+    if (commentMode) {
+      addToast('warn', 'Exit comment mode before opening a second document.')
+      return
+    }
     const doc = $documents.find(item => item.id === id)
     if (!doc || doc.nodeType === 'folder') return
     secondaryDocId = doc.id
@@ -636,11 +685,14 @@
     window.addEventListener('shell:capture-open-document-search', captureSearchListener)
 
     capturePlan47Listener = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<{ secondaryDocumentId: string; diff: boolean; close: boolean }>>).detail ?? {}
+      const detail = (event as CustomEvent<Partial<{ secondaryDocumentId: string; diff: boolean; close: boolean; commentMode: boolean }>>).detail ?? {}
       if (detail.secondaryDocumentId) {
         void openSecondaryDocument(detail.secondaryDocumentId).then(() => {
           if (detail.diff) setSplitDiffMode(true)
         })
+      }
+      if (detail.commentMode) {
+        enterCommentMode()
       }
       if (detail.close) {
         closePrimaryDocument()
@@ -658,6 +710,7 @@
   })
 
   onDestroy(() => {
+    unlockDocumentSelection(commentModeDocId)
     cancelAutoSave()
     editorContentUnsubscribe?.()
     for (const unsubscribe of contextUnsubscribers) unsubscribe()
@@ -699,10 +752,12 @@
         <button
           type="button"
           class="tool-btn"
-          aria-label="Add comment to selected text"
-          title={hasAnnotationSelection ? 'Add comment to selected text' : 'Select text before adding a comment'}
+          class:active={commentMode}
+          aria-label={commentMode ? 'Exit comment mode' : 'Enter comment mode'}
+          aria-pressed={commentMode}
+          title={commentMode ? 'Exit comment mode' : 'Enter comment mode'}
           disabled={!editor}
-          onmousedown={(event) => { event.preventDefault(); void annotateSelection() }}
+          onmousedown={(event) => { event.preventDefault(); toggleCommentMode() }}
         >Comment</button>
         <button type="button" class="tool-btn" aria-label="Close document" onclick={closePrimaryDocument}>Close</button>
       </div>
@@ -710,6 +765,7 @@
         <select
           class="split-select"
           aria-label="Open second document"
+          disabled={commentMode}
           value={secondaryDocId ?? ''}
           onchange={(event) => {
             const value = (event.currentTarget as HTMLSelectElement).value
@@ -809,7 +865,7 @@
     {/if}
   </div>
 
-  <MarkdownBubbleToolbar {editor} onAnnotate={(range) => void annotateSelection(range)} />
+  <MarkdownBubbleToolbar {editor} onAnnotate={commentMode ? (range) => void annotateSelection(range) : null} />
 
   {#if !$activeDoc}
     <div class="empty">
@@ -879,6 +935,12 @@
   .tool-btn:hover:not(:disabled) {
     background: var(--color-hover);
     color: var(--color-fg-primary);
+  }
+
+  .tool-btn.active {
+    color: var(--color-fg-primary);
+    background: color-mix(in srgb, #f7c948 24%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, #f7c948 42%, transparent);
   }
 
   .tool-btn:disabled {

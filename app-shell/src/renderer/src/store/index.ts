@@ -4,7 +4,7 @@ import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, Document
 import { DEFAULT_DOCUMENT_KIND_OPTIONS, normalizeDocumentKindOptions, slugifyDocumentKindLabel } from '@shared/document-kinds'
 import { getModuleState } from '../modules/module-state-registry'
 import { loadCommands } from './commands'
-import { initToasts } from './toasts'
+import { addToast, initToasts } from './toasts'
 import { loadJobs } from './jobs'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 import { activeModuleId } from './active-module'
@@ -113,6 +113,7 @@ if (typeof window !== 'undefined' && window.matchMedia) {
 }
 
 let captureDocumentListenerInstalled = false
+let documentSelectionLockId: string | null = null
 
 /** Schedule a debounced auto-save. Resets on every call. */
 export function scheduleAutoSave(): void {
@@ -306,11 +307,29 @@ export async function deleteWorkspace(id: string): Promise<void> {
 }
 
 export async function selectDoc(id: string): Promise<void> {
+  if (documentSelectionLockId && id !== documentSelectionLockId) {
+    addToast('warn', 'Exit comment mode before switching documents.')
+    return
+  }
   await documentsState.selectDoc(id)
 }
 
 export function closeDoc(): void {
+  if (documentSelectionLockId) {
+    addToast('warn', 'Exit comment mode before closing this document.')
+    return
+  }
   documentsState.closeDoc()
+}
+
+export function lockDocumentSelection(id: string): void {
+  documentSelectionLockId = id
+}
+
+export function unlockDocumentSelection(id?: string | null): void {
+  if (!id || documentSelectionLockId === id) {
+    documentSelectionLockId = null
+  }
 }
 
 export async function updateDoc(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<void> {

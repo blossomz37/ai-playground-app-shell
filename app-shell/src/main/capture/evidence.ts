@@ -483,7 +483,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               detail: {
                 secondaryDocumentId: ${JSON.stringify(documentPlan47State === 'split' || documentPlan47State === 'diff' ? '__SECONDARY__' : '')}.replace('__SECONDARY__', secondary.id),
                 diff: ${JSON.stringify(documentPlan47State === 'diff')},
-                close: ${JSON.stringify(documentPlan47State === 'close')}
+                close: ${JSON.stringify(documentPlan47State === 'close')},
+                commentMode: ${JSON.stringify(documentPlan47State === 'comment-mode')}
               }
             }))
             return {
