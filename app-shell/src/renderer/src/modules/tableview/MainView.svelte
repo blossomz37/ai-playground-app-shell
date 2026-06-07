@@ -1028,7 +1028,7 @@
     flex: 0 0 auto;
   }
   .number-input {
-    width: 92px;
+    width: 112px;
     padding: 0 var(--space-2);
   }
   .toolbar-field {
@@ -1037,7 +1037,8 @@
     flex: 0 0 auto;
   }
   .toolbar-field select {
-    width: 94px;
+    width: auto;
+    min-width: 112px;
     padding: 0 var(--space-2);
     font-weight: 500;
   }
