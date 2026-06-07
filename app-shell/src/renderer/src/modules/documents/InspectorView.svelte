@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { DocumentSourceMetadata } from '@shared/module-contract'
   import { documentKindFromValue, documentKindValue, labelForDocumentKind, UNCATEGORIZED_KIND_LABEL, UNCATEGORIZED_KIND_VALUE } from '@shared/document-kinds'
-  import { activeDoc, versions, editorContent, countWords, updateDoc, documents, documentKindOptions } from '../../store'
+  import { activeDoc, versions, editorContent, countWords, updateDoc, documents, documentKindOptions, updateDocMetadata } from '../../store'
 
   type SourceField = { label: string; value: string; title?: string }
+  type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
@@ -41,10 +42,10 @@
     await updateDoc(doc.id, { icon: icon === '' ? null : icon })
   }
 
-  function parseSourceMetadata(metadataJson: string | null | undefined): DocumentSourceMetadata | null {
+  function parseDocumentMetadata(metadataJson: string | null | undefined): DocumentMetadata | null {
     if (!metadataJson) return null
     try {
-      const parsed = JSON.parse(metadataJson) as DocumentSourceMetadata
+      const parsed = JSON.parse(metadataJson) as DocumentMetadata
       return parsed && typeof parsed === 'object' ? parsed : null
     } catch {
       return null
@@ -60,17 +61,33 @@
     return items.filter((item): item is T => item !== null)
   }
 
-  let sourceMetadata = $derived(parseSourceMetadata($activeDoc?.metadataJson))
+  let documentMetadata = $derived(parseDocumentMetadata($activeDoc?.metadataJson))
+  let targetWords = $derived(
+    typeof documentMetadata?.targetWordCount === 'number' && Number.isFinite(documentMetadata.targetWordCount)
+      ? Math.max(0, Math.floor(documentMetadata.targetWordCount))
+      : null
+  )
+  let hasSourceMetadata = $derived(Boolean(documentMetadata && (
+    documentMetadata.file ||
+    documentMetadata.description ||
+    documentMetadata.status ||
+    documentMetadata.version ||
+    documentMetadata.created ||
+    documentMetadata.modified ||
+    documentMetadata.author ||
+    documentMetadata.word_count !== undefined ||
+    (Array.isArray(documentMetadata.related) && documentMetadata.related.length > 0)
+  )))
   let sourceFields = $derived(compact([
-    field('Source file', sourceMetadata?.file ?? $activeDoc?.sourcePath, $activeDoc?.sourcePath ?? sourceMetadata?.file),
-    field('Description', sourceMetadata?.description),
-    field('Status', sourceMetadata?.status),
-    field('Version', sourceMetadata?.version),
-    field('Source created', sourceMetadata?.created),
-    field('Source modified', sourceMetadata?.modified),
-    field('Author', sourceMetadata?.author),
-    field('Imported words', sourceMetadata?.word_count),
-    sourceMetadata ? field('Current words', countWords($editorContent)) : null
+    field('Source file', documentMetadata?.file ?? $activeDoc?.sourcePath, $activeDoc?.sourcePath ?? documentMetadata?.file),
+    field('Description', documentMetadata?.description),
+    field('Status', documentMetadata?.status),
+    field('Version', documentMetadata?.version),
+    field('Source created', documentMetadata?.created),
+    field('Source modified', documentMetadata?.modified),
+    field('Author', documentMetadata?.author),
+    field('Imported words', documentMetadata?.word_count),
+    hasSourceMetadata ? field('Current words', countWords($editorContent)) : null
   ]))
 
   let docKindSelectOptions = $derived.by(() => {
@@ -89,6 +106,17 @@
     }
     return options
   })
+
+  async function onTargetWordsChange(event: Event): Promise<void> {
+    const doc = $activeDoc
+    if (!doc || doc.nodeType === 'folder') return
+
+    const value = (event.currentTarget as HTMLInputElement).value.trim()
+    const targetWordCount = value === '' ? null : Number(value)
+    if (targetWordCount !== null && !Number.isFinite(targetWordCount)) return
+    if (targetWordCount === targetWords) return
+    await updateDocMetadata(doc.id, { targetWordCount })
+  }
 </script>
 
 <div class="inspector-view">
@@ -143,6 +171,24 @@
           <span class="label">Words</span>
           <span class="value">{countWords($editorContent)}</span>
         </div>
+        {#if $activeDoc.nodeType === 'document'}
+          <div class="field">
+            <label class="label" for="document-target-words">Target words</label>
+            <input
+              id="document-target-words"
+              class="number-input"
+              type="number"
+              min="0"
+              step="1"
+              value={targetWords ?? ''}
+              placeholder="None"
+              onchange={onTargetWordsChange}
+              onkeydown={(event) => {
+                if (event.key === 'Enter') void onTargetWordsChange(event)
+              }}
+            />
+          </div>
+        {/if}
         <div class="field">
           <span class="label">Format</span>
           <span class="value">{$activeDoc.contentFormat}</span>
@@ -158,7 +204,7 @@
       </div>
     </section>
 
-    {#if sourceMetadata}
+    {#if hasSourceMetadata}
       <section class="section">
         <div class="section-header">
           <h3 class="section-title">Source Metadata</h3>
@@ -171,11 +217,11 @@
               <span class="value" title={item.title}>{item.value}</span>
             </div>
           {/each}
-          {#if sourceMetadata.related && sourceMetadata.related.length > 0}
+          {#if documentMetadata?.related && documentMetadata.related.length > 0}
             <div class="field stacked">
               <span class="label">Related</span>
               <ul class="related-list" aria-label="Related source paths">
-                {#each sourceMetadata.related as relatedPath (relatedPath)}
+                {#each documentMetadata.related as relatedPath (relatedPath)}
                   <li title={relatedPath}>{relatedPath}</li>
                 {/each}
               </ul>
@@ -304,7 +350,8 @@
 
   .kind-select,
   .text-input,
-  .icon-input {
+  .icon-input,
+  .number-input {
     min-width: 110px;
     max-width: 150px;
     padding: 2px var(--space-2);
@@ -320,13 +367,18 @@
     width: 110px;
   }
 
+  .number-input {
+    width: 110px;
+  }
+
   .text-input {
     width: 150px;
   }
 
   .kind-select:focus-visible,
   .text-input:focus-visible,
-  .icon-input:focus-visible {
+  .icon-input:focus-visible,
+  .number-input:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
   }

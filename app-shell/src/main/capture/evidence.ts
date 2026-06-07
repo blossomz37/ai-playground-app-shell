@@ -691,6 +691,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               parentId: folder.id
             })
             await window.shell.documents.save(uncategorized.id, '# Kind Smoke Uncategorized\\n\\nThis starts uncategorized.')
+            const targetWords = await window.shell.documents.updateMetadata(uncategorized.id, { targetWordCount: 1200 })
             await window.shell.documents.update(uncategorized.id, { kind: 'chapter' })
             const cleared = await window.shell.documents.update(uncategorized.id, { kind: null })
             const research = await window.shell.documents.create({
@@ -737,6 +738,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               clearedKind: cleared.kind,
               folderNodeType: folder.nodeType,
               uncategorizedNodeType: uncategorized.nodeType,
+              targetWords: targetWords.metadataJson ? JSON.parse(targetWords.metadataJson).targetWordCount : null,
               researchKind: research.kind
             }
           })()
