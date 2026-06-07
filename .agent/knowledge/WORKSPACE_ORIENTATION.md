@@ -1,6 +1,6 @@
 # Workspace Orientation - App Shell Project
 
-Last oriented: 2026-06-06
+Last oriented: 2026-06-07
 
 ## One-Line Summary
 
@@ -13,8 +13,8 @@ Reusable local-first Electron desktop shell with Svelte 5 UI, SQLite persistence
 - Runtime stack: Electron, Svelte 5, TypeScript, SQLite via `better-sqlite3`, TipTap editor
 - Current docs root: `docs/`
 - Current agent workspace: `workspace-agents/`
-- Current newest handoff: `workspace-agents/session-handoffs/HANDOFF_58.md`
-- Current visible plan range includes plans 39-47
+- Current newest handoff: `workspace-agents/session-handoffs/HANDOFF_59.md`
+- Current visible plan range includes plans 39-48
 - Older plans/handoffs/evidence: archived under `archive/workspace-agents/`
 
 ## Canonical Reading Order

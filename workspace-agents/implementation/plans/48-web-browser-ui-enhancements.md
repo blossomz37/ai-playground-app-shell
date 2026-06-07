@@ -390,3 +390,43 @@ Do not batch unrelated slices into one commit. Do not commit failed or partially
 - No bookmark folders, tags, search, sync, or import/export.
 - No LAN/iPad client implementation.
 - No new shell zone or module contract change unless required by proven responsive behavior.
+
+---
+
+## Outcome - 2026-06-07
+
+Completed in commit `b43ef33` (`Update web browser workspace UI`).
+
+### Delivered
+
+- Added a compact URL security/status affordance in the Web address field.
+- Reworked the Web inspector around page title, readable domain/URL, bookmark action, loading state, open tab count, saved status, and recent tab history.
+- Replaced stacked Bookmarks/History navigation with a segmented control.
+- Updated bookmark/history rows so titles are primary and domains/short URLs are secondary; History also shows visited time.
+- Updated the shell Jobs control to use the same icon-button rhythm as the rest of the context strip, with active/failed badge support from the existing jobs store.
+- Added narrow viewport behavior that keeps the rail and main web surface visible while temporarily collapsing sidebar and inspector zones below 900px without changing persisted layout state.
+- Added focused capture hooks for:
+  - `SHELL_CAPTURE_WEB_NAV=bookmarks|history`
+  - `SHELL_CAPTURE_OPEN_JOBS=1`
+  - `SHELL_CAPTURE_VIEWPORT=<width>x<height>`
+
+### Evidence
+
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+- Screenshots:
+  - `workspace-agents/implementation/screenshots/web-browser-inspector-url-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-nav-bookmarks-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-nav-history-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-toolbar-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-jobs-panel-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-desktop-after-2026-06-07.png`
+  - `workspace-agents/implementation/screenshots/web-browser-narrow-after-2026-06-07.png`
+
+### Notes
+
+- The only new code abstraction is `app-shell/src/renderer/src/modules/web/url-display.ts`, shared by the URL bar, sidebar rows, and inspector to avoid duplicating URL parsing/display logic across Svelte components.
+- The Web module still uses Electron `<webview>` with `persist:app-shell-web`.
+- No shell/module contract changes were made.
+- The implementation was committed as one UI pass after validation rather than as four isolated slice commits because the shared helper, capture hooks, and screenshots were validated together.
