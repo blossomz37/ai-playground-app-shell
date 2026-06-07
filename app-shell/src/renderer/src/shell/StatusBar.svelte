@@ -92,7 +92,7 @@
     width: 200%;
     background:
       linear-gradient(
-        90deg,
+        135deg,
         var(--jewel-ruby) 0%,
         var(--jewel-amber) 14%,
         var(--jewel-citrine) 28%,
@@ -103,8 +103,8 @@
         var(--jewel-ruby) 100%
       );
     background-size: auto;
-    filter: saturate(1.15) brightness(0.98);
-    animation: party-shimmer 5s linear infinite;
+    filter: saturate(1.28) brightness(1.04);
+    animation: party-shimmer 4s linear infinite;
     will-change: transform;
   }
 
@@ -116,6 +116,22 @@
     background:
       linear-gradient(180deg, color-mix(in srgb, white 20%, transparent), transparent 42%, color-mix(in srgb, black 12%, transparent));
     pointer-events: none;
+  }
+
+  .status-bar.party::after {
+    inset: 0 auto 0 0;
+    width: 60%;
+    background:
+      linear-gradient(
+        90deg,
+        rgb(255 255 255 / 0) 0%,
+        rgb(255 255 255 / 0.58) 50%,
+        rgb(255 255 255 / 0) 100%
+      );
+    opacity: 0.86;
+    transform: translateX(-120%) skewX(-25deg);
+    animation: party-glass-sweep 3.5s ease-in-out infinite;
+    will-change: transform;
   }
 
   .zone {
@@ -211,8 +227,15 @@
     100% { transform: translateX(-50%); }
   }
 
+  @keyframes party-glass-sweep {
+    0%   { transform: translateX(-120%) skewX(-25deg); }
+    25%  { transform: translateX(340%) skewX(-25deg); }
+    100% { transform: translateX(340%) skewX(-25deg); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .status-bar.party::before {
+    .status-bar.party::before,
+    .status-bar.party::after {
       animation: none;
       transform: none;
       will-change: auto;
