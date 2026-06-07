@@ -192,7 +192,7 @@
 
 <nav class="activity-rail" aria-label="Module navigation">
   <div class="rail-logo" aria-hidden="true">
-    <img class="rail-logo-mark" src="/app-shell-logo.png" alt="" />
+    <img class="rail-logo-mark" src="./app-shell-logo.png" alt="" />
   </div>
   {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}

@@ -1,6 +1,6 @@
 import { packager } from '@electron/packager'
 import { execFile } from 'node:child_process'
-import { mkdir, readFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
@@ -38,6 +38,10 @@ const paths = await packager({
 
 for (const appPath of paths) {
   const appBundle = resolve(appPath, `${packageJson.productName}.app`)
+  await copyFile(
+    resolve(appRoot, 'resources/icon.icns'),
+    resolve(appBundle, 'Contents/Resources/electron.icns')
+  )
   await execFileAsync('codesign', ['--force', '--deep', '--sign', '-', appBundle])
   console.log(`Packaged ${packageJson.productName} ${packageJson.version}: ${appPath}`)
 }

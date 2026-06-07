@@ -29,6 +29,8 @@ let initialBgColor = '#1e1e2e' // Updated below once DB is ready
 function appIconPath(): string {
   const devIconPath = join(__dirname, '../../resources/icon.png')
   if (existsSync(devIconPath)) return devIconPath
+  const asarIconPath = join(process.resourcesPath, 'app.asar', 'resources/icon.png')
+  if (existsSync(asarIconPath)) return asarIconPath
   return join(process.resourcesPath, 'icon.png')
 }
 
