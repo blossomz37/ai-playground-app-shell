@@ -18,6 +18,8 @@
     versions: true,
     metadata: true
   })
+  let editingAnnotationId = $state<string | null>(null)
+  let editingAnnotationNote = $state('')
 
   function sectionOpen(id: InspectorSectionId): boolean {
     return !collapsedSections[id]
@@ -162,10 +164,27 @@
     window.dispatchEvent(new CustomEvent('documents:jump-to-annotation', { detail: annotation.id }))
   }
 
-  async function editAnnotation(annotation: DocumentAnnotation): Promise<void> {
-    const note = window.prompt('Annotation note', annotation.note)
-    if (note === null || note.trim() === annotation.note.trim()) return
-    await updateAnnotation(annotation.id, { note })
+  function startEditAnnotation(annotation: DocumentAnnotation): void {
+    editingAnnotationId = annotation.id
+    editingAnnotationNote = annotation.note
+  }
+
+  function cancelEditAnnotation(): void {
+    editingAnnotationId = null
+    editingAnnotationNote = ''
+  }
+
+  async function saveEditAnnotation(annotation: DocumentAnnotation): Promise<void> {
+    const note = editingAnnotationNote.trim()
+    if (!note) {
+      addToast('warn', 'Comment note cannot be blank.')
+      return
+    }
+    if (note !== annotation.note.trim()) {
+      await updateAnnotation(annotation.id, { note })
+      addToast('info', 'Comment updated.')
+    }
+    cancelEditAnnotation()
   }
 
   async function onResolveAnnotation(annotation: DocumentAnnotation): Promise<void> {
@@ -231,15 +250,40 @@
                     >
                       {annotationExcerpt(annotation)}
                     </button>
-                    <p class="annotation-note">{annotation.note}</p>
+                    {#if editingAnnotationId === annotation.id}
+                      <label class="annotation-edit-label" for={`annotation-note-${annotation.id}`}>Comment note</label>
+                      <textarea
+                        id={`annotation-note-${annotation.id}`}
+                        class="annotation-note-input"
+                        bind:value={editingAnnotationNote}
+                        rows="4"
+                        onkeydown={(event) => {
+                          if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                            event.preventDefault()
+                            void saveEditAnnotation(annotation)
+                          }
+                          if (event.key === 'Escape') {
+                            event.preventDefault()
+                            cancelEditAnnotation()
+                          }
+                        }}
+                      ></textarea>
+                    {:else}
+                      <p class="annotation-note">{annotation.note}</p>
+                    {/if}
                     <div class="annotation-actions">
-                      <button type="button" class="mini-btn" onclick={() => void editAnnotation(annotation)}>Edit</button>
-                      {#if annotation.status === 'resolved'}
-                        <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
+                      {#if editingAnnotationId === annotation.id}
+                        <button type="button" class="mini-btn" onclick={() => void saveEditAnnotation(annotation)}>Save</button>
+                        <button type="button" class="mini-btn" onclick={cancelEditAnnotation}>Cancel</button>
                       {:else}
-                        <button type="button" class="mini-btn" onclick={() => void onResolveAnnotation(annotation)}>Resolve</button>
+                        <button type="button" class="mini-btn" onclick={() => startEditAnnotation(annotation)}>Edit</button>
+                        {#if annotation.status === 'resolved'}
+                          <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
+                        {:else}
+                          <button type="button" class="mini-btn" onclick={() => void onResolveAnnotation(annotation)}>Resolve</button>
+                        {/if}
+                        <button type="button" class="mini-btn danger" onclick={() => void onDeleteAnnotation(annotation)}>Delete</button>
                       {/if}
-                      <button type="button" class="mini-btn danger" onclick={() => void onDeleteAnnotation(annotation)}>Delete</button>
                     </div>
                   </li>
                 {/each}
@@ -687,6 +731,32 @@
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     line-height: 1.45;
+  }
+
+  .annotation-edit-label {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .annotation-note-input {
+    width: 100%;
+    min-height: 74px;
+    resize: vertical;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, #f7c948 34%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 54%, transparent);
+    color: var(--color-fg-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+  }
+
+  .annotation-note-input:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
   }
 
   .empty {
