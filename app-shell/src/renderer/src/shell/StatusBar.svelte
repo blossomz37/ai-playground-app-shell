@@ -123,15 +123,17 @@
     inset: 0;
     width: auto;
     background:
-      radial-gradient(circle at 12% 52%, rgb(255 255 255 / 0.58) 0 1px, transparent 2px),
-      radial-gradient(circle at 28% 35%, rgb(255 244 186 / 0.48) 0 1px, transparent 2px),
-      radial-gradient(circle at 47% 62%, rgb(255 255 255 / 0.52) 0 1px, transparent 2px),
-      radial-gradient(circle at 64% 42%, rgb(204 232 255 / 0.48) 0 1px, transparent 2px),
-      radial-gradient(circle at 83% 58%, rgb(255 210 241 / 0.46) 0 1px, transparent 2px),
-      linear-gradient(180deg, color-mix(in srgb, white 18%, transparent), transparent 42%, color-mix(in srgb, black 12%, transparent));
-    opacity: 0.78;
-    animation: party-sparkle 3.8s ease-in-out infinite;
-    will-change: opacity;
+      radial-gradient(circle at 10% 54%, rgb(255 255 255 / 0.95) 0 1.5px, rgb(255 255 255 / 0.32) 2.5px, transparent 5px),
+      radial-gradient(circle at 23% 36%, rgb(255 244 186 / 0.82) 0 1.5px, rgb(255 244 186 / 0.26) 3px, transparent 6px),
+      radial-gradient(circle at 39% 65%, rgb(255 255 255 / 0.9) 0 1.5px, rgb(255 255 255 / 0.28) 3px, transparent 6px),
+      radial-gradient(circle at 57% 42%, rgb(204 232 255 / 0.82) 0 1.5px, rgb(204 232 255 / 0.24) 3px, transparent 6px),
+      radial-gradient(circle at 74% 58%, rgb(255 210 241 / 0.8) 0 1.5px, rgb(255 210 241 / 0.24) 3px, transparent 6px),
+      radial-gradient(circle at 91% 38%, rgb(255 255 255 / 0.72) 0 1px, rgb(255 255 255 / 0.2) 2.5px, transparent 5px),
+      linear-gradient(180deg, color-mix(in srgb, white 14%, transparent), transparent 42%, color-mix(in srgb, black 12%, transparent));
+    mix-blend-mode: screen;
+    opacity: 0.72;
+    animation: party-sparkle 4.2s ease-in-out infinite;
+    will-change: opacity, filter, transform;
   }
 
   .zone {
@@ -229,16 +231,19 @@
 
   @keyframes party-sparkle {
     0%, 100% {
-      opacity: 0.42;
-      filter: brightness(0.92);
+      opacity: 0.5;
+      filter: brightness(0.94);
+      transform: scaleX(1);
     }
     35% {
-      opacity: 0.9;
-      filter: brightness(1.18);
+      opacity: 0.96;
+      filter: brightness(1.35);
+      transform: scaleX(1.006);
     }
     68% {
-      opacity: 0.58;
-      filter: brightness(1);
+      opacity: 0.68;
+      filter: brightness(1.08);
+      transform: scaleX(1);
     }
   }
 
