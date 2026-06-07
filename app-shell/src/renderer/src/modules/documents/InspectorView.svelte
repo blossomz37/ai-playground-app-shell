@@ -10,8 +10,22 @@
   type SourceField = { label: string; value: string; title?: string }
   type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
   type AnnotationFilter = DocumentAnnotationStatus
+  type InspectorSectionId = 'annotations' | 'versions' | 'metadata'
 
   let annotationFilter = $state<AnnotationFilter>('active')
+  let collapsedSections = $state<Record<InspectorSectionId, boolean>>({
+    annotations: true,
+    versions: true,
+    metadata: true
+  })
+
+  function sectionOpen(id: InspectorSectionId): boolean {
+    return !collapsedSections[id]
+  }
+
+  function toggleSection(id: InspectorSectionId): void {
+    collapsedSections = { ...collapsedSections, [id]: !collapsedSections[id] }
+  }
 
   function fmt(iso: string): string {
     return new Date(iso).toLocaleString(undefined, {
@@ -184,10 +198,105 @@
 <div class="inspector-view">
   {#if $activeDoc}
     <section class="section">
-      <div class="section-header">
-        <h3 class="section-title">Document</h3>
-      </div>
-      <div class="section-body">
+      <button
+        type="button"
+        class="section-header section-toggle"
+        aria-expanded={sectionOpen('annotations')}
+        aria-controls="documents-inspector-annotations"
+        onclick={() => toggleSection('annotations')}
+      >
+        <span class="section-title">Annotations</span>
+        <span class="section-meta">{$annotations.filter(annotation => annotation.deletedAt === null).length}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('annotations') ? '⌃' : '⌄'}</span>
+      </button>
+      {#if sectionOpen('annotations')}
+        <div id="documents-inspector-annotations">
+          <div class="annotation-tabs" role="tablist" aria-label="Annotation filters">
+            <button type="button" class:active={annotationFilter === 'active'} onclick={() => (annotationFilter = 'active')}>Active</button>
+            <button type="button" class:active={annotationFilter === 'resolved'} onclick={() => (annotationFilter = 'resolved')}>Resolved</button>
+            <button type="button" class:active={annotationFilter === 'orphaned'} onclick={() => (annotationFilter = 'orphaned')}>Orphaned</button>
+          </div>
+          <div class="section-body">
+            {#if filteredAnnotations.length === 0}
+              <p class="empty-text">No {annotationFilter} annotations.</p>
+            {:else}
+              <ul class="annotation-list" aria-label="Annotations">
+                {#each filteredAnnotations as annotation (annotation.id)}
+                  <li class="annotation-item" class:orphaned={annotation.status === 'orphaned'}>
+                    <button
+                      type="button"
+                      class="annotation-target"
+                      disabled={annotation.status === 'orphaned'}
+                      onclick={() => jumpToAnnotation(annotation)}
+                    >
+                      {annotationExcerpt(annotation)}
+                    </button>
+                    <p class="annotation-note">{annotation.note}</p>
+                    <div class="annotation-actions">
+                      <button type="button" class="mini-btn" onclick={() => void editAnnotation(annotation)}>Edit</button>
+                      {#if annotation.status === 'resolved'}
+                        <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
+                      {:else}
+                        <button type="button" class="mini-btn" onclick={() => void onResolveAnnotation(annotation)}>Resolve</button>
+                      {/if}
+                      <button type="button" class="mini-btn danger" onclick={() => void onDeleteAnnotation(annotation)}>Delete</button>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    </section>
+
+    <section class="section">
+      <button
+        type="button"
+        class="section-header section-toggle"
+        aria-expanded={sectionOpen('versions')}
+        aria-controls="documents-inspector-versions"
+        onclick={() => toggleSection('versions')}
+      >
+        <span class="section-title">Version History</span>
+        <span class="section-meta">{$versions.length}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('versions') ? '⌃' : '⌄'}</span>
+      </button>
+      {#if sectionOpen('versions')}
+        <div id="documents-inspector-versions" class="section-body">
+          {#if $versions.length === 0}
+            <p class="empty-text">No snapshots yet. Earlier saved text will appear here after this document changes.</p>
+          {:else}
+            <ul class="version-list" aria-label="Version history">
+              {#each $versions as v (v.id)}
+                <li class="version-item">
+                  <span class="v-date">{fmt(v.createdAt)}</span>
+                  {#if v.label}<span class="v-label">{v.label}</span>{/if}
+                  <div class="version-actions">
+                    <button type="button" class="mini-btn" onclick={() => void restoreVersionAsCopy(v)}>Copy</button>
+                    <button type="button" class="mini-btn danger" onclick={() => void replaceCurrentWithVersion(v)}>Replace</button>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+      {/if}
+    </section>
+
+    <section class="section">
+      <button
+        type="button"
+        class="section-header section-toggle"
+        aria-expanded={sectionOpen('metadata')}
+        aria-controls="documents-inspector-metadata"
+        onclick={() => toggleSection('metadata')}
+      >
+        <span class="section-title">Metadata</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('metadata') ? '⌃' : '⌄'}</span>
+      </button>
+      {#if sectionOpen('metadata')}
+      <div id="documents-inspector-metadata" class="section-body">
         <div class="field">
           <label class="label" for="document-title">Title</label>
           <input
@@ -263,16 +372,12 @@
           <span class="label">Updated</span>
           <span class="value">{fmt($activeDoc.updatedAt)}</span>
         </div>
-      </div>
-    </section>
 
-    {#if hasSourceMetadata}
-      <section class="section">
-        <div class="section-header">
-          <h3 class="section-title">Source Metadata</h3>
-          <span class="readonly-badge">Read-only</span>
-        </div>
-        <div class="section-body">
+        {#if hasSourceMetadata}
+          <div class="metadata-subheader">
+            <span class="section-title">Source Metadata</span>
+            <span class="readonly-badge">Read-only</span>
+          </div>
           {#each sourceFields as item (item.label)}
             <div class="field">
               <span class="label">{item.label}</span>
@@ -289,73 +394,9 @@
               </ul>
             </div>
           {/if}
-        </div>
-      </section>
-    {/if}
-
-    <section class="section">
-      <div class="section-header">
-        <h3 class="section-title">Snapshots</h3>
-      </div>
-      <div class="section-body">
-        {#if $versions.length === 0}
-          <p class="empty-text">No snapshots yet. Earlier saved text will appear here after this document changes.</p>
-        {:else}
-          <ul class="version-list" aria-label="Snapshots">
-            {#each $versions as v (v.id)}
-              <li class="version-item">
-                <span class="v-date">{fmt(v.createdAt)}</span>
-                {#if v.label}<span class="v-label">{v.label}</span>{/if}
-                <div class="version-actions">
-                  <button type="button" class="mini-btn" onclick={() => void restoreVersionAsCopy(v)}>Copy</button>
-                  <button type="button" class="mini-btn danger" onclick={() => void replaceCurrentWithVersion(v)}>Replace</button>
-                </div>
-              </li>
-            {/each}
-          </ul>
         {/if}
       </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <h3 class="section-title">Annotations</h3>
-      </div>
-      <div class="annotation-tabs" role="tablist" aria-label="Annotation filters">
-        <button type="button" class:active={annotationFilter === 'active'} onclick={() => (annotationFilter = 'active')}>Active</button>
-        <button type="button" class:active={annotationFilter === 'resolved'} onclick={() => (annotationFilter = 'resolved')}>Resolved</button>
-        <button type="button" class:active={annotationFilter === 'orphaned'} onclick={() => (annotationFilter = 'orphaned')}>Orphaned</button>
-      </div>
-      <div class="section-body">
-        {#if filteredAnnotations.length === 0}
-          <p class="empty-text">No {annotationFilter} annotations.</p>
-        {:else}
-          <ul class="annotation-list" aria-label="Annotations">
-            {#each filteredAnnotations as annotation (annotation.id)}
-              <li class="annotation-item" class:orphaned={annotation.status === 'orphaned'}>
-                <button
-                  type="button"
-                  class="annotation-target"
-                  disabled={annotation.status === 'orphaned'}
-                  onclick={() => jumpToAnnotation(annotation)}
-                >
-                  {annotationExcerpt(annotation)}
-                </button>
-                <p class="annotation-note">{annotation.note}</p>
-                <div class="annotation-actions">
-                  <button type="button" class="mini-btn" onclick={() => void editAnnotation(annotation)}>Edit</button>
-                  {#if annotation.status === 'resolved'}
-                    <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
-                  {:else}
-                    <button type="button" class="mini-btn" onclick={() => void onResolveAnnotation(annotation)}>Resolve</button>
-                  {/if}
-                  <button type="button" class="mini-btn danger" onclick={() => void onDeleteAnnotation(annotation)}>Delete</button>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
+      {/if}
     </section>
   {:else}
     <div class="empty">Select a document to inspect.</div>
@@ -380,9 +421,24 @@
     gap: var(--space-3);
     width: 100%;
     min-height: 36px;
-    padding: var(--space-3) var(--space-4) 0;
+    padding: var(--space-3) var(--space-4);
     text-align: left;
     color: inherit;
+  }
+
+  .section-toggle {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .section-toggle:hover {
+    background: color-mix(in srgb, var(--accent-inspector) 8%, transparent);
+  }
+
+  .section-toggle:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: -2px;
   }
 
   .section-title {
@@ -391,6 +447,19 @@
     text-transform: uppercase;
     color: color-mix(in srgb, var(--accent-inspector) 62%, var(--color-fg-muted));
     margin: 0;
+  }
+
+  .section-meta {
+    margin-left: auto;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .section-chevron {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1;
   }
 
   .readonly-badge {
@@ -421,6 +490,13 @@
     justify-content: stretch;
     align-items: start;
     gap: var(--space-2);
+  }
+
+  .metadata-subheader {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) 0 var(--space-2);
   }
 
   .label {
