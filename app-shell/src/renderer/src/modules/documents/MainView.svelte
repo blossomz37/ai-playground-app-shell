@@ -443,19 +443,6 @@
     </header>
   {/if}
 
-  <!-- TipTap mounts into this element; always present so the editor instance is stable -->
-  <div
-    class="editor-area"
-    class:hidden={!$activeDoc}
-    {@attach editorHost}
-    role="textbox"
-    tabindex="-1"
-    style:--editor-font={$editorSettings.fontFamily}
-    style:--editor-font-size={$editorSettings.fontSize}
-  ></div>
-
-  <MarkdownBubbleToolbar {editor} />
-
   {#if searchOpen && $activeDoc}
     <DocumentSearchPanel
       query={searchQuery}
@@ -483,6 +470,19 @@
       onCancelProjectReplace={() => (projectReplacePreview = false)}
     />
   {/if}
+
+  <!-- TipTap mounts into this element; always present so the editor instance is stable -->
+  <div
+    class="editor-area"
+    class:hidden={!$activeDoc}
+    {@attach editorHost}
+    role="textbox"
+    tabindex="-1"
+    style:--editor-font={$editorSettings.fontFamily}
+    style:--editor-font-size={$editorSettings.fontSize}
+  ></div>
+
+  <MarkdownBubbleToolbar {editor} />
 
   {#if !$activeDoc}
     <div class="empty">

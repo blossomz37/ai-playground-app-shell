@@ -222,13 +222,18 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       }
       if (documentSearchCapture) {
         await win.webContents.executeJavaScript(
-          `window.dispatchEvent(new CustomEvent('shell:capture-open-document-search', { detail: ${JSON.stringify({
-            query: documentSearchQuery,
-            replacement: documentSearchReplacement,
-            mode: documentSearchMode,
-            scope: documentSearchScope,
-            preview: documentSearchPreview
-          })} }))`
+          `
+            (async () => {
+              await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+              window.dispatchEvent(new CustomEvent('shell:capture-open-document-search', { detail: ${JSON.stringify({
+                query: documentSearchQuery,
+                replacement: documentSearchReplacement,
+                mode: documentSearchMode,
+                scope: documentSearchScope,
+                preview: documentSearchPreview
+              })} }))
+            })()
+          `
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

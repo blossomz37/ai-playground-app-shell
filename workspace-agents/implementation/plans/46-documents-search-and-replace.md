@@ -91,3 +91,11 @@ Svelte autofixer:
 
 - `DocumentSearchPanel.svelte`: no issues, no suggestions after fixes.
 - `MainView.svelte`: no issues, no suggestions after fixes.
+
+## Follow-Up Adjustment
+
+Updated on 2026-06-06 after usability feedback:
+
+- Moved the search/replace panel into the Documents main-view layout above the editor instead of rendering it as a floating overlay.
+- This prevents the panel from covering the active search match while keeping the same controls, shortcuts, and persisted search behavior.
+- Refreshed `workspace-agents/implementation/screenshots/documents-search-panel-after-2026-06-06.png` to show the non-overlapping layout.

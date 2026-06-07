@@ -185,18 +185,18 @@
 
 <style>
   .search-panel {
-    position: absolute;
-    top: calc(var(--shell-zone-header-h) + var(--space-3));
-    right: clamp(var(--space-4), 5vw, 64px);
-    z-index: 20;
-    width: min(620px, calc(100% - var(--space-6)));
+    flex-shrink: 0;
+    width: auto;
+    margin: var(--space-3) clamp(var(--space-5), 7vw, 84px) 0;
+    max-width: 820px;
+    align-self: flex-end;
     display: grid;
     gap: var(--space-2);
     padding: var(--space-3);
     border: var(--border-subtle);
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-bg-surface) 94%, var(--color-panel-glint));
-    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
     color: var(--color-fg-primary);
     font-family: var(--font-sans);
   }
