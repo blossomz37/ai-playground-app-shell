@@ -273,6 +273,17 @@
     transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   }
 
+  .rail-logo::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: calc(var(--radius-md) + 4px);
+    background: radial-gradient(circle, color-mix(in srgb, var(--jewel-citrine) 34%, transparent), transparent 66%);
+    opacity: 0;
+    transform: scale(0.86);
+    pointer-events: none;
+  }
+
   .rail-logo:hover,
   .rail-logo:focus-visible {
     background: var(--color-hover);
@@ -284,17 +295,30 @@
   }
 
   .rail-logo.active {
-    background: color-mix(in srgb, var(--jewel-citrine) 12%, transparent);
+    background: color-mix(in srgb, var(--jewel-citrine) 10%, transparent);
     box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--jewel-citrine) 30%, transparent),
-      0 0 18px color-mix(in srgb, var(--jewel-tourmaline) 18%, transparent);
+      inset 0 0 0 1px color-mix(in srgb, var(--jewel-citrine) 24%, transparent),
+      0 0 14px color-mix(in srgb, var(--jewel-amethyst) 14%, transparent);
+  }
+
+  .rail-logo.active::before {
+    opacity: 1;
+    animation: party-logo-halo 2.8s ease-in-out infinite;
   }
 
   .rail-logo-mark {
+    position: relative;
+    z-index: 1;
     display: block;
     width: 26px;
     height: 26px;
     filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.22));
+  }
+
+  .rail-logo.active .rail-logo-mark {
+    filter:
+      drop-shadow(0 1px 2px rgb(0 0 0 / 0.22))
+      drop-shadow(0 0 6px color-mix(in srgb, var(--jewel-citrine) 42%, transparent));
   }
 
   .rail-btn {
@@ -399,6 +423,25 @@
 
   .rail-btn.dragging .rail-tooltip {
     opacity: 0;
+  }
+
+  @keyframes party-logo-halo {
+    0%, 100% {
+      opacity: 0.44;
+      transform: scale(0.9);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.08);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail-logo.active::before {
+      animation: none;
+      opacity: 0.62;
+      transform: scale(1);
+    }
   }
 
 </style>

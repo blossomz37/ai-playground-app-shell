@@ -89,7 +89,7 @@
 
   .status-bar.party::before {
     inset: 0 auto 0 0;
-    width: 200%;
+    width: 260%;
     background:
       linear-gradient(
         135deg,
@@ -103,8 +103,9 @@
         var(--jewel-ruby) 100%
       );
     background-size: auto;
-    filter: saturate(1.28) brightness(1.04);
-    animation: party-shimmer 4s linear infinite;
+    filter: saturate(1.22) brightness(1.02);
+    opacity: 0.96;
+    animation: party-aurora 12s ease-in-out infinite;
     will-change: transform;
   }
 
@@ -119,19 +120,18 @@
   }
 
   .status-bar.party::after {
-    inset: 0 auto 0 0;
-    width: 60%;
+    inset: 0;
+    width: auto;
     background:
-      linear-gradient(
-        90deg,
-        rgb(255 255 255 / 0) 0%,
-        rgb(255 255 255 / 0.58) 50%,
-        rgb(255 255 255 / 0) 100%
-      );
-    opacity: 0.86;
-    transform: translateX(-120%) skewX(-25deg);
-    animation: party-glass-sweep 3.5s ease-in-out infinite;
-    will-change: transform;
+      radial-gradient(circle at 12% 52%, rgb(255 255 255 / 0.58) 0 1px, transparent 2px),
+      radial-gradient(circle at 28% 35%, rgb(255 244 186 / 0.48) 0 1px, transparent 2px),
+      radial-gradient(circle at 47% 62%, rgb(255 255 255 / 0.52) 0 1px, transparent 2px),
+      radial-gradient(circle at 64% 42%, rgb(204 232 255 / 0.48) 0 1px, transparent 2px),
+      radial-gradient(circle at 83% 58%, rgb(255 210 241 / 0.46) 0 1px, transparent 2px),
+      linear-gradient(180deg, color-mix(in srgb, white 18%, transparent), transparent 42%, color-mix(in srgb, black 12%, transparent));
+    opacity: 0.78;
+    animation: party-sparkle 3.8s ease-in-out infinite;
+    will-change: opacity;
   }
 
   .zone {
@@ -222,15 +222,24 @@
     50%      { opacity: 0.4; }
   }
 
-  @keyframes party-shimmer {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+  @keyframes party-aurora {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(-46%); }
   }
 
-  @keyframes party-glass-sweep {
-    0%   { transform: translateX(-120%) skewX(-25deg); }
-    25%  { transform: translateX(340%) skewX(-25deg); }
-    100% { transform: translateX(340%) skewX(-25deg); }
+  @keyframes party-sparkle {
+    0%, 100% {
+      opacity: 0.42;
+      filter: brightness(0.92);
+    }
+    35% {
+      opacity: 0.9;
+      filter: brightness(1.18);
+    }
+    68% {
+      opacity: 0.58;
+      filter: brightness(1);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
