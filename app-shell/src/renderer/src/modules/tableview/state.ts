@@ -4,6 +4,7 @@ import {
   type TableFilterKind,
   type TableFolderOption,
   type TableSearchMode,
+  type TableSortDirection,
   type TableUpdatedRange,
   type TableSortBy,
   type TableViewState
@@ -72,6 +73,10 @@ export const tableSortBy = writableTableField(
   state => state.sortBy,
   value => tableViewState.setSortBy(value as TableSortBy)
 )
+export const tableSortDirection = writableTableField(
+  state => state.sortDirection,
+  value => tableViewState.setSortDirection(value as TableSortDirection)
+)
 export const selectedTableDocId = fromTableViewState(state => state.selectedDocId)
 export const selectedTableDocIds = fromTableViewState(state => state.selectedDocIds)
 export const selectedTableFileIds = fromTableViewState(state => state.selectedFileIds)
@@ -124,6 +129,10 @@ export function setTableWordCountRange(min: number | undefined, max: number | un
 
 export function setTableUpdatedRange(range: TableUpdatedRange): void {
   tableViewState.setUpdatedRange(range)
+}
+
+export function toggleTableSortBy(sortBy: TableSortBy): void {
+  tableViewState.toggleSortBy(sortBy)
 }
 
 function persistenceKey(wsId: string): string {

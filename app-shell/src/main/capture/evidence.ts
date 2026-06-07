@@ -61,6 +61,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const tableWordsMin = process.env['SHELL_CAPTURE_TABLE_WORDS_MIN']
   const tableWordsMax = process.env['SHELL_CAPTURE_TABLE_WORDS_MAX']
   const tableUpdatedRange = process.env['SHELL_CAPTURE_TABLE_UPDATED_RANGE']
+  const tableSort = process.env['SHELL_CAPTURE_TABLE_SORT']
+  const tableSortDirection = process.env['SHELL_CAPTURE_TABLE_SORT_DIRECTION']
   const tableReset = process.env['SHELL_CAPTURE_TABLE_RESET'] === '1'
   const tableBulkState = process.env['SHELL_CAPTURE_TABLE_BULK_STATE']
   const tableBulkCount = Number(process.env['SHELL_CAPTURE_TABLE_BULK_COUNT'] ?? 3)
@@ -1016,6 +1018,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         || tableWordsMin !== undefined
         || tableWordsMax !== undefined
         || tableUpdatedRange !== undefined
+        || tableSort !== undefined
+        || tableSortDirection !== undefined
         || tableReset
       ) {
         await win.webContents.executeJavaScript(`
@@ -1035,6 +1039,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
                 wordsMin: ${JSON.stringify(tableWordsMin !== undefined ? Number(tableWordsMin) : undefined)},
                 wordsMax: ${JSON.stringify(tableWordsMax !== undefined ? Number(tableWordsMax) : undefined)},
                 updatedRange: ${JSON.stringify(tableUpdatedRange)},
+                sortBy: ${JSON.stringify(tableSort)},
+                sortDirection: ${JSON.stringify(tableSortDirection)},
                 reset: ${JSON.stringify(tableReset)}
               }
             }))

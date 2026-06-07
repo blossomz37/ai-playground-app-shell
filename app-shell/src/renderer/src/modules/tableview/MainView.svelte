@@ -1,7 +1,7 @@
 <!-- Table View MainView — data table of documents -->
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { ArchiveIcon, CheckIcon, CopyIcon, TrashIcon, XIcon } from 'phosphor-svelte'
+  import { ArchiveIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, TrashIcon, XIcon } from 'phosphor-svelte'
   import {
     documentKindFromValue,
     documentKindValue,
@@ -36,12 +36,14 @@
     tableSearchMode,
     tableSearchQuery,
     tableSortBy,
+    tableSortDirection,
     tableSomeVisibleSelected,
     tableUpdatedRange,
     tableVisibleSelectedCount,
     tableWordCountMax,
     tableWordCountMin,
     toggleTableDocSelection,
+    toggleTableSortBy,
     toggleTableVisibleSelection
   } from './state'
   import {
@@ -55,9 +57,15 @@
     updateDocMetadata
   } from '../../store'
   import { addToast } from '../../store/toasts'
-  import type { TableFolderOption, TableSearchMode, TableSortBy, TableUpdatedRange } from '@shared/state/tableview-state'
+  import type { TableFolderOption, TableSearchMode, TableSortBy, TableSortDirection, TableUpdatedRange } from '@shared/state/tableview-state'
 
-  const columns = ['Title', 'Kind', 'Updated', 'Words', 'Target']
+  const columns: Array<{ label: string; sortBy: TableSortBy }> = [
+    { label: 'Title', sortBy: 'title' },
+    { label: 'Kind', sortBy: 'kind' },
+    { label: 'Updated', sortBy: 'updatedAt' },
+    { label: 'Words', sortBy: 'wordCount' },
+    { label: 'Target', sortBy: 'targetWordCount' }
+  ]
   const baseKindOptions = [
     { value: STRUCTURAL_FOLDER_KIND_VALUE, label: STRUCTURAL_FOLDER_KIND_LABEL },
     { value: UNCATEGORIZED_KIND_VALUE, label: UNCATEGORIZED_KIND_LABEL }
@@ -249,6 +257,21 @@
   function setSortBy(value: TableSortBy): void {
     confirmDeleteKey = null
     tableSortBy.set(value)
+  }
+
+  function setSortDirection(value: TableSortDirection): void {
+    confirmDeleteKey = null
+    tableSortDirection.set(value)
+  }
+
+  function toggleSort(sortBy: TableSortBy): void {
+    confirmDeleteKey = null
+    toggleTableSortBy(sortBy)
+  }
+
+  function ariaSortFor(sortBy: TableSortBy): 'ascending' | 'descending' | 'none' {
+    if ($tableSortBy !== sortBy) return 'none'
+    return $tableSortDirection === 'asc' ? 'ascending' : 'descending'
   }
 
   function resetFilters(): void {
@@ -479,6 +502,8 @@
         wordsMin?: number
         wordsMax?: number
         updatedRange?: TableUpdatedRange
+        sortBy?: TableSortBy
+        sortDirection?: TableSortDirection
         searchMode?: TableSearchMode
         folderId?: string | null
         folderPath?: string
@@ -498,6 +523,8 @@
         setWordRange(detail.wordsMin, detail.wordsMax)
       }
       if (detail.updatedRange) setUpdatedRange(detail.updatedRange)
+      if (detail.sortBy !== undefined) setSortBy(detail.sortBy)
+      if (detail.sortDirection !== undefined) setSortDirection(detail.sortDirection)
     }
     window.addEventListener('table:capture-set-filters', captureFilterListener)
 
@@ -691,11 +718,26 @@
       </label>
       <label class="toolbar-field" for="table-sort">
         <span class="sr-only">Sort</span>
-        <select id="table-sort" value={$tableSortBy} onchange={(event) => setSortBy(event.currentTarget.value as TableSortBy)}>
+        <select id="table-sort" value={$tableSortBy} onchange={(event) => setSortBy(event.currentTarget.value as TableSortBy)} data-capture-table-sort>
           <option value="title">Title</option>
           <option value="updatedAt">Modified</option>
           <option value="createdAt">Created</option>
           <option value="kind">Kind</option>
+          <option value="wordCount">Words</option>
+          <option value="targetWordCount">Target</option>
+        </select>
+      </label>
+      <label class="toolbar-field sort-direction-field" for="table-sort-direction">
+        <span class="sr-only">Sort direction</span>
+        <select
+          id="table-sort-direction"
+          value={$tableSortDirection}
+          aria-label="Sort direction"
+          onchange={(event) => setSortDirection(event.currentTarget.value as TableSortDirection)}
+          data-capture-table-sort-direction
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
         </select>
       </label>
       <button
@@ -813,8 +855,29 @@
               {$tableAllVisibleSelected ? '✓' : $tableSomeVisibleSelected ? '-' : ''}
             </button>
           </th>
-          {#each columns as col (col)}
-            <th>{col}</th>
+          {#each columns as column (column.sortBy)}
+            <th aria-sort={ariaSortFor(column.sortBy)}>
+              <button
+                class="sort-header"
+                class:active={$tableSortBy === column.sortBy}
+                type="button"
+                aria-label={`Sort by ${column.label}`}
+                aria-pressed={$tableSortBy === column.sortBy}
+                title={`Sort by ${column.label}`}
+                onclick={() => toggleSort(column.sortBy)}
+              >
+                <span>{column.label}</span>
+                <span class="sort-icon" aria-hidden="true">
+                  {#if $tableSortBy === column.sortBy}
+                    {#if $tableSortDirection === 'asc'}
+                      <ArrowUpIcon size={12} weight="bold" />
+                    {:else}
+                      <ArrowDownIcon size={12} weight="bold" />
+                    {/if}
+                  {/if}
+                </span>
+              </button>
+            </th>
           {/each}
         </tr>
       </thead>
@@ -1051,6 +1114,7 @@
   .kind-actions button:focus-visible,
   .kind-option:focus-within,
   .number-input:focus-visible,
+  .sort-header:focus-visible,
   .filter-chip:focus-visible,
   .reset-btn:focus-visible {
     outline: 2px solid var(--color-focus-ring);
@@ -1200,8 +1264,35 @@
   .data-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
   .data-table th {
     text-align: left; padding: var(--space-2) var(--space-3); font-size: var(--font-size-xs); font-weight: 600;
-    letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-fg-muted); border-bottom: var(--border-subtle);
+    letter-spacing: 0; text-transform: uppercase; color: var(--color-fg-muted); border-bottom: var(--border-subtle);
     position: sticky; top: 0; z-index: 2; background: var(--color-bg-base);
+  }
+  .sort-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    min-width: 0;
+    min-height: 22px;
+    max-width: 100%;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-transform: inherit;
+  }
+  .sort-header:hover,
+  .sort-header.active {
+    color: var(--color-fg-primary);
+  }
+  .sort-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 12px;
+    width: 12px;
+    height: 12px;
   }
   .data-table td { padding: var(--space-2) var(--space-3); color: var(--color-fg-secondary); border-bottom: 1px solid rgba(69, 71, 90, 0.3); }
   .data-table tr:hover td { background: var(--color-bg-overlay); }

@@ -3,7 +3,8 @@ import { ObservableSlice } from './observable'
 import { documentKindValue, STRUCTURAL_FOLDER_KIND_VALUE } from '../document-kinds'
 
 export type TableFilterKind = 'all' | string
-export type TableSortBy = 'title' | 'updatedAt' | 'createdAt' | 'kind'
+export type TableSortBy = 'title' | 'updatedAt' | 'createdAt' | 'kind' | 'wordCount' | 'targetWordCount'
+export type TableSortDirection = 'asc' | 'desc'
 export type TableKindFilterMode = 'all' | 'custom'
 export type TableSearchMode = 'text' | 'regex'
 export type TableUpdatedRange = 'all' | 'today' | '7d' | '30d'
@@ -28,6 +29,7 @@ export interface TableViewState {
   wordCountMax?: number
   updatedRange: TableUpdatedRange
   sortBy: TableSortBy
+  sortDirection: TableSortDirection
   selectedDocId: string | null
   selectedDocIds: string[]
   selectedFileIds: string[]
@@ -51,7 +53,8 @@ export interface TableViewPersistenceSnapshot {
   wordCountMin?: number
   wordCountMax?: number
   updatedRange?: TableUpdatedRange
-  sortBy: TableSortBy
+  sortBy?: TableSortBy
+  sortDirection?: TableSortDirection
   selectedDocId: string | null
 }
 
@@ -66,6 +69,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   private wordCountMax: number | undefined
   private updatedRange: TableUpdatedRange = 'all'
   private sortBy: TableSortBy = 'title'
+  private sortDirection: TableSortDirection = defaultSortDirection('title')
   private selectedDocId: string | null = null
   private selectedDocIds = new Set<string>()
   private lastSelectedDocId: string | null = null
@@ -89,6 +93,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       wordCountMax: this.wordCountMax,
       updatedRange: this.updatedRange,
       sortBy: this.sortBy,
+      sortDirection: this.sortDirection,
       selectedDocId: this.selectedDocId,
       selectedDocIds: selectedDocs.map(doc => doc.id),
       selectedFileIds: selectedDocs.filter(doc => doc.nodeType === 'document').map(doc => doc.id),
@@ -167,7 +172,31 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
   }
 
   setSortBy(sortBy: TableSortBy): void {
-    this.sortBy = sortBy
+    const normalized = isSortBy(sortBy) ? sortBy : 'title'
+    if (this.sortBy !== normalized) {
+      this.sortBy = normalized
+      this.sortDirection = defaultSortDirection(normalized)
+    }
+    this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
+    this.emit()
+  }
+
+  setSortDirection(sortDirection: TableSortDirection): void {
+    this.sortDirection = isSortDirection(sortDirection) ? sortDirection : defaultSortDirection(this.sortBy)
+    this.ensureVisibleSelection()
+    this.pruneSelectionToFiltered()
+    this.emit()
+  }
+
+  toggleSortBy(sortBy: TableSortBy): void {
+    const normalized = isSortBy(sortBy) ? sortBy : 'title'
+    if (this.sortBy === normalized) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc'
+    } else {
+      this.sortBy = normalized
+      this.sortDirection = defaultSortDirection(normalized)
+    }
     this.ensureVisibleSelection()
     this.pruneSelectionToFiltered()
     this.emit()
@@ -294,7 +323,10 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
     this.wordCountMin = normalizedRange.min
     this.wordCountMax = normalizedRange.max
     this.updatedRange = isUpdatedRange(snapshot.updatedRange) ? snapshot.updatedRange : 'all'
-    this.sortBy = snapshot.sortBy ?? 'title'
+    this.sortBy = isSortBy(snapshot.sortBy) ? snapshot.sortBy : 'title'
+    this.sortDirection = isSortDirection(snapshot.sortDirection)
+      ? snapshot.sortDirection
+      : defaultSortDirection(this.sortBy)
     this.selectedDocId = snapshot.selectedDocId
     this.selectedDocIds.clear()
     this.lastSelectedDocId = null
@@ -314,6 +346,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
       wordCountMax: this.wordCountMax,
       updatedRange: this.updatedRange,
       sortBy: this.sortBy,
+      sortDirection: this.sortDirection,
       selectedDocId: this.selectedDocId
     }
   }
@@ -336,12 +369,7 @@ export class TableViewStateSlice extends ObservableSlice<TableViewState> {
 
     const dateFiltered = wordFiltered.filter(doc => documentMatchesUpdatedRange(doc, this.updatedRange))
 
-    return dateFiltered.sort((a, b) => {
-      if (this.sortBy === 'updatedAt') return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-      if (this.sortBy === 'createdAt') return Date.parse(b.createdAt) - Date.parse(a.createdAt)
-      if (this.sortBy === 'kind') return compareDocumentKind(a, b) || a.title.localeCompare(b.title)
-      return a.title.localeCompare(b.title)
-    })
+    return dateFiltered.sort((a, b) => compareDocumentsBySort(a, b, this.sortBy, this.sortDirection))
   }
 
   private filterKind(): TableFilterKind {
@@ -418,6 +446,23 @@ function isUpdatedRange(value: unknown): value is TableUpdatedRange {
   return value === 'all' || value === 'today' || value === '7d' || value === '30d'
 }
 
+function isSortBy(value: unknown): value is TableSortBy {
+  return value === 'title'
+    || value === 'updatedAt'
+    || value === 'createdAt'
+    || value === 'kind'
+    || value === 'wordCount'
+    || value === 'targetWordCount'
+}
+
+function isSortDirection(value: unknown): value is TableSortDirection {
+  return value === 'asc' || value === 'desc'
+}
+
+function defaultSortDirection(sortBy: TableSortBy): TableSortDirection {
+  return sortBy === 'updatedAt' || sortBy === 'createdAt' ? 'desc' : 'asc'
+}
+
 function isSearchMode(value: unknown): value is TableSearchMode {
   return value === 'text' || value === 'regex'
 }
@@ -490,6 +535,65 @@ function migrateSnapshot(snapshot: TableViewPersistenceSnapshot): {
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function compareDocumentsBySort(
+  left: Doc,
+  right: Doc,
+  sortBy: TableSortBy,
+  direction: TableSortDirection
+): number {
+  const core = compareDocumentSortValue(left, right, sortBy, direction)
+  if (core !== 0) return core
+  return compareDocumentTie(left, right)
+}
+
+function compareDocumentSortValue(
+  left: Doc,
+  right: Doc,
+  sortBy: TableSortBy,
+  direction: TableSortDirection
+): number {
+  if (sortBy === 'updatedAt') return compareDirected(Date.parse(left.updatedAt), Date.parse(right.updatedAt), direction)
+  if (sortBy === 'createdAt') return compareDirected(Date.parse(left.createdAt), Date.parse(right.createdAt), direction)
+  if (sortBy === 'kind') return compareDirected(compareDocumentKind(left, right), 0, direction)
+  if (sortBy === 'wordCount') return compareDirected(countWords(left.content), countWords(right.content), direction)
+  if (sortBy === 'targetWordCount') {
+    const leftTarget = targetWordCount(left.metadataJson)
+    const rightTarget = targetWordCount(right.metadataJson)
+    if (leftTarget === null && rightTarget !== null) return 1
+    if (leftTarget !== null && rightTarget === null) return -1
+    if (leftTarget === null && rightTarget === null) return 0
+    return compareDirected(leftTarget!, rightTarget!, direction)
+  }
+  return compareDirected(left.title.localeCompare(right.title), 0, direction)
+}
+
+function compareDirected(left: number, right: number, direction: TableSortDirection): number {
+  const compared = Number.isFinite(left) && Number.isFinite(right)
+    ? left - right
+    : Number.isFinite(left)
+      ? -1
+      : Number.isFinite(right)
+        ? 1
+        : 0
+  return direction === 'asc' ? compared : -compared
+}
+
+function compareDocumentTie(left: Doc, right: Doc): number {
+  return left.title.localeCompare(right.title) || left.id.localeCompare(right.id)
+}
+
+function targetWordCount(metadataJson: string | null): number | null {
+  if (!metadataJson) return null
+  try {
+    const metadata = JSON.parse(metadataJson) as { targetWordCount?: unknown }
+    return typeof metadata.targetWordCount === 'number' && Number.isFinite(metadata.targetWordCount)
+      ? metadata.targetWordCount
+      : null
+  } catch {
+    return null
+  }
 }
 
 function compareDocumentKind(left: Doc, right: Doc): number {
