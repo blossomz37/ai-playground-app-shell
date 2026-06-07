@@ -67,6 +67,7 @@
   let hasAnnotationSelection = $state(false)
   let commentMode = $state(false)
   let commentModeDocId = $state<string | null>(null)
+  let annotationCreatePending = false
 
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
@@ -365,6 +366,7 @@
 
   async function annotateSelection(range: BubbleToolbarTextRange | null = hasAnnotationSelection ? lastAnnotationSelection : null): Promise<void> {
     if (!editor || !$activeDoc) return
+    if (annotationCreatePending) return
     if (!commentMode) {
       addToast('warn', 'Turn on comment mode before adding comments.')
       return
@@ -386,18 +388,34 @@
       return
     }
 
+    const existing = $annotations.find(annotation => {
+      if (annotation.deletedAt || annotation.status !== 'active') return false
+      const target = parseAnnotationTarget(annotation)
+      return target?.from === from && target.to === to && target.exact === exact
+    })
+    if (existing) {
+      addToast('warn', 'This text already has an active comment.')
+      jumpToAnnotation(existing)
+      return
+    }
+
     const prefix = editor.state.doc.textBetween(Math.max(0, from - 80), from)
     const suffix = editor.state.doc.textBetween(to, Math.min(editor.state.doc.content.size, to + 80))
     editor.chain().focus().setTextSelection({ from, to }).run()
-    await createAnnotation({
-      documentId: $activeDoc.id,
-      note: 'New comment',
-      color: 'yellow',
-      target: { exact, prefix, suffix, from, to }
-    })
-    addToast('info', 'Comment added.')
-    trackAnnotationSelection()
-    queueMicrotask(renderAnnotationDecorations)
+    annotationCreatePending = true
+    try {
+      await createAnnotation({
+        documentId: $activeDoc.id,
+        note: 'New comment',
+        color: 'yellow',
+        target: { exact, prefix, suffix, from, to }
+      })
+      addToast('info', 'Comment added.')
+      trackAnnotationSelection()
+      queueMicrotask(renderAnnotationDecorations)
+    } finally {
+      annotationCreatePending = false
+    }
   }
 
   function jumpToAnnotation(annotation: DocumentAnnotation): void {

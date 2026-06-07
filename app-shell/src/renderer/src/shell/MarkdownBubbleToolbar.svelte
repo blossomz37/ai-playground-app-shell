@@ -25,7 +25,6 @@
   let isBlockquote = $state(false)
   let headingLevel = $state(0)
   let selectedRange = $state<BubbleToolbarTextRange | null>(null)
-  let annotationPointerHandled = false
   let raf = 0
 
   function toolbarHost(node: HTMLDivElement): void {
@@ -108,28 +107,11 @@
     }
   }
 
-  function requestAnnotation(range: BubbleToolbarTextRange): void {
-    window.setTimeout(() => {
-      onAnnotate?.(range)
-      window.setTimeout(() => {
-        annotationPointerHandled = false
-      }, 0)
-    }, 0)
-  }
-
-  function annotateFromPointer(event: PointerEvent): void {
+  function annotateFromMouseDown(event: MouseEvent): void {
     event.preventDefault()
     event.stopPropagation()
     if (!selectedRange) return
-    annotationPointerHandled = true
-    requestAnnotation(selectedRange)
-  }
-
-  function annotateFromClick(event: MouseEvent): void {
-    event.preventDefault()
-    event.stopPropagation()
-    if (annotationPointerHandled || !selectedRange) return
-    requestAnnotation(selectedRange)
+    onAnnotate?.(selectedRange)
   }
 </script>
 
@@ -210,8 +192,7 @@
         class="tb-btn comment"
         title="Add comment"
         aria-label="Add comment to selected text"
-        onpointerdown={annotateFromPointer}
-        onclick={annotateFromClick}
+        onmousedown={annotateFromMouseDown}
       >Comment</button>
     {/if}
   </div>
