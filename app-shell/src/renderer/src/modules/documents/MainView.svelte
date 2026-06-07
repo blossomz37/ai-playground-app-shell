@@ -13,6 +13,7 @@
     saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId
   } from '../../store'
   import { registerCommand } from '../../store/commands'
+  import { addToast } from '../../store/toasts'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
@@ -61,6 +62,8 @@
   let projectReplaceBusy = $state(false)
   let loadingSearchWorkspaceId: string | null = null
   let annotationJumpListener: ((event: Event) => void) | null = null
+  let lastAnnotationSelection = $state<{ from: number; to: number } | null>(null)
+  let hasAnnotationSelection = $state(false)
 
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
@@ -298,6 +301,23 @@
     setAnnotationDecorations(editor, ranges)
   }
 
+  function trackAnnotationSelection(): void {
+    if (!editor) {
+      hasAnnotationSelection = false
+      lastAnnotationSelection = null
+      return
+    }
+
+    const { from, to, empty } = editor.state.selection
+    const selectedText = empty || to <= from ? '' : editor.state.doc.textBetween(from, to).trim()
+    hasAnnotationSelection = selectedText.length > 0
+    if (hasAnnotationSelection) {
+      lastAnnotationSelection = { from, to }
+    } else {
+      lastAnnotationSelection = null
+    }
+  }
+
   async function refreshAnnotationAnchors(): Promise<void> {
     if (!editor) return
     for (const annotation of $annotations) {
@@ -310,23 +330,38 @@
     queueMicrotask(renderAnnotationDecorations)
   }
 
-  async function annotateSelection(): Promise<void> {
+  async function annotateSelection(range = hasAnnotationSelection ? lastAnnotationSelection : null): Promise<void> {
     if (!editor || !$activeDoc) return
-    const { from, to, empty } = editor.state.selection
-    if (empty || to <= from) return
+    const selection = editor.state.selection
+    const activeRange = !selection.empty && selection.to > selection.from
+      ? { from: selection.from, to: selection.to }
+      : range
 
+    if (!activeRange || activeRange.to <= activeRange.from) {
+      addToast('warn', 'Select text before adding a comment.')
+      return
+    }
+
+    const { from, to } = activeRange
     const exact = editor.state.doc.textBetween(from, to)
+    if (!exact.trim()) {
+      addToast('warn', 'Select text before adding a comment.')
+      return
+    }
+
     const note = window.prompt('Annotation note', '')
     if (note === null || note.trim() === '') return
 
     const prefix = editor.state.doc.textBetween(Math.max(0, from - 80), from)
     const suffix = editor.state.doc.textBetween(to, Math.min(editor.state.doc.content.size, to + 80))
+    editor.chain().focus().setTextSelection({ from, to }).run()
     await createAnnotation({
       documentId: $activeDoc.id,
       note,
       color: 'yellow',
       target: { exact, prefix, suffix, from, to }
     })
+    trackAnnotationSelection()
     queueMicrotask(renderAnnotationDecorations)
   }
 
@@ -521,11 +556,15 @@
       content: get(editorContent),
       onUpdate: ({ editor }) => {
         setEditorContent(editor.storage.markdown.getMarkdown())
+        trackAnnotationSelection()
         scheduleAutoSave()
         queueMicrotask(renderSearchDecorations)
         queueMicrotask(renderAnnotationDecorations)
         void refreshAnnotationAnchors()
       },
+      onSelectionUpdate: () => {
+        trackAnnotationSelection()
+      }
     })
 
     // Interactive handler for documents.save: the renderer owns it because the
@@ -657,7 +696,14 @@
         <button type="button" class="tool-btn" aria-label="Blockquote" disabled={!editor} onclick={toggleBlockquote}>&gt;</button>
       </div>
       <div class="toolbar-group" role="group" aria-label="Document actions">
-        <button type="button" class="tool-btn" aria-label="Annotate selection" disabled={!editor} onclick={() => void annotateSelection()}>Note</button>
+        <button
+          type="button"
+          class="tool-btn"
+          aria-label="Add comment to selected text"
+          title={hasAnnotationSelection ? 'Add comment to selected text' : 'Select text before adding a comment'}
+          disabled={!editor}
+          onmousedown={(event) => { event.preventDefault(); void annotateSelection() }}
+        >Comment</button>
         <button type="button" class="tool-btn" aria-label="Close document" onclick={closePrimaryDocument}>Close</button>
       </div>
       <div class="toolbar-group split-controls" role="group" aria-label="Split editor">
@@ -763,7 +809,7 @@
     {/if}
   </div>
 
-  <MarkdownBubbleToolbar {editor} />
+  <MarkdownBubbleToolbar {editor} onAnnotate={() => void annotateSelection()} />
 
   {#if !$activeDoc}
     <div class="empty">

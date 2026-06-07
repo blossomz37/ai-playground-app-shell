@@ -4,9 +4,10 @@
 
   interface Props {
     editor: Editor | null
+    onAnnotate?: (() => void) | null
   }
 
-  let { editor }: Props = $props()
+  let { editor, onAnnotate = null }: Props = $props()
 
   let toolbarEl = $state<HTMLDivElement>()
   let visible = $state(false)
@@ -167,6 +168,17 @@
       title="Blockquote"
       onmousedown={(e) => { e.preventDefault(); toggleBlockquote() }}
     >❝</button>
+
+    {#if onAnnotate}
+      <span class="tb-sep"></span>
+
+      <button
+        class="tb-btn comment"
+        title="Add comment"
+        aria-label="Add comment to selected text"
+        onmousedown={(e) => { e.preventDefault(); onAnnotate?.() }}
+      >Comment</button>
+    {/if}
   </div>
 {/if}
 
@@ -228,6 +240,19 @@
   .tb-btn.heading {
     font-weight: 700;
     font-size: var(--font-size-xs);
+  }
+
+  .tb-btn.comment {
+    min-width: 76px;
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    background: color-mix(in srgb, #f7c948 20%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, #f7c948 34%, transparent);
+  }
+
+  .tb-btn.comment:hover {
+    background: color-mix(in srgb, #f7c948 30%, transparent);
   }
 
   .tb-sep {
