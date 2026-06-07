@@ -10,7 +10,7 @@
   import { isDirty, editorContent, activeDoc, countWords } from '../store'
   import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
 
-  let props = $props<{ moduleId: string | null }>()
+  let props = $props<{ moduleId: string | null; partyMode: boolean }>()
 
   let visibleJob = $derived($activeJobs[0] ?? $recentJobs.find(job => job.status === 'failed'))
   let jobLabel = $derived.by(() => {
@@ -20,7 +20,11 @@
   })
 </script>
 
-<footer class="status-bar">
+<footer
+  class="status-bar"
+  class:party={props.partyMode}
+  style="--_status-spectrum-image: url('../status-bar-metallic-spectrum.svg')"
+>
   <!-- Left zone: module-contributed status items -->
   <div class="zone zone-left">
     {#if props.moduleId === 'shell.documents' && $activeDoc}
@@ -74,13 +78,34 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image: url('/status-bar-metallic-spectrum.svg');
+    background-image: var(--_status-spectrum-image);
     background-position: left center;
     background-repeat: no-repeat;
     background-size: 100% 100%;
     filter: saturate(1.08) brightness(0.96);
     opacity: 1;
     pointer-events: none;
+  }
+
+  .status-bar.party::before {
+    inset: 0 auto 0 0;
+    width: 200%;
+    background:
+      linear-gradient(
+        90deg,
+        var(--jewel-ruby) 0%,
+        var(--jewel-amber) 14%,
+        var(--jewel-citrine) 28%,
+        var(--jewel-emerald) 42%,
+        var(--jewel-sapphire) 56%,
+        var(--jewel-amethyst) 70%,
+        var(--jewel-tourmaline) 84%,
+        var(--jewel-ruby) 100%
+      );
+    background-size: auto;
+    filter: saturate(1.15) brightness(0.98);
+    animation: party-shimmer 5s linear infinite;
+    will-change: transform;
   }
 
   .status-bar::after {
@@ -179,6 +204,19 @@
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.4; }
+  }
+
+  @keyframes party-shimmer {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status-bar.party::before {
+      animation: none;
+      transform: none;
+      will-change: auto;
+    }
   }
 
   .sep { color: var(--color-fg-muted); opacity: 0.5; flex-shrink: 0; }

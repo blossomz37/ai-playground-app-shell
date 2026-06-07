@@ -13,10 +13,12 @@
   interface RailItem { id: string; label: string; icon: Component }
   interface Props {
     moduleId: string | null
+    partyMode: boolean
     onSelect: (id: string) => void | Promise<void>
+    onTogglePartyMode: () => void
   }
 
-  let { moduleId, onSelect }: Props = $props()
+  let { moduleId, partyMode, onSelect, onTogglePartyMode }: Props = $props()
   let focusedControlId = $state<string | null>(null)
   let customRailOrder = $state<string[] | null>(null)
   let draggingModuleId = $state<string | null>(null)
@@ -191,9 +193,16 @@
 </script>
 
 <nav class="activity-rail" aria-label="Module navigation">
-  <div class="rail-logo" aria-hidden="true">
+  <button
+    class="rail-logo"
+    class:active={partyMode}
+    type="button"
+    aria-label={partyMode ? 'Turn off party mode' : 'Turn on party mode'}
+    title={partyMode ? 'Turn off party mode' : 'Turn on party mode'}
+    onclick={onTogglePartyMode}
+  >
     <img class="rail-logo-mark" src="./app-shell-logo.png" alt="" />
-  </div>
+  </button>
   {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
@@ -252,6 +261,7 @@
   }
 
   .rail-logo {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -259,6 +269,25 @@
     height: 34px;
     margin-bottom: var(--space-1);
     border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  .rail-logo:hover,
+  .rail-logo:focus-visible {
+    background: var(--color-hover);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 18%, transparent);
+  }
+
+  .rail-logo:active {
+    transform: translateY(1px);
+  }
+
+  .rail-logo.active {
+    background: color-mix(in srgb, var(--jewel-citrine) 12%, transparent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--jewel-citrine) 30%, transparent),
+      0 0 18px color-mix(in srgb, var(--jewel-tourmaline) 18%, transparent);
   }
 
   .rail-logo-mark {

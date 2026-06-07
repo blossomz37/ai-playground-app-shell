@@ -43,6 +43,7 @@
   let sidebarVisible = $state(true)
   let inspectorVisible = $state(true)
   let zenMode = $state(false)
+  let partyMode = $state(false)
   let layoutLoaded = $state(false)
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
@@ -85,6 +86,10 @@
   async function toggleZen() {
     const state = await window.shell.layout.toggleZen()
     applyLayout(state)
+  }
+
+  function togglePartyMode() {
+    partyMode = !partyMode
   }
 
   async function selectModule(id: string) {
@@ -218,7 +223,12 @@
     onToggleZen={toggleZen}
   />
   {#if !zenMode}
-    <ActivityRail moduleId={$activeModuleId} onSelect={selectModule} />
+    <ActivityRail
+      moduleId={$activeModuleId}
+      {partyMode}
+      onSelect={selectModule}
+      onTogglePartyMode={togglePartyMode}
+    />
   {/if}
   {#if sidebarVisible && !zenMode}
     {#key $activeModuleId}
@@ -262,7 +272,7 @@
     {/key}
   {/if}
   {#if !zenMode}
-    <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} />
+    <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} {partyMode} />
   {/if}
 </div>
 
