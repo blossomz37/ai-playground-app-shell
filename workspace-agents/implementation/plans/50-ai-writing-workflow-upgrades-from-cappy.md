@@ -6,6 +6,8 @@ Upgrade app-shell's AI interaction from a general shared AI substrate into a wri
 
 This is an overview and sequencing map, not an implementation pass. It keeps app-shell's architecture intact: shell owns AI primitives, modules invoke AI through the module contract, and Documents remains the first concrete writing consumer.
 
+> Concrete prior-art patterns (Cappy streaming/inline node + DraftWell proposal schema, with file paths and data shapes) are captured in the companion `50-reference-cappy-and-draftwell-patterns.md`. Read it before implementing Upgrades 4 and 5.
+
 ## Current Baseline
 
 App-shell already has the durable platform pieces:
