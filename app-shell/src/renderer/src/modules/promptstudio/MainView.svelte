@@ -2,7 +2,9 @@
   import { onDestroy, onMount } from 'svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
-  import { aiBusy, invokeAi, loadAiTemplates, refreshAiContext, renameAiTemplate, selectedAiTemplate } from '../../store/ai'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
+  import type { AiPreview } from '@shared/ai'
+  import { aiBusy, invokeAi, previewAi, loadAiTemplates, refreshAiContext, renameAiTemplate, selectedAiTemplate } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
@@ -11,6 +13,7 @@
   let promptText = $state('Please summarize the included context in 3 useful bullet points.\n\n{{text}}')
   let variableText = $state('')
   let outputText = $state('')
+  let preview = $state<AiPreview | null>(null)
   let renamingTemplate = $state(false)
   let activeTemplate = $derived($selectedAiTemplate)
   let templateName = $derived(activeTemplate?.name ?? 'No template selected')
@@ -31,15 +34,24 @@
     templateUnsubscribe?.()
   })
 
-  async function runTemplate() {
-    const result = await invokeAi({
+  function requestParams() {
+    return {
       moduleId: 'shell.promptstudio',
-      originType: 'template',
+      originType: 'template' as const,
       originId: activeTemplate?.id ?? templateName,
       prompt: promptText,
       variables: { text: variableText }
-    })
+    }
+  }
+
+  async function runTemplate() {
+    preview = null
+    const result = await invokeAi(requestParams())
     outputText = result.run.error ?? result.run.outputText
+  }
+
+  async function previewTemplate() {
+    preview = await previewAi(requestParams())
   }
 
   async function commitRename(name: string): Promise<void> {
@@ -71,6 +83,9 @@
       {/if}
     </div>
     <div class="actions">
+      <button class="btn" onclick={previewTemplate} disabled={$aiBusy}>
+        Preview Prompt
+      </button>
       <button class="btn primary" onclick={runTemplate} disabled={$aiBusy}>
         {$aiBusy ? 'Running...' : 'Run Template'}
       </button>
@@ -91,8 +106,22 @@
       </div>
     </section>
 
+    <section class="template-section context-section">
+      <AiContextPicker />
+    </section>
+
+    {#if preview}
+      <section class="template-section preview-section">
+        <div class="section-title preview-title">
+          <span>Prompt Preview</span>
+          <span class="preview-meta">{preview.providerId} · {preview.model} · ~{preview.tokenEstimate} tok · not sent</span>
+        </div>
+        <pre class="preview-box">{preview.renderedPrompt}</pre>
+      </section>
+    {/if}
+
     <section class="template-section output-section">
-      <div class="section-title">Output Preview</div>
+      <div class="section-title">Output</div>
       <div class="output-box">
         {#if outputText}
           <div class="output-markdown">
@@ -170,12 +199,57 @@
     letter-spacing: 0.05em;
   }
 
+  .actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
   .template-workspace {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    overflow-y: auto;
+  }
+
+  .context-section {
+    flex: 0 0 auto;
+  }
+
+  .preview-section {
+    flex: 0 0 auto;
+    gap: var(--space-2);
+  }
+
+  .preview-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .preview-meta {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-accent);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .preview-box {
+    margin: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--color-bg-base);
+    color: var(--color-fg-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .template-section {

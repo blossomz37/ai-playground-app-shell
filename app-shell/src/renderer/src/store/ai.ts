@@ -28,6 +28,10 @@ export const selectedAiModel = writable('gpt-4.1-mini')
 export const selectedAiTemperature = writable(0.7)
 export const aiBusy = writable(false)
 
+// User-controlled context additions, shared by the AI context picker.
+export const manualContextNote = writable('')
+export const manualContextDocIds = writable<string[]>([])
+
 const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
 
 let lastContextDocId: string | null = null
@@ -39,12 +43,39 @@ activeDocId.subscribe((id) => {
 })
 
 export async function refreshAiContext(): Promise<void> {
+  // Preserve any include/exclude toggles the user made before re-collecting.
+  const previousIncluded = new Map(get(aiContextCandidates).map(c => [c.id, c.included]))
+
   const candidates = await window.shell.ai.collectContext({
     workspaceId: get(workspaceId),
     activeDocumentId: get(activeDocId),
-    includeDescendants: true
+    includeDescendants: true,
+    selectedDocumentIds: get(manualContextDocIds),
+    manualNote: get(manualContextNote)
   })
-  aiContextCandidates.set(candidates)
+
+  aiContextCandidates.set(
+    candidates.map(candidate =>
+      previousIncluded.has(candidate.id)
+        ? { ...candidate, included: previousIncluded.get(candidate.id)! }
+        : candidate
+    )
+  )
+}
+
+export function setManualContextNote(note: string): void {
+  manualContextNote.set(note)
+  void refreshAiContext()
+}
+
+export function addContextDocument(documentId: string): void {
+  manualContextDocIds.update(ids => ids.includes(documentId) ? ids : [...ids, documentId])
+  void refreshAiContext()
+}
+
+export function removeContextDocument(documentId: string): void {
+  manualContextDocIds.update(ids => ids.filter(id => id !== documentId))
+  void refreshAiContext()
 }
 
 export function toggleAiContextCandidate(id: string): void {
