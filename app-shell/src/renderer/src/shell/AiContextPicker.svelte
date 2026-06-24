@@ -69,7 +69,7 @@
 
   // Offer a node only if it contributes at least one not-yet-included document.
   let addableOptions = $derived(
-    documentTree.filter(option => option.leafIds.some(id => !$unavailableIds.has(id)))
+    documentTree.filter(option => option.leafIds.some(id => !unavailableIds.has(id)))
   )
 
   let includedTokens = $derived(
@@ -85,7 +85,7 @@
     if (!option) return
     // A folder expands to its leaf documents; a document adds itself.
     for (const id of option.leafIds) {
-      if (!$unavailableIds.has(id)) addContextDocument(id)
+      if (!unavailableIds.has(id)) addContextDocument(id)
     }
     selectedDocId = ''
   }
