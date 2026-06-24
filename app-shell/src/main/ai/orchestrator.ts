@@ -3,6 +3,7 @@ import type {
   AiChatMessage,
   AiConversation,
   AiInvokeResult,
+  AiPreview,
   AiProvider,
   AiPromptTemplate,
   AppendAiMessageParams,
@@ -20,6 +21,7 @@ import { events } from '../core/events'
 import { aiRepository } from './repository'
 import { runMockProvider } from './mock-provider'
 import { runOpenAiProvider } from './openai-provider'
+import { buildAiInput } from './prompt-builder'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 import { getDb } from '../core/db'
 
@@ -153,6 +155,32 @@ export const aiOrchestrator = {
     }
 
     return candidates.sort((a, b) => b.priority - a.priority)
+  },
+
+  preview(params: InvokeAiParams): AiPreview {
+    aiRepository.ensureDefaults(params.workspaceId)
+    const provider = resolveProvider(params.workspaceId, params.providerId)
+
+    const candidates = params.contextCandidates ?? this.collectContext({
+      workspaceId: params.workspaceId
+    })
+    const renderedContext = renderContext(candidates)
+    const previewParams: InvokeAiParams = {
+      ...params,
+      providerId: provider.providerId,
+      model: params.model ?? provider.defaultModel
+    }
+    const renderedPrompt = buildAiInput(previewParams, candidates, renderedContext)
+
+    return {
+      providerId: provider.providerId,
+      model: previewParams.model ?? provider.defaultModel,
+      temperature: params.temperature ?? 0.7,
+      renderedPrompt,
+      includedTitles: candidates.filter(c => c.included).map(c => c.title),
+      tokenEstimate: estimateTokens(renderedPrompt),
+      providerRequestSent: false
+    }
   },
 
   async invoke(params: InvokeAiParams): Promise<AiInvokeResult> {

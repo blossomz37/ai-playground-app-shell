@@ -692,6 +692,21 @@ function createBrowserShell(): ShellApi {
           }
         }
       },
+      preview: async (params) => {
+        const provider = aiProviders.find(item => item.providerId === params.providerId) ?? aiProviders[0]
+        const candidates = params.contextCandidates ?? collectContext()
+        const includedTitles = candidates.filter(c => c.included).map(c => c.title)
+        const renderedPrompt = `User prompt:\n${params.prompt}`
+        return {
+          providerId: provider.providerId,
+          model: params.model ?? provider.defaultModel,
+          temperature: params.temperature ?? 0.7,
+          renderedPrompt,
+          includedTitles,
+          tokenEstimate: Math.max(1, Math.ceil(renderedPrompt.length / 4)),
+          providerRequestSent: false
+        }
+      },
       providers: async () => aiProviders,
       runs: async (params) => aiRuns
         .filter(run => !params.moduleId || run.moduleId === params.moduleId)

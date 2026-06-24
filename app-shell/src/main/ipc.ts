@@ -292,6 +292,10 @@ export function registerIpcHandlers(): void {
     aiOrchestrator.invoke(params)
   )
 
+  ipcMain.handle('ai:preview', (_e, params: InvokeAiParams) =>
+    aiOrchestrator.preview(params)
+  )
+
   ipcMain.handle('ai:providers', (_e, params: ListAiProvidersParams) =>
     aiOrchestrator.listProviders(params)
   )

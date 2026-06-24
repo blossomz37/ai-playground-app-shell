@@ -1,6 +1,7 @@
 import type { AiContextCandidate, AiProvider, InvokeAiParams } from '@shared/ai'
 import { secretsService } from '../core/secrets'
 import { AI_API_KEY_REQUIRED_MESSAGE } from '@shared/demo-mode'
+import { buildAiInput } from './prompt-builder'
 
 interface OpenAiOutputContent {
   type?: string
@@ -18,40 +19,6 @@ interface OpenAiResponseBody {
   error?: {
     message?: string
   }
-}
-
-function applyVariables(prompt: string, variables: Record<string, string> | undefined): string {
-  let rendered = prompt
-  for (const [key, value] of Object.entries(variables ?? {})) {
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    rendered = rendered.replace(new RegExp(`{{\\s*${escapedKey}\\s*}}`, 'g'), value)
-  }
-  return rendered
-}
-
-function renderVariables(variables: Record<string, string> | undefined): string {
-  const entries = Object.entries(variables ?? {}).filter(([, value]) => value.trim())
-  if (entries.length === 0) return ''
-
-  return entries.map(([key, value]) => `${key}:\n${value}`).join('\n\n')
-}
-
-function buildInput(params: InvokeAiParams, candidates: AiContextCandidate[], renderedContext: string): string {
-  const context = renderedContext.trim()
-  const variables = renderVariables(params.variables)
-  const prompt = applyVariables(params.prompt.trim(), params.variables)
-  const includedTitles = candidates
-    .filter(candidate => candidate.included)
-    .map(candidate => `- ${candidate.title} (${candidate.kind})`)
-    .join('\n')
-
-  return [
-    'Use the provided workspace context when it is relevant. If the context is incomplete, say what is missing.',
-    context ? `Workspace context:\n${context}` : 'Workspace context:\nNo workspace context was included.',
-    includedTitles ? `Included context items:\n${includedTitles}` : '',
-    variables ? `Prompt variables:\n${variables}` : '',
-    `User prompt:\n${prompt}`
-  ].filter(Boolean).join('\n\n---\n\n')
 }
 
 function extractOutputText(body: OpenAiResponseBody): string {
@@ -100,7 +67,7 @@ export async function runOpenAiProvider(args: {
     },
     body: JSON.stringify({
       model: args.params.model ?? args.provider.defaultModel,
-      input: buildInput(args.params, args.candidates, args.renderedContext),
+      input: buildAiInput(args.params, args.candidates, args.renderedContext),
       temperature: args.params.temperature ?? 0.7,
       store: false
     })

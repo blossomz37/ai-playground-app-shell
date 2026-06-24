@@ -5,6 +5,7 @@
 import type {
   AiContextCandidate,
   AiInvokeResult,
+  AiPreview,
   AiConversation,
   AiChatMessage,
   AiProvider,
@@ -637,6 +638,7 @@ export interface ShellApi {
   ai: {
     collectContext(params: CollectAiContextParams): Promise<AiContextCandidate[]>
     invoke(params: InvokeAiParams): Promise<AiInvokeResult>
+    preview(params: InvokeAiParams): Promise<AiPreview>
     providers(params: ListAiProvidersParams): Promise<AiProvider[]>
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>

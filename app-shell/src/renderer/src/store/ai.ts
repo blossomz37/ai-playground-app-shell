@@ -3,6 +3,7 @@ import type {
   AiContextCandidate,
   AiInvokeResult,
   AiOriginType,
+  AiPreview,
   AiProvider,
   AiProviderId,
   AiPromptTemplate,
@@ -164,7 +165,7 @@ export async function selectAiTemperature(temperature: number): Promise<void> {
   await window.shell.settings.set('ai.temperature', value)
 }
 
-export async function invokeAi(params: {
+interface AiRequestParams {
   moduleId: string
   originType: AiOriginType
   originId?: string
@@ -173,29 +174,43 @@ export async function invokeAi(params: {
   providerId?: AiProviderId
   model?: string
   temperature?: number
-}): Promise<AiInvokeResult> {
+}
+
+function buildAiPayload(params: AiRequestParams): InvokeAiParams {
+  return {
+    workspaceId: get(workspaceId),
+    moduleId: params.moduleId,
+    originType: params.originType,
+    originId: params.originId,
+    prompt: params.prompt,
+    variables: params.variables,
+    providerId: params.providerId ?? get(selectedAiProviderId),
+    model: params.model ?? get(selectedAiModel),
+    temperature: params.temperature ?? get(selectedAiTemperature),
+    contextCandidates: includedAiContextCandidates()
+  }
+}
+
+export async function invokeAi(params: AiRequestParams): Promise<AiInvokeResult> {
   aiBusy.set(true)
   try {
     if (get(aiProviders).length === 0) {
       await loadAiProviders()
     }
 
-    const payload: InvokeAiParams = {
-      workspaceId: get(workspaceId),
-      moduleId: params.moduleId,
-      originType: params.originType,
-      originId: params.originId,
-      prompt: params.prompt,
-      variables: params.variables,
-      providerId: params.providerId ?? get(selectedAiProviderId),
-      model: params.model ?? get(selectedAiModel),
-      temperature: params.temperature ?? get(selectedAiTemperature),
-      contextCandidates: includedAiContextCandidates()
-    }
-    const result = await window.shell.ai.invoke(payload)
+    const result = await window.shell.ai.invoke(buildAiPayload(params))
     await loadAiRuns(params.moduleId)
     return result
   } finally {
     aiBusy.set(false)
   }
+}
+
+// Provider-free: renders the exact prompt that would be sent, without a model
+// call, run record, or secret read. Same payload path as invokeAi.
+export async function previewAi(params: AiRequestParams): Promise<AiPreview> {
+  if (get(aiProviders).length === 0) {
+    await loadAiProviders()
+  }
+  return window.shell.ai.preview(buildAiPayload(params))
 }

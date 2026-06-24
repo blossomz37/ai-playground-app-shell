@@ -160,6 +160,16 @@ export interface AiInvokeResult {
   contextPack: AiContextPack
 }
 
+export interface AiPreview {
+  providerId: AiProviderId
+  model: string
+  temperature: number
+  renderedPrompt: string
+  includedTitles: string[]
+  tokenEstimate: number
+  providerRequestSent: false
+}
+
 export interface CreateAiConversationParams {
   workspaceId: string
   title?: string
