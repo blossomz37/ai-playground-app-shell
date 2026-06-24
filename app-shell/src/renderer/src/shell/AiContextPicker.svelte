@@ -10,17 +10,66 @@
     toggleAiContextCandidate
   } from '../store/ai'
 
-  // Documents that can be added manually: real docs (not folders), not archived,
-  // not the active doc, and not already pulled in by a candidate.
+  interface TreeOption {
+    id: string
+    label: string
+    depth: number
+    isFolder: boolean
+    // Leaf documents reachable from this node (the node itself if it is a leaf).
+    leafIds: string[]
+  }
+
+  // Documents already represented in context (so we don't offer them again).
   let candidateDocIds = $derived(new Set($aiContextCandidates.map(c => c.sourceId)))
-  let addableDocuments = $derived(
-    $documents.filter(doc =>
-      doc.nodeType !== 'folder' &&
-      !doc.archivedAt &&
-      doc.id !== $activeDocId &&
-      !$manualContextDocIds.includes(doc.id) &&
-      !candidateDocIds.has(doc.id)
-    )
+  let unavailableIds = $derived(
+    new Set<string>([
+      ...($activeDocId ? [$activeDocId] : []),
+      ...$manualContextDocIds,
+      ...candidateDocIds
+    ])
+  )
+
+  // Depth-first walk of the document tree, so the dropdown mirrors the sidebar.
+  let documentTree = $derived(buildTree($documents))
+
+  function buildTree(docs: typeof $documents): TreeOption[] {
+    const live = docs.filter(doc => !doc.archivedAt)
+    const childrenOf = new Map<string | null, typeof live>()
+    for (const doc of live) {
+      const siblings = childrenOf.get(doc.parentId) ?? []
+      siblings.push(doc)
+      childrenOf.set(doc.parentId, siblings)
+    }
+    for (const siblings of childrenOf.values()) {
+      siblings.sort((a, b) => a.sortOrder - b.sortOrder)
+    }
+
+    const out: TreeOption[] = []
+    const walk = (parentId: string | null, depth: number): string[] => {
+      const leaves: string[] = []
+      for (const doc of childrenOf.get(parentId) ?? []) {
+        const isFolder = doc.nodeType === 'folder'
+        // Push the node before descending so a folder lists above its contents.
+        const option: TreeOption = {
+          id: doc.id,
+          label: `${'  '.repeat(depth)}${isFolder ? '📁 ' : ''}${doc.title}`,
+          depth,
+          isFolder,
+          leafIds: []
+        }
+        out.push(option)
+        option.leafIds = isFolder ? walk(doc.id, depth + 1) : [doc.id]
+        leaves.push(...option.leafIds)
+      }
+      return leaves
+    }
+    walk(null, 0)
+    return out
+  }
+
+  // Offer a node only if it contributes at least one not-yet-included document.
+  let addableOptions = $derived(
+    documentTree.filter(option => option.leafIds.some(id => !$unavailableIds.has(id)))
   )
 
   let includedTokens = $derived(
@@ -32,7 +81,12 @@
 
   function onAddDocument(): void {
     if (!selectedDocId) return
-    addContextDocument(selectedDocId)
+    const option = documentTree.find(item => item.id === selectedDocId)
+    if (!option) return
+    // A folder expands to its leaf documents; a document adds itself.
+    for (const id of option.leafIds) {
+      if (!$unavailableIds.has(id)) addContextDocument(id)
+    }
     selectedDocId = ''
   }
 </script>
@@ -74,12 +128,12 @@
     </ul>
   {/if}
 
-  {#if addableDocuments.length > 0}
+  {#if addableOptions.length > 0}
     <div class="add-row">
-      <select class="doc-select" bind:value={selectedDocId} aria-label="Add a document to context">
-        <option value="">Add a document…</option>
-        {#each addableDocuments as doc (doc.id)}
-          <option value={doc.id}>{doc.title}</option>
+      <select class="doc-select" bind:value={selectedDocId} aria-label="Add a document or folder to context">
+        <option value="">Add a document or folder…</option>
+        {#each addableOptions as option (option.id)}
+          <option value={option.id}>{option.label}</option>
         {/each}
       </select>
       <button type="button" class="add-btn" onclick={onAddDocument} disabled={!selectedDocId}>Add</button>
