@@ -930,7 +930,7 @@
   .split-select {
     height: 28px;
     max-width: 180px;
-    padding-left: 4px;
+    padding-left: 8px;
     border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
