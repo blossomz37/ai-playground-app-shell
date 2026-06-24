@@ -25,6 +25,8 @@ const shot = (name) => join(shotDir, `pw-${name}-${stamp}.png`)
 // Node (electron.app becomes undefined). Strip it so the app boots normally.
 const { ELECTRON_RUN_AS_NODE, ...cleanEnv } = process.env
 const app = await electron.launch({ args: ['.'], cwd: appDir, env: cleanEnv })
+let previousProviderId
+let previousDemoMode
 try {
   const win = await app.firstWindow()
   win.on('pageerror', (err) => console.log('PAGEERROR:', err.message))
@@ -86,7 +88,51 @@ try {
   await previewPanel.scrollIntoViewIfNeeded()
   // Element screenshot so the panel is captured even when it sits below the fold.
   await previewPanel.screenshot({ path: shot('preview-panel') })
+
+  // 5. Navigate to AI Chat and prove it uses the same full picker in the inspector.
+  previousProviderId = await win.evaluate(() => window.shell.settings.get('ai.providerId') ?? null)
+  previousDemoMode = await win.evaluate(() => window.shell.settings.get('demoMode.enabled') ?? false)
+  await win.evaluate(() => window.shell.settings.set('demoMode.enabled', true))
+  await win.evaluate(() => window.shell.settings.set('ai.providerId', 'mock-local'))
+  await win.click('[data-rail-id="shell.aichat"]')
+  await win.waitForTimeout(1500)
+  await win.click('.new-btn')
+  await win.waitForSelector('.empty-state', { timeout: 10000 })
+  await win.click('.context-btn')
+  await win.waitForSelector('aside.inspector .context-picker', { timeout: 10000 })
+
+  const chatHasSelect = await win.$('aside.inspector .context-picker .doc-select')
+  const chatOptions = chatHasSelect ? await win.$$eval('aside.inspector .context-picker .doc-select option', (els) =>
+    els.map((el) => ({ value: el.value, label: el.textContent })).filter((o) => o.value)
+  ) : []
+  const chatFolder = chatOptions.find((o) => o.label.includes('📁'))
+  if (chatFolder) {
+    await win.selectOption('aside.inspector .context-picker .doc-select', chatFolder.value)
+    await win.click('aside.inspector .context-picker .add-btn')
+    await win.waitForSelector('aside.inspector .context-picker .candidate', { timeout: 10000 })
+  }
+  await win.screenshot({ path: shot('aichat-context') })
+
+  // 6. Send a mock chat message so the selected context path is exercised without a provider call.
+  const assistantCountBefore = await win.$$eval('.message.assistant', (els) => els.length)
+  await win.fill('.chat-input', 'Summarize the selected context in one sentence.')
+  await win.click('.send-btn')
+  await win.waitForFunction(
+    (count) => document.querySelectorAll('.message.assistant').length > count,
+    assistantCountBefore,
+    { timeout: 10000 }
+  )
+  await win.screenshot({ path: shot('aichat-response') })
   console.log('\nScreenshots written to workspace-agents/implementation/screenshots/')
 } finally {
+  if (previousProviderId !== undefined) {
+    const win = await app.firstWindow().catch(() => null)
+    if (win) {
+      await win.evaluate((providerId) => window.shell.settings.set('ai.providerId', providerId ?? 'openai-responses'), previousProviderId)
+      if (previousDemoMode !== undefined) {
+        await win.evaluate((demoMode) => window.shell.settings.set('demoMode.enabled', demoMode), previousDemoMode)
+      }
+    }
+  }
   await app.close()
 }

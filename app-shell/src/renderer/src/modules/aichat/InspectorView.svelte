@@ -1,8 +1,8 @@
 <!-- AI Chat InspectorView — context and settings -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import {
-    aiContextCandidates,
     aiProviders,
     aiRuns,
     aiSecretNames,
@@ -15,8 +15,7 @@
     selectAiTemperature,
     selectedAiModel,
     selectedAiProviderId,
-    selectedAiTemperature,
-    toggleAiContextCandidate
+    selectedAiTemperature
   } from '../../store/ai'
 
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
@@ -33,26 +32,7 @@
 <div class="inspector-view">
   <section class="section">
     <h3 class="section-title">Context</h3>
-    {#if $aiContextCandidates.length === 0}
-      <p class="context-hint">Open a document to add run context.</p>
-    {:else}
-      <div class="context-list">
-        {#each $aiContextCandidates as candidate (candidate.id)}
-          <label class="context-item">
-            <input
-              type="checkbox"
-              checked={candidate.included}
-              onchange={() => toggleAiContextCandidate(candidate.id)}
-            />
-            <span class="ctx-body">
-              <span class="ctx-name">{candidate.title}</span>
-              <span class="ctx-meta">{candidate.kind} · ~{candidate.estimatedTokens} tokens</span>
-              <span class="ctx-excerpt">{candidate.excerpt}</span>
-            </span>
-          </label>
-        {/each}
-      </div>
-    {/if}
+    <AiContextPicker />
   </section>
   <section class="section">
     <h3 class="section-title">Model</h3>
@@ -121,13 +101,7 @@
   .section { margin-bottom: var(--space-5); }
   .section-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); margin-bottom: var(--space-3); }
   .context-hint { font-size: var(--font-size-sm); color: var(--color-fg-muted); margin-bottom: var(--space-2); }
-  .context-list, .run-list { display: flex; flex-direction: column; gap: var(--space-2); }
-  .context-item { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--font-size-sm); color: var(--color-fg-secondary); padding: var(--space-2); background: var(--color-bg-overlay); border-radius: var(--radius-sm); cursor: pointer; }
-  .context-item input { margin-top: 3px; accent-color: var(--color-accent); flex-shrink: 0; }
-  .ctx-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .ctx-name { color: var(--color-fg-primary); font-weight: 600; }
-  .ctx-meta { color: var(--color-fg-muted); font-size: var(--font-size-xs); }
-  .ctx-excerpt { color: var(--color-fg-secondary); font-size: var(--font-size-xs); line-height: 1.35; }
+  .run-list { display: flex; flex-direction: column; gap: var(--space-2); }
   .field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
   label { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-fg-primary); }
   .select-input {

@@ -2,8 +2,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
+  import { executeCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
-  import { aiBusy, aiContextCandidates, invokeAi, refreshAiContext, toggleAiContextCandidate } from '../../store/ai'
+  import { aiBusy, aiContextCandidates, invokeAi, refreshAiContext } from '../../store/ai'
   import {
     activeConversationId,
     appendAiChatMessage,
@@ -15,11 +16,11 @@
 
   let input = $state('')
   let inputElement = $state<HTMLTextAreaElement | null>(null)
-  let contextOpen = $state(false)
   let chat = $derived($selectedAiConversation)
   let hasMessages = $derived(!!chat?.messages.length)
   let includedContextCount = $derived($aiContextCandidates.filter(candidate => candidate.included).length)
-  let contextButtonLabel = $derived($aiContextCandidates.length ? `Context ${includedContextCount}` : 'No manuscript context')
+  let includedContextTokens = $derived($aiContextCandidates.filter(candidate => candidate.included).reduce((sum, candidate) => sum + candidate.estimatedTokens, 0))
+  let contextButtonLabel = $derived(includedContextCount > 0 ? `Context ${includedContextCount} · ~${includedContextTokens}` : 'Manage context')
   let captureMessageListener: ((event: Event) => void) | null = null
   let conversationUnsubscribe: (() => void) | null = null
   const promptSuggestions = [
@@ -106,6 +107,13 @@
     inputElement?.focus()
   }
 
+  async function openContextInspector(): Promise<void> {
+    const layout = await window.shell.layout.get()
+    if (!layout.inspectorVisible) {
+      await executeCommand('shell.layout.toggleInspector')
+    }
+  }
+
   function inputHost(node: HTMLTextAreaElement): void {
     inputElement = node
   }
@@ -148,31 +156,12 @@
           <button
             type="button"
             class="context-btn"
-            disabled={$aiContextCandidates.length === 0}
             aria-label={contextButtonLabel}
-            aria-expanded={contextOpen}
-            aria-haspopup="dialog"
-            onclick={() => contextOpen = !contextOpen}
+            title="Manage AI context in the inspector"
+            onclick={openContextInspector}
           >
             {contextButtonLabel}
           </button>
-          {#if contextOpen && $aiContextCandidates.length}
-            <div class="context-popover" role="dialog" aria-label="Manuscript context">
-              {#each $aiContextCandidates as candidate (candidate.id)}
-                <label class="context-option">
-                  <input
-                    type="checkbox"
-                    checked={candidate.included}
-                    onchange={() => toggleAiContextCandidate(candidate.id)}
-                  />
-                  <span class="context-copy">
-                    <span class="context-title">{candidate.title}</span>
-                    <span class="context-meta">{candidate.kind} · {candidate.estimatedTokens} tokens</span>
-                  </span>
-                </label>
-              {/each}
-            </div>
-          {/if}
         </div>
         <button type="button" class="attach-btn" disabled title="File attachments are not available yet" aria-label="File attachments not available yet">
           Attach
@@ -320,54 +309,6 @@
     color: var(--color-fg-muted);
     opacity: 0.75;
     cursor: not-allowed;
-  }
-  .context-popover {
-    position: absolute;
-    left: 0;
-    bottom: calc(100% + var(--space-2));
-    z-index: 20;
-    width: min(340px, calc(100vw - 160px));
-    max-height: 260px;
-    overflow-y: auto;
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-strong);
-    background: var(--color-bg-overlay);
-    box-shadow: var(--shadow-panel);
-  }
-  .context-option {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    padding: var(--space-2);
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    cursor: pointer;
-  }
-  .context-option:hover {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
-  }
-  .context-option input {
-    margin-top: 2px;
-  }
-  .context-copy {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .context-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--color-fg-primary);
-    font-size: var(--font-size-sm);
-    font-weight: 650;
-  }
-  .context-meta {
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
   }
   .chat-input {
     width: 100%; padding: 0; background: transparent; border: none;
