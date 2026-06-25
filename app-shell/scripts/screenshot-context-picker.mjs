@@ -145,8 +145,12 @@ try {
   await win.getByLabel('Show document tree word counts').click()
   await win.getByLabel('Show AI context toggles').click()
   await ensureInspector(win)
-  await win.waitForSelector('aside.inspector .context-picker .tree-row', { timeout: 10000 })
-  await win.screenshot({ path: shot('documents-context-tree') })
+  await win.waitForSelector('aside.inspector', { timeout: 10000 })
+  const documentInspectorContextPickerCount = await win.locator('aside.inspector .context-picker').count()
+  if (documentInspectorContextPickerCount > 0) {
+    throw new Error('Documents inspector should not duplicate the shared context picker.')
+  }
+  await win.screenshot({ path: shot('documents-inspector-no-context-picker') })
 
   // Workflow/Chains: same inspector tree drives chain context.
   await clickRail(win, 'shell.workflow')
