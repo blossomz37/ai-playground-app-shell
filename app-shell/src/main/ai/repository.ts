@@ -9,6 +9,7 @@ import type {
   AiRun,
   AiRunStatus,
   AppendAiMessageParams,
+  AiConversationLifecycleParams,
   CreateAiConversationParams,
   InvokeAiParams,
   ListAiRunsParams,
@@ -111,6 +112,7 @@ function conversationFromRow(row: Record<string, unknown>, messages: AiChatMessa
     title: String(row.title),
     createdAt: String(row.createdAt),
     updatedAt: String(row.updatedAt),
+    archivedAt: row.archivedAt == null ? null : String(row.archivedAt),
     messages
   }
 }
@@ -226,7 +228,7 @@ export const aiRepository = {
   listConversations(workspaceId: string): AiConversation[] {
     const db = getDb()
     const rows = db
-      .prepare('SELECT * FROM ai_conversations WHERE workspaceId = ? ORDER BY updatedAt DESC')
+      .prepare('SELECT * FROM ai_conversations WHERE workspaceId = ? AND archivedAt IS NULL ORDER BY updatedAt DESC')
       .all(workspaceId) as Array<Record<string, unknown>>
 
     const messageRows = db
@@ -253,18 +255,20 @@ export const aiRepository = {
       title: params.title ?? 'New conversation',
       createdAt: now,
       updatedAt: now,
+      archivedAt: null,
       messages: []
     }
 
     db.prepare(`
-      INSERT INTO ai_conversations (id, workspaceId, title, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO ai_conversations (id, workspaceId, title, createdAt, updatedAt, archivedAt)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       conversation.id,
       conversation.workspaceId,
       conversation.title,
       conversation.createdAt,
-      conversation.updatedAt
+      conversation.updatedAt,
+      conversation.archivedAt
     )
 
     return conversation
@@ -282,6 +286,87 @@ export const aiRepository = {
       WHERE id = ? AND workspaceId = ?
     `).run(title, now, params.id, params.workspaceId)
 
+    const row = db
+      .prepare('SELECT * FROM ai_conversations WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!row) throw new Error('Conversation not found.')
+
+    const messages = db
+      .prepare('SELECT * FROM ai_messages WHERE workspaceId = ? AND conversationId = ? ORDER BY createdAt ASC')
+      .all(params.workspaceId, params.id)
+      .map(messageRow => messageFromRow(messageRow as Record<string, unknown>))
+
+    return conversationFromRow(row, messages)
+  },
+
+  listArchivedConversations(workspaceId: string): AiConversation[] {
+    const db = getDb()
+    const rows = db
+      .prepare('SELECT * FROM ai_conversations WHERE workspaceId = ? AND archivedAt IS NOT NULL ORDER BY archivedAt DESC, updatedAt DESC')
+      .all(workspaceId) as Array<Record<string, unknown>>
+
+    const messageRows = db
+      .prepare(`
+        SELECT ai_messages.*
+        FROM ai_messages
+        JOIN ai_conversations ON ai_conversations.id = ai_messages.conversationId
+        WHERE ai_conversations.workspaceId = ? AND ai_conversations.archivedAt IS NOT NULL
+        ORDER BY ai_messages.createdAt ASC
+      `)
+      .all(workspaceId) as Array<Record<string, unknown>>
+
+    const messagesByConversation = new Map<string, AiChatMessage[]>()
+    for (const row of messageRows) {
+      const message = messageFromRow(row)
+      const messages = messagesByConversation.get(message.conversationId) ?? []
+      messages.push(message)
+      messagesByConversation.set(message.conversationId, messages)
+    }
+
+    return rows.map(row => conversationFromRow(row, messagesByConversation.get(String(row.id)) ?? []))
+  },
+
+  archiveConversation(params: AiConversationLifecycleParams): AiConversation {
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_conversations
+      SET archivedAt = ?, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(now, now, params.id, params.workspaceId)
+
+    return this.requireConversation(params)
+  },
+
+  restoreConversation(params: AiConversationLifecycleParams): AiConversation {
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_conversations
+      SET archivedAt = NULL, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(now, params.id, params.workspaceId)
+
+    return this.requireConversation(params)
+  },
+
+  deleteConversation(params: AiConversationLifecycleParams): { id: string } {
+    const db = getDb()
+    const existing = db
+      .prepare('SELECT id FROM ai_conversations WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!existing) throw new Error('Conversation not found.')
+
+    db.transaction(() => {
+      db.prepare('DELETE FROM ai_messages WHERE workspaceId = ? AND conversationId = ?').run(params.workspaceId, params.id)
+      db.prepare('DELETE FROM ai_conversations WHERE id = ? AND workspaceId = ?').run(params.id, params.workspaceId)
+    })()
+
+    return { id: params.id }
+  },
+
+  requireConversation(params: AiConversationLifecycleParams): AiConversation {
+    const db = getDb()
     const row = db
       .prepare('SELECT * FROM ai_conversations WHERE id = ? AND workspaceId = ?')
       .get(params.id, params.workspaceId) as Record<string, unknown> | undefined

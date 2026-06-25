@@ -98,6 +98,7 @@ export interface AiConversation {
   title: string
   createdAt: string
   updatedAt: string
+  archivedAt: string | null
   messages: AiChatMessage[]
 }
 
@@ -179,6 +180,11 @@ export interface RenameAiConversationParams {
   workspaceId: string
   id: string
   title: string
+}
+
+export interface AiConversationLifecycleParams {
+  workspaceId: string
+  id: string
 }
 
 export interface AppendAiMessageParams {

@@ -2,6 +2,7 @@ import type {
   AiContextCandidate,
   AiChatMessage,
   AiConversation,
+  AiConversationLifecycleParams,
   AiInvokeResult,
   AiPreview,
   AiProvider,
@@ -240,6 +241,11 @@ export const aiOrchestrator = {
     return aiRepository.listConversations(workspaceId)
   },
 
+  listArchivedConversations(workspaceId: string): AiConversation[] {
+    aiRepository.ensureDefaults(workspaceId)
+    return aiRepository.listArchivedConversations(workspaceId)
+  },
+
   createConversation(params: CreateAiConversationParams): AiConversation {
     aiRepository.ensureDefaults(params.workspaceId)
     return aiRepository.createConversation(params)
@@ -248,6 +254,21 @@ export const aiOrchestrator = {
   renameConversation(params: RenameAiConversationParams): AiConversation {
     aiRepository.ensureDefaults(params.workspaceId)
     return aiRepository.renameConversation(params)
+  },
+
+  archiveConversation(params: AiConversationLifecycleParams): AiConversation {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.archiveConversation(params)
+  },
+
+  restoreConversation(params: AiConversationLifecycleParams): AiConversation {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.restoreConversation(params)
+  },
+
+  deleteConversation(params: AiConversationLifecycleParams): { id: string } {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.deleteConversation(params)
   },
 
   appendMessage(params: AppendAiMessageParams): AiChatMessage {

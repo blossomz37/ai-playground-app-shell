@@ -7,8 +7,12 @@ export interface AiConversationView extends AiConversation {
 
 export interface AiChatPort {
   conversations(workspaceId: string): Promise<AiConversation[]>
+  archivedConversations(workspaceId: string): Promise<AiConversation[]>
   createConversation(params: { workspaceId: string; title?: string }): Promise<AiConversation>
   renameConversation(params: { workspaceId: string; id: string; title: string }): Promise<AiConversation>
+  archiveConversation(params: { workspaceId: string; id: string }): Promise<AiConversation>
+  restoreConversation(params: { workspaceId: string; id: string }): Promise<AiConversation>
+  deleteConversation(params: { workspaceId: string; id: string }): Promise<{ id: string }>
   appendMessage(params: {
     workspaceId: string
     conversationId: string
@@ -20,12 +24,14 @@ export interface AiChatPort {
 
 export interface AiChatState {
   conversations: AiConversationView[]
+  archivedConversations: AiConversationView[]
   selectedConversationId: string
   selectedConversation: AiConversationView | null
 }
 
 export class AiChatStateSlice extends ObservableSlice<AiChatState> {
   private conversations: AiConversationView[] = []
+  private archivedConversations: AiConversationView[] = []
   private selectedConversationId = ''
   private initializedWorkspaceId: string | null = null
   private loadPromise: Promise<void> | null = null
@@ -37,6 +43,7 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
   getSnapshot(): AiChatState {
     return {
       conversations: this.conversations,
+      archivedConversations: this.archivedConversations,
       selectedConversationId: this.selectedConversationId,
       selectedConversation: this.selectedConversation()
     }
@@ -53,6 +60,9 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
       }
 
       this.conversations = this.sortConversations(conversations)
+      this.archivedConversations = this.sortConversations(
+        (await this.port.archivedConversations(workspaceId)).map(conversation => this.toView(conversation))
+      )
       this.selectedConversationId = this.conversations[0]?.id ?? ''
       this.initializedWorkspaceId = workspaceId
       this.emit()
@@ -89,6 +99,48 @@ export class AiChatStateSlice extends ObservableSlice<AiChatState> {
     ))
     if (this.conversations.some(chat => chat.id === id)) {
       this.selectedConversationId = id
+    }
+    this.emit()
+  }
+
+  async archiveConversation(workspaceId: string, id: string): Promise<void> {
+    const archived = this.toView(await this.port.archiveConversation({ workspaceId, id }))
+    this.conversations = this.conversations.filter(chat => chat.id !== id)
+    this.archivedConversations = this.sortConversations([
+      archived,
+      ...this.archivedConversations.filter(chat => chat.id !== id)
+    ])
+    if (this.selectedConversationId === id) {
+      if (this.conversations.length === 0) {
+        await this.createConversation(workspaceId)
+        return
+      }
+      this.selectedConversationId = this.conversations[0]?.id ?? ''
+    }
+    this.emit()
+  }
+
+  async restoreConversation(workspaceId: string, id: string): Promise<void> {
+    const restored = this.toView(await this.port.restoreConversation({ workspaceId, id }))
+    this.archivedConversations = this.archivedConversations.filter(chat => chat.id !== id)
+    this.conversations = this.sortConversations([
+      restored,
+      ...this.conversations.filter(chat => chat.id !== id)
+    ])
+    this.selectedConversationId = restored.id
+    this.emit()
+  }
+
+  async deleteConversation(workspaceId: string, id: string): Promise<void> {
+    await this.port.deleteConversation({ workspaceId, id })
+    this.archivedConversations = this.archivedConversations.filter(chat => chat.id !== id)
+    this.conversations = this.conversations.filter(chat => chat.id !== id)
+    if (this.selectedConversationId === id) {
+      if (this.conversations.length === 0) {
+        await this.createConversation(workspaceId)
+        return
+      }
+      this.selectedConversationId = this.conversations[0]?.id ?? ''
     }
     this.emit()
   }

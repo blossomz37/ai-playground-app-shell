@@ -113,7 +113,8 @@ function migrate(db: Database.Database): void {
       workspaceId TEXT NOT NULL REFERENCES workspaces(id),
       title       TEXT NOT NULL,
       createdAt   TEXT NOT NULL,
-      updatedAt   TEXT NOT NULL
+      updatedAt   TEXT NOT NULL,
+      archivedAt  TEXT
     );
 
     CREATE TABLE IF NOT EXISTS ai_messages (
@@ -291,6 +292,7 @@ function migrate(db: Database.Database): void {
   migrateDocumentsNodeType(db)
   ensureColumn(db, 'documents', 'icon', 'TEXT')
   ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
+  ensureColumn(db, 'ai_conversations', 'archivedAt', 'TEXT')
   setupDocumentFts(db)
   const now = new Date().toISOString()
   db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)

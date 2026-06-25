@@ -41,6 +41,7 @@ import { moduleRegistry } from './modules/registry'
 import { getCommandHandler } from './modules/context'
 import { themeStartupBackground, toNativeThemeSource } from './core/theme'
 import type {
+  AiConversationLifecycleParams,
   AiPromptTemplate,
   AppendAiMessageParams,
   CollectAiContextParams,
@@ -308,12 +309,28 @@ export function registerIpcHandlers(): void {
     aiOrchestrator.listConversations(workspaceId)
   )
 
+  ipcMain.handle('ai:conversations:archived', (_e, { workspaceId }: { workspaceId: string }) =>
+    aiOrchestrator.listArchivedConversations(workspaceId)
+  )
+
   ipcMain.handle('ai:conversations:create', (_e, params: CreateAiConversationParams) =>
     aiOrchestrator.createConversation(params)
   )
 
   ipcMain.handle('ai:conversations:rename', (_e, params: RenameAiConversationParams) =>
     aiOrchestrator.renameConversation(params)
+  )
+
+  ipcMain.handle('ai:conversations:archive', (_e, params: AiConversationLifecycleParams) =>
+    aiOrchestrator.archiveConversation(params)
+  )
+
+  ipcMain.handle('ai:conversations:restore', (_e, params: AiConversationLifecycleParams) =>
+    aiOrchestrator.restoreConversation(params)
+  )
+
+  ipcMain.handle('ai:conversations:delete', (_e, params: AiConversationLifecycleParams) =>
+    aiOrchestrator.deleteConversation(params)
   )
 
   ipcMain.handle('ai:messages:append', (_e, params: AppendAiMessageParams) =>

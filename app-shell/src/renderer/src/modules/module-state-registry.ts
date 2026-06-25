@@ -82,8 +82,12 @@ registerModuleState('shell.documents', 'documents', () => new DocumentsStateSlic
 
 registerModuleState('shell.aichat', 'aichat', () => new AiChatStateSlice({
   conversations: (workspaceId) => window.shell.ai.conversations(workspaceId),
+  archivedConversations: (workspaceId) => window.shell.ai.archivedConversations(workspaceId),
   createConversation: (params) => window.shell.ai.createConversation(params),
   renameConversation: (params) => window.shell.ai.renameConversation(params),
+  archiveConversation: (params) => window.shell.ai.archiveConversation(params),
+  restoreConversation: (params) => window.shell.ai.restoreConversation(params),
+  deleteConversation: (params) => window.shell.ai.deleteConversation(params),
   appendMessage: (params) => window.shell.ai.appendMessage(params)
 }))
 

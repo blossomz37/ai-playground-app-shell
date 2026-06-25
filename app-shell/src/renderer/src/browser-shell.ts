@@ -728,7 +728,8 @@ function createBrowserShell(): ShellApi {
         template.updatedAt = new Date().toISOString()
         return template
       },
-      conversations: async () => aiConversations,
+      conversations: async (workspaceId) => aiConversations.filter(item => item.workspaceId === workspaceId && !item.archivedAt),
+      archivedConversations: async (workspaceId) => aiConversations.filter(item => item.workspaceId === workspaceId && item.archivedAt),
       createConversation: async (params) => {
         const createdAt = new Date().toISOString()
         const conversation: AiConversation = {
@@ -737,6 +738,7 @@ function createBrowserShell(): ShellApi {
           title: params.title ?? 'New conversation',
           createdAt,
           updatedAt: createdAt,
+          archivedAt: null,
           messages: []
         }
         aiConversations.unshift(conversation)
@@ -748,6 +750,27 @@ function createBrowserShell(): ShellApi {
         conversation.title = params.title.trim()
         conversation.updatedAt = new Date().toISOString()
         return conversation
+      },
+      archiveConversation: async (params) => {
+        const conversation = aiConversations.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!conversation) throw new Error('Conversation not found.')
+        const now = new Date().toISOString()
+        conversation.archivedAt = now
+        conversation.updatedAt = now
+        return conversation
+      },
+      restoreConversation: async (params) => {
+        const conversation = aiConversations.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!conversation) throw new Error('Conversation not found.')
+        conversation.archivedAt = null
+        conversation.updatedAt = new Date().toISOString()
+        return conversation
+      },
+      deleteConversation: async (params) => {
+        const index = aiConversations.findIndex(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (index < 0) throw new Error('Conversation not found.')
+        aiConversations.splice(index, 1)
+        return { id: params.id }
       },
       appendMessage: async (params) => {
         const message: AiChatMessage = {

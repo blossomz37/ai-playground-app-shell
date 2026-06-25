@@ -15,6 +15,7 @@ function fromAiChatState<T>(selector: (state: AiChatState) => T) {
 }
 
 export const aiConversations = fromAiChatState(state => state.conversations)
+export const archivedAiConversations = fromAiChatState(state => state.archivedConversations)
 export const selectedAiConversationId = fromAiChatState(state => state.selectedConversationId)
 export const selectedAiConversation = fromAiChatState(state => state.selectedConversation)
 
@@ -28,6 +29,18 @@ export function selectAiConversation(id: string): void {
 
 export async function renameAiConversation(id: string, title: string): Promise<void> {
   await aiChatState.renameConversation(get(workspaceId), id, title)
+}
+
+export async function archiveAiConversation(id: string): Promise<void> {
+  await aiChatState.archiveConversation(get(workspaceId), id)
+}
+
+export async function restoreAiConversation(id: string): Promise<void> {
+  await aiChatState.restoreConversation(get(workspaceId), id)
+}
+
+export async function deleteAiConversation(id: string): Promise<void> {
+  await aiChatState.deleteConversation(get(workspaceId), id)
 }
 
 export async function createAiConversation(): Promise<string> {
