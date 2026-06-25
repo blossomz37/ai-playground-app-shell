@@ -20,6 +20,8 @@ const { ELECTRON_RUN_AS_NODE, ...cleanEnv } = process.env
 const app = await electron.launch({ args: ['.'], cwd: appDir, env: cleanEnv })
 let previousProviderId
 let previousDemoMode
+let previousContextCountVisible
+let previousContextSwitchVisible
 
 async function clickRail(win, moduleId) {
   await win.click(`[data-rail-id="${moduleId}"]`)
@@ -68,8 +70,12 @@ try {
 
   previousProviderId = await win.evaluate(() => window.shell.settings.get('ai.providerId') ?? null)
   previousDemoMode = await win.evaluate(() => window.shell.settings.get('demoMode.enabled') ?? false)
+  previousContextCountVisible = await win.evaluate(() => window.shell.settings.get('documents.contextTree.showCounts') ?? true)
+  previousContextSwitchVisible = await win.evaluate(() => window.shell.settings.get('documents.contextTree.showSwitches') ?? true)
   await win.evaluate(() => window.shell.settings.set('demoMode.enabled', true))
   await win.evaluate(() => window.shell.settings.set('ai.providerId', 'mock-local'))
+  await win.evaluate(() => window.shell.settings.set('documents.contextTree.showCounts', true))
+  await win.evaluate(() => window.shell.settings.set('documents.contextTree.showSwitches', true))
 
   const railIds = await win.$$eval('[data-rail-id]', (els) => els.map((e) => e.getAttribute('data-rail-id')))
   console.log('rail modules:', railIds.join(', '))
@@ -117,7 +123,7 @@ try {
   )
   await win.screenshot({ path: shot('aichat-response') })
 
-  // Documents: inspector exposes the same AI context tree.
+  // Documents: the primary binder tree exposes Cappy-style counts + context switches.
   await clickRail(win, 'shell.documents')
   const selectedDocumentId = await win.evaluate(async () => {
     const workspace = await window.shell.workspace.get()
@@ -130,6 +136,14 @@ try {
   if (selectedDocumentId) {
     await win.waitForSelector(`[data-doc-id="${selectedDocumentId}"].active`, { timeout: 10000 }).catch(() => {})
   }
+  await win.waitForSelector('.nav-tree .context-switch', { timeout: 10000 })
+  await win.screenshot({ path: shot('documents-binder-context-controls') })
+  await win.getByLabel('Hide document tree word counts').click()
+  await win.getByLabel('Hide AI context toggles').click()
+  await win.waitForTimeout(350)
+  await win.screenshot({ path: shot('documents-binder-controls-hidden') })
+  await win.getByLabel('Show document tree word counts').click()
+  await win.getByLabel('Show AI context toggles').click()
   await ensureInspector(win)
   await win.waitForSelector('aside.inspector .context-picker .tree-row', { timeout: 10000 })
   await win.screenshot({ path: shot('documents-context-tree') })
@@ -148,6 +162,12 @@ try {
       await win.evaluate((providerId) => window.shell.settings.set('ai.providerId', providerId ?? 'openai-responses'), previousProviderId)
       if (previousDemoMode !== undefined) {
         await win.evaluate((demoMode) => window.shell.settings.set('demoMode.enabled', demoMode), previousDemoMode)
+      }
+      if (previousContextCountVisible !== undefined) {
+        await win.evaluate((visible) => window.shell.settings.set('documents.contextTree.showCounts', visible), previousContextCountVisible)
+      }
+      if (previousContextSwitchVisible !== undefined) {
+        await win.evaluate((visible) => window.shell.settings.set('documents.contextTree.showSwitches', visible), previousContextSwitchVisible)
       }
     }
   }

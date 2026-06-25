@@ -13,9 +13,16 @@
     renameValue: string
     focusRenameInput: (node: HTMLInputElement) => void
     displayIcon: (node: DocNode) => string
+    contextIncluded: (node: DocNode) => boolean
+    contextPartial: (node: DocNode) => boolean
+    contextDisabled: (node: DocNode) => boolean
+    contextTokens: (node: DocNode) => number
+    showContextCount: boolean
+    showContextSwitch: boolean
     isExpanded: (id: string) => boolean
     onActivateIcon: (node: DocNode) => void
     onActivateNode: (node: DocNode) => void
+    onToggleContext: (event: MouseEvent, node: DocNode) => void
     onContextMenu: (event: MouseEvent, node: DocNode) => void
     onDragStart: (event: DragEvent, node: DocNode) => void
     onDragOver: (event: DragEvent, node: DocNode) => void
@@ -38,9 +45,16 @@
     renameValue,
     focusRenameInput,
     displayIcon,
+    contextIncluded,
+    contextPartial,
+    contextDisabled,
+    contextTokens,
+    showContextCount,
+    showContextSwitch,
     isExpanded,
     onActivateIcon,
     onActivateNode,
+    onToggleContext,
     onContextMenu,
     onDragStart,
     onDragOver,
@@ -67,9 +81,16 @@
     {renameValue}
     icon={displayIcon(node)}
     {expanded}
+    contextIncluded={contextIncluded(node)}
+    contextPartial={contextPartial(node)}
+    contextDisabled={contextDisabled(node)}
+    contextTokens={contextTokens(node)}
+    {showContextCount}
+    {showContextSwitch}
     {focusRenameInput}
     onActivateIcon={() => onActivateIcon(node)}
     onActivateNode={() => onActivateNode(node)}
+    onToggleContext={(event) => onToggleContext(event, node)}
     onContextMenu={(event) => onContextMenu(event, node)}
     onDragStart={(event) => onDragStart(event, node)}
     onDragOver={(event) => onDragOver(event, node)}

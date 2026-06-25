@@ -12,9 +12,16 @@
     renameValue: string
     icon: string
     expanded: boolean
+    contextIncluded: boolean
+    contextPartial: boolean
+    contextDisabled: boolean
+    contextTokens: number
+    showContextCount: boolean
+    showContextSwitch: boolean
     focusRenameInput: (node: HTMLInputElement) => void
     onActivateIcon: () => void
     onActivateNode: () => void
+    onToggleContext: (event: MouseEvent) => void
     onContextMenu: (event: MouseEvent) => void
     onDragStart: (event: DragEvent) => void
     onDragOver: (event: DragEvent) => void
@@ -38,9 +45,16 @@
     renameValue,
     icon,
     expanded,
+    contextIncluded,
+    contextPartial,
+    contextDisabled,
+    contextTokens,
+    showContextCount,
+    showContextSwitch,
     focusRenameInput,
     onActivateIcon,
     onActivateNode,
+    onToggleContext,
     onContextMenu,
     onDragStart,
     onDragOver,
@@ -56,6 +70,8 @@
   let rowLabel = $derived(node.nodeType === 'folder'
     ? `${expanded ? 'Collapse' : 'Expand'} ${node.title}`
     : `Open ${node.title}`)
+  let contextLabel = $derived(`${contextIncluded ? 'Remove' : 'Include'} ${node.title} as AI context`)
+  let countLabel = $derived(contextTokens.toLocaleString())
 </script>
 
 <div
@@ -116,6 +132,21 @@
     >
       <span class="title">{node.title}</span>
     </button>
+    {#if showContextCount}
+      <span class="context-count">{countLabel}</span>
+    {/if}
+    {#if showContextSwitch}
+      <label class="context-switch" class:partial={contextPartial} title={contextLabel}>
+        <input
+          type="checkbox"
+          checked={contextIncluded}
+          disabled={contextDisabled}
+          aria-label={contextLabel}
+          onclick={onToggleContext}
+          onpointerdown={(event) => event.stopPropagation()}
+        />
+      </label>
+    {/if}
   {/if}
 </div>
 
@@ -124,7 +155,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-1);
     height: 28px;
     padding-right: var(--space-3);
     border-radius: var(--radius-sm);
@@ -241,6 +272,65 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .context-count {
+    flex: 0 0 58px;
+    color: color-mix(in srgb, var(--accent-nav) 50%, var(--color-fg-muted));
+    font-size: var(--font-size-xs);
+    text-align: right;
+  }
+
+  .context-switch {
+    position: relative;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 22px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-nav) 20%, var(--color-bg-overlay));
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .context-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--color-bg-base);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-fg-primary) 18%, transparent);
+    transition: transform 0.15s ease;
+  }
+
+  .context-switch:has(input:checked) {
+    background: color-mix(in srgb, var(--color-accent) 62%, var(--accent-nav));
+  }
+
+  .context-switch:has(input:checked)::after {
+    transform: translateX(20px);
+  }
+
+  .context-switch.partial {
+    background: color-mix(in srgb, var(--color-accent) 34%, var(--color-bg-overlay));
+  }
+
+  .context-switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .context-switch:has(input:disabled) {
+    opacity: 0.45;
+  }
+
+  .context-switch input:disabled {
+    cursor: not-allowed;
   }
 
   .rename-input {

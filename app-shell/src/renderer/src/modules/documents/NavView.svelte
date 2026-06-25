@@ -13,13 +13,21 @@
     exportDocSubtree,
     documentsSortMode,
     setDocumentsSortMode,
-    moveDoc
+    moveDoc,
+    countWords
   } from '../../store'
+  import {
+    manualContextDocIds,
+    manualContextExcludedDocIds,
+    manualContextFolderIds,
+    toggleContextDocument,
+    toggleContextFolder
+  } from '../../store/ai'
   import { showContextMenu, type ContextMenuItem } from '../../store/contextmenu'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
   import { SvelteSet } from 'svelte/reactivity'
-  import { SortAscendingIcon } from 'phosphor-svelte'
+  import { HashIcon, SortAscendingIcon, ToggleLeftIcon, ToggleRightIcon } from 'phosphor-svelte'
   import DocumentTree from './DocumentTree.svelte'
   import {
     createDocumentTreePointerDrag,
@@ -47,12 +55,28 @@
   let archivedSectionOpen = $state(true)
   let archivedExpanded = new SvelteSet<string>()
   let commandDisposables: Disposable[] = []
+  let showContextCount = $state(true)
+  let showContextSwitch = $state(true)
 
   const sortOptions: Array<{ mode: DocumentsSortMode; label: string }> = [
     { mode: 'manual', label: 'Manual' },
     { mode: 'alphabetical', label: 'Alphabetical' },
     { mode: 'date', label: 'Date' }
   ]
+
+  const CONTEXT_COUNT_SETTING = 'documents.contextTree.showCounts'
+  const CONTEXT_SWITCH_SETTING = 'documents.contextTree.showSwitches'
+
+  let selectedContextFolderIds = $derived(new SvelteSet($manualContextFolderIds))
+  let excludedContextDocIds = $derived(new SvelteSet($manualContextExcludedDocIds))
+  let selectedContextDocIds = $derived.by(() => {
+    const ids = new SvelteSet($manualContextDocIds)
+    for (const node of $docTree as DocNode[]) {
+      collectSelectedFolderDocuments(node, ids)
+    }
+    for (const id of excludedContextDocIds) ids.delete(id)
+    return ids
+  })
 
   function commandTargetId(target?: unknown): string | null {
     if (typeof target === 'string') return target
@@ -92,6 +116,69 @@
     if (customIcon) return customIcon
     if (node.nodeType === 'folder') return isExpanded(node.id) ? '📂' : '📁'
     return '📄'
+  }
+
+  function collectDocumentIds(node: DocNode): string[] {
+    if (node.nodeType === 'document') return [node.id]
+    return node.children.flatMap(collectDocumentIds)
+  }
+
+  function collectSelectedFolderDocuments(node: DocNode, ids: SvelteSet<string>): void {
+    if (node.nodeType === 'folder' && selectedContextFolderIds.has(node.id)) {
+      for (const id of collectDocumentIds(node)) ids.add(id)
+    }
+    for (const child of node.children) collectSelectedFolderDocuments(child, ids)
+  }
+
+  function contextIncluded(node: DocNode): boolean {
+    return node.nodeType === 'folder'
+      ? selectedContextFolderIds.has(node.id)
+      : selectedContextDocIds.has(node.id)
+  }
+
+  function contextPartial(node: DocNode): boolean {
+    return node.nodeType === 'folder'
+      && !selectedContextFolderIds.has(node.id)
+      && collectDocumentIds(node).some(id => selectedContextDocIds.has(id))
+  }
+
+  function contextDisabled(node: DocNode): boolean {
+    return node.nodeType === 'folder' && collectDocumentIds(node).length === 0
+  }
+
+  function contextTokens(node: DocNode): number {
+    if (node.nodeType === 'document') return countWords(node.content)
+    return node.children.reduce((sum, child) => sum + contextTokens(child), 0)
+  }
+
+  function onToggleContext(event: MouseEvent, node: DocNode): void {
+    event.stopPropagation()
+    event.preventDefault()
+    if (contextDisabled(node)) return
+    if (node.nodeType === 'folder') {
+      toggleContextFolder(node.id)
+    } else {
+      toggleContextDocument(node.id)
+    }
+  }
+
+  async function loadContextTreeViewOptions(): Promise<void> {
+    const [countValue, switchValue] = await Promise.all([
+      window.shell.settings.get(CONTEXT_COUNT_SETTING),
+      window.shell.settings.get(CONTEXT_SWITCH_SETTING)
+    ])
+    showContextCount = typeof countValue === 'boolean' ? countValue : true
+    showContextSwitch = typeof switchValue === 'boolean' ? switchValue : true
+  }
+
+  async function toggleContextCountColumn(): Promise<void> {
+    showContextCount = !showContextCount
+    await window.shell.settings.set(CONTEXT_COUNT_SETTING, showContextCount)
+  }
+
+  async function toggleContextSwitchColumn(): Promise<void> {
+    showContextSwitch = !showContextSwitch
+    await window.shell.settings.set(CONTEXT_SWITCH_SETTING, showContextSwitch)
   }
 
   function activateIcon(node: DocNode) {
@@ -447,6 +534,7 @@
   }
 
   onMount(() => {
+    void loadContextTreeViewOptions()
     commandDisposables = [
       registerCommand('documents.newDocument', (target) => handleCreate(null, target)),
       registerCommand('documents.newChapter', (target) => handleCreate('chapter', target)),
@@ -543,6 +631,30 @@
       </div>
       <button
         class="nav-icon-btn"
+        class:active={showContextCount}
+        onclick={() => void toggleContextCountColumn()}
+        title={showContextCount ? 'Hide word counts' : 'Show word counts'}
+        aria-label={showContextCount ? 'Hide document tree word counts' : 'Show document tree word counts'}
+        aria-pressed={showContextCount}
+      >
+        <HashIcon size={15} weight="bold" />
+      </button>
+      <button
+        class="nav-icon-btn"
+        class:active={showContextSwitch}
+        onclick={() => void toggleContextSwitchColumn()}
+        title={showContextSwitch ? 'Hide context toggles' : 'Show context toggles'}
+        aria-label={showContextSwitch ? 'Hide AI context toggles' : 'Show AI context toggles'}
+        aria-pressed={showContextSwitch}
+      >
+        {#if showContextSwitch}
+          <ToggleRightIcon size={16} weight="bold" />
+        {:else}
+          <ToggleLeftIcon size={16} weight="bold" />
+        {/if}
+      </button>
+      <button
+        class="nav-icon-btn"
         onclick={() => allExpanded ? collapseAll() : expandAll()}
         title={allExpanded ? 'Collapse all' : 'Expand all'}
         aria-label={allExpanded ? 'Collapse all documents' : 'Expand all documents'}
@@ -563,9 +675,16 @@
         {renameValue}
         {focusRenameInput}
         {displayIcon}
+        {contextIncluded}
+        {contextPartial}
+        {contextDisabled}
+        {contextTokens}
+        {showContextCount}
+        {showContextSwitch}
         {isExpanded}
         onActivateIcon={activateIcon}
         onActivateNode={activateNode}
+        {onToggleContext}
         onContextMenu={onTreeContextMenu}
         onDragStart={onTreeDragStart}
         onDragOver={onTreeDragOver}
