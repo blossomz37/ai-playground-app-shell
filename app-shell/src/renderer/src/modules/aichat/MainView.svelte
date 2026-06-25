@@ -5,6 +5,7 @@
   import { executeCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import { aiBusy, aiContextCandidates, invokeAi, refreshAiContext } from '../../store/ai'
+  import { addToast } from '../../store/toasts'
   import {
     activeConversationId,
     appendAiChatMessage,
@@ -77,22 +78,27 @@
   async function send() {
     const text = input.trim()
     if (!text) return
-    const conversationId = activeConversationId() || await createAiConversation()
-    await appendAiChatMessage(conversationId, { role: 'user', content: text })
-    input = ''
+    try {
+      const conversationId = activeConversationId() || await createAiConversation()
+      await appendAiChatMessage(conversationId, { role: 'user', content: text })
+      input = ''
 
-    const result = await invokeAi({
-      moduleId: 'shell.aichat',
-      originType: 'chat',
-      originId: conversationId,
-      prompt: text
-    })
+      const result = await invokeAi({
+        moduleId: 'shell.aichat',
+        originType: 'chat',
+        originId: conversationId,
+        prompt: text
+      })
 
-    await appendAiChatMessage(conversationId, {
-      role: 'assistant',
-      content: result.run.error ?? result.run.outputText,
-      runId: result.run.id
-    })
+      await appendAiChatMessage(conversationId, {
+        role: 'assistant',
+        content: result.run.error ?? result.run.outputText,
+        runId: result.run.id
+      })
+    } catch (error) {
+      input = text
+      addToast('warn', error instanceof Error ? error.message : 'AI chat message could not be sent.')
+    }
   }
 
   function onKeydown(e: KeyboardEvent) {

@@ -44,13 +44,21 @@
   }
 
   async function runTemplate() {
-    preview = null
-    const result = await invokeAi(requestParams())
-    outputText = result.run.error ?? result.run.outputText
+    try {
+      preview = null
+      const result = await invokeAi(requestParams())
+      outputText = result.run.error ?? result.run.outputText
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Prompt template could not run.')
+    }
   }
 
   async function previewTemplate() {
-    preview = await previewAi(requestParams())
+    try {
+      preview = await previewAi(requestParams())
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Prompt preview could not be created.')
+    }
   }
 
   async function commitRename(name: string): Promise<void> {

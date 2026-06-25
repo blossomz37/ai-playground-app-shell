@@ -10,7 +10,8 @@ import type {
   AiRun,
   InvokeAiParams
 } from '@shared/ai'
-import { activeDocId, demoModeEnabled, documents, workspaceId } from './index'
+import { activeDocId, activeWorkspace, demoModeEnabled, documents, selectDoc, workspaceId } from './index'
+import { addToast } from './toasts'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
@@ -45,6 +46,7 @@ const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1'
 
 let lastContextDocId: string | null = null
 let loadedContextWorkspaceId: string | null = null
+const AI_OUTPUTS_FOLDER_TITLE = 'AI Outputs'
 
 function contextSelectionKey(wsId: string): string {
   return `ai.contextSelection.${wsId}`
@@ -334,9 +336,90 @@ interface AiRequestParams {
   temperature?: number
 }
 
+function activeWorkspaceIdOrThrow(): string {
+  const workspace = get(activeWorkspace)
+  if (!workspace?.id) {
+    throw new Error('Create or select a project before using AI tools.')
+  }
+  return workspace.id
+}
+
+function aiSurfaceLabel(moduleId: string): string {
+  if (moduleId === 'shell.aichat') return 'AI Chat'
+  if (moduleId === 'shell.promptstudio') return 'Prompt Studio'
+  if (moduleId === 'shell.workflow') return 'Workflow Runner'
+  return 'AI'
+}
+
+function outputTitle(moduleId: string, createdAt: string): string {
+  const timestamp = new Date(createdAt).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+  return `${aiSurfaceLabel(moduleId)} Output - ${timestamp}`
+}
+
+async function ensureAiOutputsFolder(wsId: string): Promise<string> {
+  const rows = await window.shell.documents.list(wsId)
+  const existing = rows.find(doc =>
+    doc.nodeType === 'folder'
+    && doc.parentId === null
+    && doc.title.trim().toLowerCase() === AI_OUTPUTS_FOLDER_TITLE.toLowerCase()
+  )
+  if (existing) return existing.id
+
+  const created = await window.shell.documents.create({
+    workspaceId: wsId,
+    nodeType: 'folder',
+    title: AI_OUTPUTS_FOLDER_TITLE,
+    parentId: null
+  })
+  return created.id
+}
+
+function outputDocumentContent(result: AiInvokeResult): string {
+  const title = outputTitle(result.run.moduleId, result.run.completedAt ?? result.run.createdAt)
+  return [
+    `# ${title}`,
+    '',
+    `Source: ${aiSurfaceLabel(result.run.moduleId)}`,
+    `Run: ${result.run.id}`,
+    `Model: ${result.run.providerId} / ${result.run.model}`,
+    '',
+    '## Prompt',
+    '',
+    result.run.inputSummary || '_No prompt summary recorded._',
+    '',
+    '## Output',
+    '',
+    result.run.outputText.trim() || '_No output text recorded._'
+  ].join('\n')
+}
+
+async function saveAiOutputDocument(result: AiInvokeResult): Promise<void> {
+  if (result.run.status !== 'completed' || !result.run.outputText.trim()) return
+
+  const wsId = activeWorkspaceIdOrThrow()
+  const folderId = await ensureAiOutputsFolder(wsId)
+  const created = await window.shell.documents.create({
+    workspaceId: wsId,
+    nodeType: 'document',
+    kind: 'ai-output',
+    title: outputTitle(result.run.moduleId, result.run.completedAt ?? result.run.createdAt),
+    parentId: folderId
+  })
+  await window.shell.documents.save(created.id, outputDocumentContent(result))
+  await selectDoc(created.id)
+  addToast('info', `Saved AI output to ${AI_OUTPUTS_FOLDER_TITLE}.`)
+}
+
 function buildAiPayload(params: AiRequestParams): InvokeAiParams {
+  const wsId = activeWorkspaceIdOrThrow()
   return {
-    workspaceId: get(workspaceId),
+    workspaceId: wsId,
     moduleId: params.moduleId,
     originType: params.originType,
     originId: params.originId,
@@ -357,6 +440,11 @@ export async function invokeAi(params: AiRequestParams): Promise<AiInvokeResult>
     }
 
     const result = await window.shell.ai.invoke(buildAiPayload(params))
+    try {
+      await saveAiOutputDocument(result)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'AI output could not be saved to the project tree.')
+    }
     await loadAiRuns(params.moduleId)
     return result
   } finally {
