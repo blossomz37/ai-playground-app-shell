@@ -146,6 +146,14 @@ export interface CreateAiProposalParams {
   runParams: InvokeAiParams
 }
 
+export interface CreateAiProposalFromInvocationParams {
+  workspaceId: string
+  targetDocumentId: string
+  proposalType: AiProposalType
+  sourceText: string
+  runParams: InvokeAiParams
+}
+
 export interface ListAiProposalsParams {
   workspaceId: string
   targetDocumentId?: string

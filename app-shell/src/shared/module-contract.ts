@@ -16,6 +16,7 @@ import type {
   AiRun,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalFromInvocationParams,
   CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
@@ -653,6 +654,7 @@ export interface ShellApi {
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     proposals(params: ListAiProposalsParams): Promise<AiProposal[]>
     createProposal(params: CreateAiProposalParams): Promise<AiProposal>
+    createProposalFromInvocation(params: CreateAiProposalFromInvocationParams): Promise<AiProposal>
     acceptProposal(params: ResolveAiProposalParams): Promise<AiProposal>
     rejectProposal(params: ResolveAiProposalParams): Promise<AiProposal>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>

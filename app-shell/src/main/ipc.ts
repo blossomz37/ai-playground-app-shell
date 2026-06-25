@@ -47,6 +47,7 @@ import type {
   AiPromptTemplate,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalFromInvocationParams,
   CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
@@ -316,6 +317,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:proposals:create', (_e, params: CreateAiProposalParams) =>
     aiOrchestrator.createProposal(params)
+  )
+
+  ipcMain.handle('ai:proposals:createFromInvocation', (_e, params: CreateAiProposalFromInvocationParams) =>
+    aiOrchestrator.createProposalFromInvocation(params)
   )
 
   ipcMain.handle('ai:proposals:accept', (_e, params: ResolveAiProposalParams) =>

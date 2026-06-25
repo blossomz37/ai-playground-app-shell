@@ -19,6 +19,7 @@
     acceptAiProposal,
     aiProposals,
     createAiProposal,
+    createAiProposalFromInvocation,
     documentsAiTemplateForAction,
     loadAiProposals,
     loadAiTemplates,
@@ -270,6 +271,38 @@
         proposalType: proposalTypeForAiAction(aiPreviewAction),
         sourceText: sourceTextForAiAction(aiPreviewAction),
         proposedText: aiPreview.renderedPrompt,
+        runParams: {
+          moduleId: 'shell.documents',
+          originType: 'template',
+          originId: template?.id ?? `documents.${aiPreviewAction}`,
+          prompt: template?.body ?? fallback.body,
+          writingVariables: {
+            ...writingContext.writingVariables,
+            userInput: aiUserInput
+          }
+        }
+      })
+      addToast('info', 'AI proposal saved.')
+      return proposal
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
+      return null
+    } finally {
+      proposalBusy = false
+    }
+  }
+
+  async function createProposalFromLiveRun(): Promise<AiProposal | null> {
+    if (!$activeDoc || !writingContext || !aiPreviewAction) return null
+    proposalBusy = true
+    try {
+      refreshWritingContext()
+      const template = documentsAiTemplateForAction(aiPreviewAction)
+      const fallback = documentsAiPromptDefinition(aiPreviewAction)
+      const proposal = await createAiProposalFromInvocation({
+        targetDocumentId: $activeDoc.id,
+        proposalType: proposalTypeForAiAction(aiPreviewAction),
+        sourceText: sourceTextForAiAction(aiPreviewAction),
         runParams: {
           moduleId: 'shell.documents',
           originType: 'template',
@@ -992,7 +1025,7 @@
     window.addEventListener('shell:capture-document-selection', captureSelectionListener)
 
     captureAiPreviewListener = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string; saveProposal: boolean; applyProposal: boolean }>>).detail ?? {}
+      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string; saveProposal: boolean; runProposal: boolean; applyProposal: boolean }>>).detail ?? {}
       if (typeof detail.userInput === 'string') aiUserInput = detail.userInput
       const action = detail.action
       if (
@@ -1001,8 +1034,10 @@
         action === 'summarize-active-document'
       ) {
         void previewDocumentAi(action).then(async () => {
-          if (!detail.saveProposal) return
-          const proposal = await createProposalFromPreview()
+          if (!detail.saveProposal && !detail.runProposal) return
+          const proposal = detail.runProposal
+            ? await createProposalFromLiveRun()
+            : await createProposalFromPreview()
           if (detail.applyProposal && proposal) {
             await applyReplacementProposal(proposal)
           }
@@ -1174,7 +1209,7 @@
           onclick={() => void previewDocumentAi('summarize-active-document')}
         >Summary</button>
         {#if aiPreview}
-          <button type="button" class="ai-action-btn" disabled={proposalBusy} onclick={() => void createProposalFromPreview()}>Save Proposal</button>
+          <button type="button" class="ai-action-btn" disabled={proposalBusy || aiPreviewBusy} onclick={() => void createProposalFromLiveRun()}>Run Proposal</button>
           <button type="button" class="ai-action-btn ghost" onclick={() => { aiPreview = null; aiPreviewAction = null }}>Close</button>
         {/if}
       </div>

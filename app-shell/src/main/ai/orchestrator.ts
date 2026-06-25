@@ -11,6 +11,7 @@ import type {
   AiPromptTemplateLifecycleParams,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalFromInvocationParams,
   CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
@@ -246,6 +247,30 @@ export const aiOrchestrator = {
     return aiRepository.createProposal({
       workspaceId: params.workspaceId,
       runId: completed.id,
+      targetDocumentId: params.targetDocumentId,
+      proposalType: params.proposalType,
+      sourceText: params.sourceText,
+      proposedText
+    })
+  },
+
+  async createProposalFromInvocation(params: CreateAiProposalFromInvocationParams): Promise<AiProposal> {
+    const result = await this.invoke({
+      ...params.runParams,
+      workspaceId: params.workspaceId
+    })
+    if (result.run.status !== 'completed') {
+      throw new Error(result.run.error ?? 'AI run failed before creating a proposal.')
+    }
+
+    const proposedText = result.run.outputText.trim()
+    if (!proposedText) {
+      throw new Error('AI run completed with no proposal text.')
+    }
+
+    return aiRepository.createProposal({
+      workspaceId: params.workspaceId,
+      runId: result.run.id,
       targetDocumentId: params.targetDocumentId,
       proposalType: params.proposalType,
       sourceText: params.sourceText,

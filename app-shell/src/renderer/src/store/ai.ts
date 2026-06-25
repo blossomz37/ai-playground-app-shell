@@ -358,6 +358,33 @@ export async function createAiProposal(params: {
   return created
 }
 
+export async function createAiProposalFromInvocation(params: {
+  targetDocumentId: string
+  proposalType: AiProposalType
+  sourceText: string
+  runParams: AiRequestParams
+}): Promise<AiProposal> {
+  aiBusy.set(true)
+  try {
+    if (get(aiProviders).length === 0) {
+      await loadAiProviders()
+    }
+
+    const created = await window.shell.ai.createProposalFromInvocation({
+      workspaceId: get(workspaceId),
+      targetDocumentId: params.targetDocumentId,
+      proposalType: params.proposalType,
+      sourceText: params.sourceText,
+      runParams: buildAiPayload(params.runParams)
+    })
+    aiProposals.update(proposals => [created, ...proposals.filter(item => item.id !== created.id)])
+    await loadAiRuns(params.runParams.moduleId)
+    return created
+  } finally {
+    aiBusy.set(false)
+  }
+}
+
 export async function rejectAiProposal(id: string): Promise<void> {
   await window.shell.ai.rejectProposal({
     workspaceId: get(workspaceId),

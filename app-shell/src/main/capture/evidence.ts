@@ -37,6 +37,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentAiPreview = process.env['SHELL_CAPTURE_DOCUMENT_AI_PREVIEW']
   const documentAiUserInput = process.env['SHELL_CAPTURE_DOCUMENT_AI_USER_INPUT']
   const documentAiSaveProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_SAVE_PROPOSAL'] === '1'
+  const documentAiRunProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_RUN_PROPOSAL'] === '1'
   const documentAiApplyProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_APPLY_PROPOSAL'] === '1'
   const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
   const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
@@ -322,6 +323,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             action: documentAiPreview,
             userInput: documentAiUserInput,
             saveProposal: documentAiSaveProposal,
+            runProposal: documentAiRunProposal,
             applyProposal: documentAiApplyProposal
           })} }))`
         )

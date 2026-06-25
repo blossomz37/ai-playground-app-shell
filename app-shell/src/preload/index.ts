@@ -72,6 +72,7 @@ const api: ShellApi = {
     runs: (params) => ipcRenderer.invoke('ai:runs', params),
     proposals: (params) => ipcRenderer.invoke('ai:proposals', params),
     createProposal: (params) => ipcRenderer.invoke('ai:proposals:create', params),
+    createProposalFromInvocation: (params) => ipcRenderer.invoke('ai:proposals:createFromInvocation', params),
     acceptProposal: (params) => ipcRenderer.invoke('ai:proposals:accept', params),
     rejectProposal: (params) => ipcRenderer.invoke('ai:proposals:reject', params),
     templates: (workspaceId) => ipcRenderer.invoke('ai:templates', { workspaceId }),

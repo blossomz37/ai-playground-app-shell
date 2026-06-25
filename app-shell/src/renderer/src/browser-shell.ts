@@ -754,6 +754,47 @@ function createBrowserShell(): ShellApi {
         aiProposals.unshift(proposal)
         return proposal
       },
+      createProposalFromInvocation: async (params) => {
+        const provider = aiProviders.find(item => item.providerId === params.runParams.providerId) ?? aiProviders[0]
+        const createdAt = new Date().toISOString()
+        if (!demoMode && provider.providerId !== 'mock-local') {
+          throw new Error(AI_API_KEY_REQUIRED_MESSAGE)
+        }
+
+        const outputText = `Browser ${provider.providerName} preview complete.\n\n${params.runParams.prompt}`
+        const run: AiRun = {
+          id: `browser-run-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          moduleId: params.runParams.moduleId,
+          originType: params.runParams.originType,
+          originId: params.runParams.originId ?? 'browser-proposal',
+          providerId: provider.providerId,
+          model: params.runParams.model ?? provider.defaultModel,
+          temperature: params.runParams.temperature ?? 0.7,
+          status: 'completed',
+          inputSummary: params.runParams.prompt.slice(0, 240),
+          outputText,
+          error: null,
+          createdAt,
+          completedAt: createdAt
+        }
+        aiRuns.unshift(run)
+
+        const proposal: AiProposal = {
+          id: `browser-proposal-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          runId: run.id,
+          targetDocumentId: params.targetDocumentId,
+          proposalType: params.proposalType,
+          sourceText: params.sourceText,
+          proposedText: outputText.trim(),
+          status: 'pending',
+          createdAt,
+          resolvedAt: null
+        }
+        aiProposals.unshift(proposal)
+        return proposal
+      },
       acceptProposal: async (params) => {
         const proposal = aiProposals.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
         if (!proposal) throw new Error('AI proposal not found.')
