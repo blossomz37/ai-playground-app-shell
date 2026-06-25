@@ -20,12 +20,25 @@ App-shell already has the durable platform pieces:
 
 Cappy has the stronger writer-facing interaction:
 
+- File and folder context selection is visible in the project tree with inline toggles and token counts.
 - Prompt preview renders the exact provider-bound prompt without contacting the provider.
 - Prompt variables include selected text, user input, text before cursor, text after cursor, and selected context documents.
 - AI generation streams into the TipTap editor.
 - Generation can be cancelled mid-stream without corrupting document content.
 - Generated text remains provisional until the writer accepts or rejects it.
 - Backend tests prove preview safety, stream rendering, metadata exclusion, and provider chunk emission.
+
+## UX Correction From Cappy Reference
+
+The first app-shell implementation of Upgrade 2 proved the shared data path, but the interaction is still too hidden for a writer. In Cappy, context selection is not a separate mental model: the project tree itself shows folders, documents, token counts, and toggles. That expectation should be carried into the remaining Upgrade 2 work before moving on to Upgrade 3.
+
+Specific issues to solve in the next implementation slice:
+
+- The empty left Prompt Studio panel should become useful. It should expose the template list and/or context tree instead of leaving the writer to hunt through inspector controls.
+- Context selection should look like Cappy's file/folder tree: folder rows and document rows with inline include toggles and token counts.
+- Creating a new prompt template should create, select, and reveal an editable template, not only dispatch a command and show a toast.
+- Running a template should leave the output visible in the active workspace. Run history can archive it, but it should not feel like the result disappeared.
+- Run history entries should be selectable and should restore the rendered prompt, output, selected context, model, and settings for inspection.
 
 ## Upgrade 1 - Provider-Free Prompt Preview
 
@@ -52,30 +65,34 @@ Writers can inspect what will be sent to the model before spending tokens, expos
 - `app-shell/src/renderer/src/store/ai.ts`
 - `app-shell/src/renderer/src/modules/promptstudio/MainView.svelte`
 
-## Upgrade 2 - Shared Context Picker
+## Upgrade 2 - Shared Context Tree
 
-Build a reusable context picker for AI runs.
+Build reusable context selection for AI runs, using a Cappy-style tree as the primary writer-facing interaction.
 
 ### User Value
 
-The writer can deliberately choose which documents count as context instead of relying only on the active document and automatic descendants.
+The writer can deliberately choose which documents and folders count as context without leaving the project structure they already understand.
 
 ### Product Behavior
 
-- Show active document, selected text, descendants, manually selected documents, and manual note.
+- Show active document, selected text, descendants, manually selected documents, selected folders, and manual note.
 - Allow toggling each context candidate before preview or run.
-- Support selecting arbitrary documents from the document tree or table view.
-- Show token estimates per item and total estimate.
+- Support selecting arbitrary documents and folders from a hierarchical document tree.
+- Folder toggles should include or exclude descendant documents; document toggles should allow narrower overrides where the data model supports it.
+- Show token estimates per item, per folder, and total estimate.
 - Persist selected context on the AI context pack for later audit.
 
 ### First Version
 
-Start with a drawer/popover shared by AI Chat and Prompt Studio:
+Replace the drawer/popover-first behavior with a visible tree in the surfaces that have room for it:
 
 - Active document included by default.
 - Descendants optional.
-- Manual document picker from existing document list.
+- Folder and document rows with inline include toggles.
+- Token counts visible on the row, matching the Cappy mental model.
 - Manual note field.
+- Prompt Studio: use the left panel for the template list and context tree, either as tabs or a split layout. The left panel should not remain blank.
+- AI Chat: keep the compact message-bar status button, but the inspector/context area should expose the same tree-style selection behavior.
 
 Then reuse the same picker in Documents AI Review and Workflow Runner.
 
@@ -193,11 +210,14 @@ Writers can save, organize, preview, and rerun prompt recipes without rebuilding
 ### Product Behavior
 
 - Template list with categories/tags.
+- New template action creates a persisted template, selects it, and places the user in the editable name/body state.
 - Inline rename and duplicate.
 - Prompt variable reference panel.
 - Last-run settings remembered per template.
 - Import/export prompt templates as local JSON.
 - Clear distinction between prompt preview, provider run, and proposal creation.
+- Latest run output remains visible in the main workspace after a run completes.
+- Selecting a run history item restores its rendered prompt, output, selected context, provider/model, and settings.
 
 ### Likely Areas
 
@@ -245,6 +265,8 @@ Every output can answer: what prompt, model, settings, and documents produced th
   - Token estimate.
   - Output.
   - Proposal status.
+- Run history entries are clickable and restore the run detail into the active module view.
+- The most recent run stays visible after completion instead of only being discoverable through a passive inspector list.
 - Link from a pending or accepted proposal back to its run.
 - Allow copying rendered prompt and output.
 
@@ -258,13 +280,14 @@ Every output can answer: what prompt, model, settings, and documents produced th
 ## Suggested Implementation Order
 
 1. Provider-free prompt preview.
-2. Shared context picker with manual document selection.
-3. Writing workflow variables.
-4. Documents AI proposal review without streaming.
-5. Streaming and cancel support.
-6. Prompt Library usability pass.
-7. Model presets/provider profiles.
-8. Run audit trail polish.
+2. Context tree UX correction: Cappy-style file/folder toggles in Prompt Studio and AI Chat.
+3. Prompt Studio template creation, template visibility, and active run output restore.
+4. Writing workflow variables.
+5. Documents AI proposal review without streaming.
+6. Streaming and cancel support.
+7. Prompt Library polish: duplicate, import/export, categories, and variable reference.
+8. Model presets/provider profiles.
+9. Run audit trail polish.
 
 This order intentionally proves trust and context first, then proposal application, then streaming. Streaming is valuable, but it should not be the first slice because it is harder to validate and depends on the prompt/context contract being clear.
 
@@ -284,7 +307,13 @@ Backend/main-process proof:
 Renderer/UI proof:
 
 - Prompt preview displays before running.
-- Context picker can include/exclude documents.
+- Context tree shows folders, documents, token counts, and inline toggles.
+- Toggling a folder updates descendant context selection and total token estimate.
+- Toggling a document updates selected context and total token estimate.
+- Prompt Studio's left panel shows useful template/context controls instead of an empty panel.
+- New Template creates, selects, and reveals an editable template.
+- Running a template keeps output visible in the main workspace.
+- Clicking a run history entry restores the rendered prompt, output, selected context, model, and settings.
 - Documents AI review creates a pending proposal.
 - Accept applies the proposal.
 - Reject leaves the document unchanged.
@@ -306,7 +335,8 @@ UI-visible slices need screenshots in `workspace-agents/implementation/screensho
 - Do not bypass app-shell's secrets service.
 - Do not make AI output mutate documents without accept/reject review.
 - Do not add a hosted/cloud dependency to shell core.
-- Do not redesign Prompt Studio and Workflow Runner before the Documents writing loop is proven.
+- Do not redesign Prompt Studio into a full IDE. The corrective slice is limited to context visibility, template creation, and run output visibility.
+- Do not build Documents AI Review or Workflow Runner context UI as part of the corrective Upgrade 2/6 slice unless explicitly pulled forward.
 
 ## Decision Notes
 
@@ -314,3 +344,4 @@ UI-visible slices need screenshots in `workspace-agents/implementation/screensho
 - The highest-value first milestone is prompt trust: preview, selected context, and auditable runs.
 - The second milestone is writer control: AI proposals with accept/reject.
 - Streaming should come after proposals, so partial output always has a safe place to land.
+- The Cappy-style tree is the target interaction for context selection; a generic picker is only an implementation detail where screen space is constrained.

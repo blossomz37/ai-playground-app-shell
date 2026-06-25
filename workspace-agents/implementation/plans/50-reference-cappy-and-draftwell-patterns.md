@@ -55,6 +55,18 @@ Stream read loop (`hooks/use-editor-ai.ts`): SSE `data: {json}` lines, accumulat
 
 `StoryBibleDetectionService` scans doc text for character/location names, matches `project.storyBibleEntries`, returns mentions with ~60-char context windows. app-shell's nearest fit is auto-suggesting context candidates from typed document kinds (`character`, `setting`) - a v2 enhancement to the context picker, not v1.
 
+### A6. File/folder context tree (Upgrade 2 correction)
+
+`resources/js/modules/binder/binder-tree.tsx` is the Cappy interaction to copy conceptually:
+
+- Folder and document rows live in the project tree, not a detached picker.
+- Rows expose token/word counts near the title.
+- Inline toggles control whether files and folders are included as AI context.
+- Folder state is represented separately from document state through `contextFolders` and `contextDocuments`.
+- The same tree also handles expansion/collapse, so selecting context feels like managing the active project rather than configuring a provider request.
+
+For app-shell, keep the existing shared AI store and context pack persistence. The port target is the behavior and placement: visible tree rows with folder/document toggles and token counts, especially in Prompt Studio's left panel and AI Chat's inspector context area.
+
 ---
 
 ## B. Proposal accept/reject gate (DraftWell) - for Upgrade 5
@@ -102,7 +114,7 @@ This is almost exactly app-shell's `AiContextCandidate` plus the plan's context 
 | Plan upgrade | Borrow from | Concrete artifact |
 |---|---|---|
 | 1 Provider-free preview | DraftWell `AiContextPreview` + `estimateTokens` | preview struct, `providerRequestSent:false` |
-| 2 Context picker | DraftWell `AiContextCandidate` flags | `included/excluded/locked/defaultIncluded` |
+| 2 Context tree | Cappy `binder-tree.tsx` + DraftWell `AiContextCandidate` flags | file/folder toggles, token counts, `included/excluded/locked/defaultIncluded` |
 | 3 Writing variables | Cappy `captureEditorContext` | `before/selected/after`, prompt `type` enum |
 | 4 Streaming | Cappy streaming-signals + main-process stream | IPC chunk events keyed by run id |
 | 5 Proposals | DraftWell `aiProposals` + 3 resolution paths | `editOperationsJson`, source-match guard, checksum trail |
