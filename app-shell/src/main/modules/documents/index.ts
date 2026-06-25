@@ -27,6 +27,9 @@ export const documentsModule: Module = {
         { id: 'documents.archive',    title: 'Archive' },
         { id: 'documents.close',      title: 'Close Document' },
         { id: 'documents.annotateSelection', title: 'Annotate Selection' },
+        { id: 'documents.ai.previewRewriteSelection', title: 'Preview Rewrite Selection' },
+        { id: 'documents.ai.previewContinueFromCursor', title: 'Preview Continue From Cursor' },
+        { id: 'documents.ai.previewSummarizeActiveDocument', title: 'Preview Summarize Active Document' },
         { id: 'documents.find',       title: 'Find in Document',  keybinding: 'CmdOrCtrl+F' },
         { id: 'documents.replace',    title: 'Replace in Document', keybinding: 'CmdOrCtrl+H' },
         { id: 'documents.findNext',   title: 'Find Next' },
@@ -87,6 +90,18 @@ export const documentsModule: Module = {
 
     ctx.commands.register('documents.annotateSelection', async () => {
       ctx.notify({ level: 'info', message: 'Open a document and select text to annotate.' })
+    })
+
+    ctx.commands.register('documents.ai.previewRewriteSelection', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document and select text before previewing a rewrite.' })
+    })
+
+    ctx.commands.register('documents.ai.previewContinueFromCursor', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document before previewing a continuation.' })
+    })
+
+    ctx.commands.register('documents.ai.previewSummarizeActiveDocument', async () => {
+      ctx.notify({ level: 'info', message: 'Open a document before previewing a summary.' })
     })
 
     ctx.commands.register('documents.find', async () => {

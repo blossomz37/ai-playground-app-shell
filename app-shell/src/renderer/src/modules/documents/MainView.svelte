@@ -15,9 +15,11 @@
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
+  import { previewAi, refreshAiContext } from '../../store/ai'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
+  import type { AiPreview } from '@shared/ai'
   import {
     findDocumentMatches,
     normalizeDocumentSearchState,
@@ -41,6 +43,8 @@
     matches: DocumentSearchMatch[]
   }
 
+  type DocumentsAiPreviewAction = 'rewrite-selection' | 'continue-from-cursor' | 'summarize-active-document'
+
   let element: HTMLDivElement | null = null
   let secondaryElement: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
@@ -56,6 +60,7 @@
   let captureSearchListener: ((event: Event) => void) | null = null
   let capturePlan47Listener: ((event: Event) => void) | null = null
   let captureSelectionListener: ((event: Event) => void) | null = null
+  let captureAiPreviewListener: ((event: Event) => void) | null = null
   let searchOpen = $state(false)
   let searchQuery = $state('')
   let searchReplacement = $state('')
@@ -72,6 +77,10 @@
   let commentModeDocId = $state<string | null>(null)
   let annotationCreatePending = false
   let writingContext = $state<DocumentsWritingContext | null>(null)
+  let aiUserInput = $state('')
+  let aiPreview = $state<AiPreview | null>(null)
+  let aiPreviewLabel = $state('')
+  let aiPreviewBusy = $state(false)
 
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
@@ -91,6 +100,9 @@
   const splitDiffRows = $derived(buildLineDiff($editorContent, secondaryContent))
   const writingContextLabel = $derived(writingContext?.mode === 'selection' ? 'Selection' : 'Cursor')
   const writingContextWords = $derived(writingContext?.selectedWordCount ?? 0)
+  const selectedTextExcerpt = $derived(excerpt(writingContext?.writingVariables.selectedText ?? ''))
+  const beforeExcerpt = $derived(excerpt(writingContext?.writingVariables.before ?? ''))
+  const afterExcerpt = $derived(excerpt(writingContext?.writingVariables.after ?? ''))
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
@@ -137,6 +149,98 @@
       workspace: get(activeWorkspace),
       documentKind: activeDocumentKindLabel()
     })
+  }
+
+  function excerpt(value: string, max = 180): string {
+    const cleaned = value.replace(/\s+/g, ' ').trim()
+    if (!cleaned) return 'No text captured.'
+    return cleaned.length > max ? `${cleaned.slice(0, max - 3)}...` : cleaned
+  }
+
+  function promptForAiAction(action: DocumentsAiPreviewAction): string {
+    if (action === 'rewrite-selection') {
+      return [
+        'Rewrite the selected passage while preserving the document voice.',
+        '',
+        'Instruction: {{user_input}}',
+        '',
+        'Selected text:',
+        '{{selected_text}}',
+        '',
+        'Before the selection:',
+        '{{before}}',
+        '',
+        'After the selection:',
+        '{{after}}',
+        '',
+        'Selected context documents:',
+        '{{selected_documents}}'
+      ].join('\n')
+    }
+
+    if (action === 'continue-from-cursor') {
+      return [
+        'Continue the active document from the cursor in the same voice and continuity.',
+        '',
+        'Instruction: {{user_input}}',
+        '',
+        'Text before the cursor:',
+        '{{before}}',
+        '',
+        'Text after the cursor:',
+        '{{after}}',
+        '',
+        'Selected context documents:',
+        '{{selected_documents}}'
+      ].join('\n')
+    }
+
+    return [
+      'Summarize the active document for a working writer.',
+      '',
+      'Title: {{active_document_title}}',
+      'Kind: {{document_kind}}',
+      'Workspace: {{workspace_name}}',
+      '',
+      'Document and selected context:',
+      '{{selected_documents}}'
+    ].join('\n')
+  }
+
+  function labelForAiAction(action: DocumentsAiPreviewAction): string {
+    if (action === 'rewrite-selection') return 'Rewrite selection'
+    if (action === 'continue-from-cursor') return 'Continue from cursor'
+    return 'Summarize active document'
+  }
+
+  async function previewDocumentAi(action: DocumentsAiPreviewAction): Promise<void> {
+    if (!$activeDoc || !writingContext) return
+    if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
+      addToast('warn', 'Select text before previewing a rewrite.')
+      return
+    }
+
+    aiPreviewBusy = true
+    aiPreview = null
+    aiPreviewLabel = labelForAiAction(action)
+    try {
+      refreshWritingContext()
+      await refreshAiContext()
+      aiPreview = await previewAi({
+        moduleId: 'shell.documents',
+        originType: 'template',
+        originId: `documents.${action}`,
+        prompt: promptForAiAction(action),
+        writingVariables: {
+          ...writingContext.writingVariables,
+          userInput: aiUserInput
+        }
+      })
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'AI preview could not be created.')
+    } finally {
+      aiPreviewBusy = false
+    }
   }
 
   function toggleBold(): void {
@@ -667,7 +771,10 @@
       registerCommand('documents.replace', () => openSearch(true)),
       registerCommand('documents.findNext', () => nextSearchMatch()),
       registerCommand('documents.close', () => closePrimaryDocument()),
-      registerCommand('documents.annotateSelection', () => void annotateSelection())
+      registerCommand('documents.annotateSelection', () => void annotateSelection()),
+      registerCommand('documents.ai.previewRewriteSelection', () => void previewDocumentAi('rewrite-selection')),
+      registerCommand('documents.ai.previewContinueFromCursor', () => void previewDocumentAi('continue-from-cursor')),
+      registerCommand('documents.ai.previewSummarizeActiveDocument', () => void previewDocumentAi('summarize-active-document'))
     ]
 
     editorContentUnsubscribe = editorContent.subscribe((md) => {
@@ -766,6 +873,20 @@
     }
     window.addEventListener('shell:capture-document-selection', captureSelectionListener)
 
+    captureAiPreviewListener = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPreviewAction; userInput: string }>>).detail ?? {}
+      if (typeof detail.userInput === 'string') aiUserInput = detail.userInput
+      const action = detail.action
+      if (
+        action === 'rewrite-selection' ||
+        action === 'continue-from-cursor' ||
+        action === 'summarize-active-document'
+      ) {
+        void previewDocumentAi(action)
+      }
+    }
+    window.addEventListener('shell:capture-document-ai-preview', captureAiPreviewListener)
+
     annotationJumpListener = (event: Event) => {
       const id = (event as CustomEvent<string>).detail
       const annotation = get(annotations).find(item => item.id === id)
@@ -792,6 +913,9 @@
     }
     if (captureSelectionListener) {
       window.removeEventListener('shell:capture-document-selection', captureSelectionListener)
+    }
+    if (captureAiPreviewListener) {
+      window.removeEventListener('shell:capture-document-ai-preview', captureAiPreviewListener)
     }
     if (annotationJumpListener) {
       window.removeEventListener('documents:jump-to-annotation', annotationJumpListener)
@@ -893,6 +1017,71 @@
       onConfirmProjectReplace={() => void confirmProjectReplace()}
       onCancelProjectReplace={() => (projectReplacePreview = false)}
     />
+  {/if}
+
+  {#if $activeDoc}
+    <section class="ai-preview-panel" aria-label="AI writing preview">
+      <div class="ai-preview-controls">
+        <label class="ai-input-label" for="documents-ai-user-input">Instruction</label>
+        <input
+          id="documents-ai-user-input"
+          class="ai-user-input"
+          type="text"
+          bind:value={aiUserInput}
+          placeholder="Optional direction for this preview"
+          data-capture-documents-ai-user-input
+        />
+        <button
+          type="button"
+          class="ai-action-btn"
+          disabled={aiPreviewBusy || writingContextWords === 0}
+          onclick={() => void previewDocumentAi('rewrite-selection')}
+        >Rewrite</button>
+        <button
+          type="button"
+          class="ai-action-btn"
+          disabled={aiPreviewBusy}
+          onclick={() => void previewDocumentAi('continue-from-cursor')}
+        >Continue</button>
+        <button
+          type="button"
+          class="ai-action-btn"
+          disabled={aiPreviewBusy}
+          onclick={() => void previewDocumentAi('summarize-active-document')}
+        >Summary</button>
+        {#if aiPreview}
+          <button type="button" class="ai-action-btn ghost" onclick={() => (aiPreview = null)}>Close</button>
+        {/if}
+      </div>
+
+      {#if aiPreview}
+        <div class="ai-preview-result" data-capture-documents-ai-preview>
+          <div class="preview-heading">
+            <span>{aiPreviewLabel}</span>
+            <span>{aiPreview.providerId} / {aiPreview.model} / ~{aiPreview.tokenEstimate} tok / not sent</span>
+          </div>
+          <div class="variable-preview-grid" aria-label="Captured AI variables">
+            <div>
+              <span>selected_text</span>
+              <p>{selectedTextExcerpt}</p>
+            </div>
+            <div>
+              <span>before</span>
+              <p>{beforeExcerpt}</p>
+            </div>
+            <div>
+              <span>after</span>
+              <p>{afterExcerpt}</p>
+            </div>
+            <div>
+              <span>selected_documents</span>
+              <p>{aiPreview.includedTitles.length > 0 ? aiPreview.includedTitles.join(', ') : 'No context documents included.'}</p>
+            </div>
+          </div>
+          <pre class="rendered-prompt">{aiPreview.renderedPrompt}</pre>
+        </div>
+      {/if}
+    </section>
   {/if}
 
   <div class="editor-shell" class:split={Boolean(secondaryDoc)} class:diffing={splitDiffMode && Boolean(secondaryDoc)}>
@@ -1025,6 +1214,128 @@
     background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
+  }
+
+  .ai-preview-panel {
+    flex-shrink: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-editor) 18%, var(--color-border));
+    background: color-mix(in srgb, var(--color-shell-main) 94%, var(--color-panel-glint));
+  }
+
+  .ai-preview-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) clamp(var(--space-5), 6vw, 72px);
+  }
+
+  .ai-input-label {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .ai-user-input {
+    flex: 1 1 220px;
+    min-width: 0;
+    max-width: 360px;
+    height: 28px;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+  }
+
+  .ai-action-btn {
+    height: 28px;
+    padding: 0 var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-editor) 12%, transparent);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .ai-action-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent-editor) 18%, transparent);
+    color: var(--color-fg-primary);
+  }
+
+  .ai-action-btn.ghost {
+    background: transparent;
+  }
+
+  .ai-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .ai-preview-result {
+    display: grid;
+    gap: var(--space-3);
+    max-height: 360px;
+    padding: 0 clamp(var(--space-5), 6vw, 72px) var(--space-3);
+    overflow: auto;
+  }
+
+  .preview-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .variable-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .variable-preview-grid div {
+    min-width: 0;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 14%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-panel-glint) 24%, transparent);
+  }
+
+  .variable-preview-grid span {
+    color: color-mix(in srgb, var(--accent-editor) 70%, var(--color-fg-muted));
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .variable-preview-grid p {
+    min-width: 0;
+    max-height: 76px;
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+  }
+
+  .rendered-prompt {
+    max-height: 190px;
+    margin: 0;
+    padding: var(--space-3);
+    overflow: auto;
+    border: 1px solid color-mix(in srgb, var(--accent-editor) 14%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 82%, black);
+    color: var(--color-fg-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+    white-space: pre-wrap;
   }
 
   .tool-btn {
