@@ -10,7 +10,7 @@ import type {
   AiRun,
   InvokeAiParams
 } from '@shared/ai'
-import { activeDocId, demoModeEnabled, workspaceId } from './index'
+import { activeDocId, demoModeEnabled, documents, workspaceId } from './index'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
@@ -31,10 +31,79 @@ export const aiBusy = writable(false)
 // User-controlled context additions, shared by the AI context picker.
 export const manualContextNote = writable('')
 export const manualContextDocIds = writable<string[]>([])
+export const manualContextFolderIds = writable<string[]>([])
+export const manualContextExcludedDocIds = writable<string[]>([])
+
+interface PersistedContextSelection {
+  documentIds?: unknown
+  folderIds?: unknown
+  excludedDocumentIds?: unknown
+  manualNote?: unknown
+}
 
 const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
 
 let lastContextDocId: string | null = null
+let loadedContextWorkspaceId: string | null = null
+
+function contextSelectionKey(wsId: string): string {
+  return `ai.contextSelection.${wsId}`
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+}
+
+async function loadPersistedContextSelection(wsId: string): Promise<void> {
+  if (loadedContextWorkspaceId === wsId) return
+  const saved = await window.shell.settings.get(contextSelectionKey(wsId)) as PersistedContextSelection | undefined
+  manualContextDocIds.set(stringArray(saved?.documentIds))
+  manualContextFolderIds.set(stringArray(saved?.folderIds))
+  manualContextExcludedDocIds.set(stringArray(saved?.excludedDocumentIds))
+  manualContextNote.set(typeof saved?.manualNote === 'string' ? saved.manualNote : '')
+  loadedContextWorkspaceId = wsId
+}
+
+async function persistContextSelection(): Promise<void> {
+  const wsId = get(workspaceId)
+  await window.shell.settings.set(contextSelectionKey(wsId), {
+    documentIds: get(manualContextDocIds),
+    folderIds: get(manualContextFolderIds),
+    excludedDocumentIds: get(manualContextExcludedDocIds),
+    manualNote: get(manualContextNote)
+  })
+}
+
+function descendantDocumentIds(rootId: string): string[] {
+  const liveDocs = get(documents).filter(doc => !doc.archivedAt)
+  const childrenByParent = new Map<string | null, typeof liveDocs>()
+  for (const doc of liveDocs) {
+    const siblings = childrenByParent.get(doc.parentId) ?? []
+    siblings.push(doc)
+    childrenByParent.set(doc.parentId, siblings)
+  }
+
+  const ids: string[] = []
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const parentId = queue.shift() ?? null
+    for (const child of childrenByParent.get(parentId) ?? []) {
+      if (child.nodeType === 'folder') {
+        queue.push(child.id)
+      } else {
+        ids.push(child.id)
+      }
+    }
+  }
+  return ids
+}
+
+export function selectedManualContextDocumentIds(): string[] {
+  const explicitIds = get(manualContextDocIds)
+  const excludedIds = new Set(get(manualContextExcludedDocIds))
+  const folderDocumentIds = get(manualContextFolderIds).flatMap(descendantDocumentIds)
+  return Array.from(new Set([...explicitIds, ...folderDocumentIds])).filter(id => !excludedIds.has(id))
+}
 
 activeDocId.subscribe((id) => {
   if (id === lastContextDocId) return
@@ -43,14 +112,16 @@ activeDocId.subscribe((id) => {
 })
 
 export async function refreshAiContext(): Promise<void> {
+  const wsId = get(workspaceId)
+  await loadPersistedContextSelection(wsId)
   // Preserve any include/exclude toggles the user made before re-collecting.
   const previousIncluded = new Map(get(aiContextCandidates).map(c => [c.id, c.included]))
 
   const candidates = await window.shell.ai.collectContext({
-    workspaceId: get(workspaceId),
+    workspaceId: wsId,
     activeDocumentId: get(activeDocId),
     includeDescendants: true,
-    selectedDocumentIds: get(manualContextDocIds),
+    selectedDocumentIds: selectedManualContextDocumentIds(),
     manualNote: get(manualContextNote)
   })
 
@@ -65,16 +136,46 @@ export async function refreshAiContext(): Promise<void> {
 
 export function setManualContextNote(note: string): void {
   manualContextNote.set(note)
+  void persistContextSelection()
   void refreshAiContext()
 }
 
 export function addContextDocument(documentId: string): void {
   manualContextDocIds.update(ids => ids.includes(documentId) ? ids : [...ids, documentId])
+  manualContextExcludedDocIds.update(ids => ids.filter(id => id !== documentId))
+  void persistContextSelection()
   void refreshAiContext()
 }
 
 export function removeContextDocument(documentId: string): void {
   manualContextDocIds.update(ids => ids.filter(id => id !== documentId))
+  manualContextExcludedDocIds.update(ids => ids.includes(documentId) ? ids : [...ids, documentId])
+  void persistContextSelection()
+  void refreshAiContext()
+}
+
+export function toggleContextDocument(documentId: string): void {
+  const selectedIds = new Set(selectedManualContextDocumentIds())
+  if (selectedIds.has(documentId)) {
+    removeContextDocument(documentId)
+  } else {
+    addContextDocument(documentId)
+  }
+}
+
+export function toggleContextFolder(folderId: string): void {
+  const selectedFolders = get(manualContextFolderIds)
+  const removing = selectedFolders.includes(folderId)
+  manualContextFolderIds.set(
+    removing
+      ? selectedFolders.filter(id => id !== folderId)
+      : [...selectedFolders, folderId]
+  )
+  if (!removing) {
+    const descendants = new Set(descendantDocumentIds(folderId))
+    manualContextExcludedDocIds.update(ids => ids.filter(id => !descendants.has(id)))
+  }
+  void persistContextSelection()
   void refreshAiContext()
 }
 
@@ -111,6 +212,31 @@ export async function loadAiTemplates(): Promise<void> {
 export function selectAiTemplate(id: string): void {
   if (!get(aiTemplates).some(template => template.id === id)) return
   selectedAiTemplateId.set(id)
+}
+
+export async function createAiTemplate(): Promise<AiPromptTemplate> {
+  const now = new Date().toISOString()
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `template-${Date.now()}`
+  const template: AiPromptTemplate = {
+    id,
+    workspaceId: get(workspaceId),
+    name: 'Untitled Prompt',
+    description: '',
+    body: 'Use the selected context to help with this writing task.\n\n{{text}}',
+    variables: ['text'],
+    defaultModel: get(selectedAiModel),
+    defaultTemperature: get(selectedAiTemperature),
+    contextPolicy: { includeSelectedContext: true },
+    tags: ['draft'],
+    createdAt: now,
+    updatedAt: now
+  }
+  const saved = await window.shell.ai.saveTemplate(template)
+  aiTemplates.update(templates => [saved, ...templates.filter(item => item.id !== saved.id)])
+  selectedAiTemplateId.set(saved.id)
+  return saved
 }
 
 export async function renameAiTemplate(id: string, name: string): Promise<void> {

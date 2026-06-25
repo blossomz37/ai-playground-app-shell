@@ -1,18 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
-  import { aiTemplates, loadAiTemplates, renameAiTemplate, selectAiTemplate, selectedAiTemplateId } from '../../store/ai'
+  import { aiTemplates, createAiTemplate, loadAiTemplates, refreshAiContext, renameAiTemplate, selectAiTemplate, selectedAiTemplateId } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
   let renamingTemplateId = $state<string | null>(null)
+  let activeTab = $state<'templates' | 'context'>('templates')
 
   onMount(async () => {
-    await loadAiTemplates()
+    await Promise.all([loadAiTemplates(), refreshAiContext()])
   })
 
   async function createTemplate(): Promise<void> {
-    await window.shell.commands.execute('promptstudio.new')
-    addToast('info', 'New prompt template requested')
+    const template = await createAiTemplate()
+    renamingTemplateId = template.id
+    activeTab = 'templates'
+    addToast('info', 'New prompt template created.')
   }
 
   function startRename(event: MouseEvent, id: string): void {
@@ -39,45 +43,56 @@
 
 <div class="nav-view">
   <header class="zone-header">
-    <h2 class="zone-title">Templates</h2>
+    <h2 class="zone-title">Prompts</h2>
     <button class="btn-icon" title="New Template" onclick={createTemplate}>
-      <span class="icon">➕</span>
+      <span class="icon">+</span>
     </button>
   </header>
 
-  <div class="template-list">
-    {#each $aiTemplates as template (template.id)}
-      <div
-        class="template-item"
-        class:active={$selectedAiTemplateId === template.id}
-      >
-        {#if renamingTemplateId === template.id}
-          <InlineRename
-            value={template.name}
-            ariaLabel="Rename prompt template"
-            onCommit={(name) => commitRename(template.id, name)}
-            onCancel={cancelRename}
-          />
-        {:else}
-          <button type="button" class="template-open" onclick={() => selectAiTemplate(template.id)}>
-            <div class="template-title">{template.name}</div>
-            <div class="template-meta">{template.tags.join(', ') || 'Prompt template'}</div>
-          </button>
-          <button
-            type="button"
-            class="row-action"
-            title="Rename"
-            aria-label={`Rename ${template.name}`}
-            onclick={(event) => startRename(event, template.id)}
-          >
-            ✎
-          </button>
-        {/if}
-      </div>
-    {:else}
-      <div class="template-empty">No templates</div>
-    {/each}
+  <div class="nav-tabs" role="tablist" aria-label="Prompt Studio navigation">
+    <button type="button" role="tab" class:active={activeTab === 'templates'} onclick={() => activeTab = 'templates'}>Templates</button>
+    <button type="button" role="tab" class:active={activeTab === 'context'} onclick={() => activeTab = 'context'}>Context</button>
   </div>
+
+  {#if activeTab === 'templates'}
+    <div class="template-list">
+      {#each $aiTemplates as template (template.id)}
+        <div
+          class="template-item"
+          class:active={$selectedAiTemplateId === template.id}
+        >
+          {#if renamingTemplateId === template.id}
+            <InlineRename
+              value={template.name}
+              ariaLabel="Rename prompt template"
+              onCommit={(name) => commitRename(template.id, name)}
+              onCancel={cancelRename}
+            />
+          {:else}
+            <button type="button" class="template-open" onclick={() => selectAiTemplate(template.id)}>
+              <div class="template-title">{template.name}</div>
+              <div class="template-meta">{template.tags.join(', ') || 'Prompt template'}</div>
+            </button>
+            <button
+              type="button"
+              class="row-action"
+              title="Rename"
+              aria-label={`Rename ${template.name}`}
+              onclick={(event) => startRename(event, template.id)}
+            >
+              Edit
+            </button>
+          {/if}
+        </div>
+      {:else}
+        <div class="template-empty">No templates</div>
+      {/each}
+    </div>
+  {:else}
+    <div class="context-panel">
+      <AiContextPicker />
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -107,6 +122,29 @@
   .btn-icon:hover {
     background: var(--color-bg-hover);
     color: var(--color-fg-default);
+  }
+
+  .nav-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .nav-tabs button {
+    min-width: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
+    text-align: center;
+  }
+
+  .nav-tabs button:hover,
+  .nav-tabs button.active {
+    background: var(--color-bg-active);
+    color: var(--color-fg-primary);
   }
 
   .template-list {
@@ -145,10 +183,11 @@
   }
 
   .row-action {
-    width: 22px;
+    width: 34px;
     height: 22px;
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
     opacity: 0;
   }
 
@@ -178,5 +217,12 @@
     padding: var(--space-3);
     color: var(--color-fg-muted);
     font-size: var(--font-size-sm);
+  }
+
+  .context-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-3);
   }
 </style>

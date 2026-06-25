@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import type { DocumentAnnotation, DocumentAnnotationStatus, DocumentAnnotationTarget, DocumentSourceMetadata, DocVersion } from '@shared/module-contract'
   import { documentKindFromValue, documentKindValue, labelForDocumentKind, UNCATEGORIZED_KIND_LABEL, UNCATEGORIZED_KIND_VALUE } from '@shared/document-kinds'
   import {
@@ -10,10 +11,11 @@
   type SourceField = { label: string; value: string; title?: string }
   type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
   type AnnotationFilter = DocumentAnnotationStatus
-  type InspectorSectionId = 'annotations' | 'versions' | 'metadata'
+  type InspectorSectionId = 'context' | 'annotations' | 'versions' | 'metadata'
 
   let annotationFilter = $state<AnnotationFilter>('active')
   let collapsedSections = $state<Record<InspectorSectionId, boolean>>({
+    context: false,
     annotations: true,
     versions: true,
     metadata: true
@@ -220,13 +222,31 @@
       <button
         type="button"
         class="section-header section-toggle"
+        aria-expanded={sectionOpen('context')}
+        aria-controls="documents-inspector-context"
+        onclick={() => toggleSection('context')}
+      >
+        <span class="section-title">AI Context</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('context') ? '^' : 'v'}</span>
+      </button>
+      {#if sectionOpen('context')}
+        <div id="documents-inspector-context" class="section-body">
+          <AiContextPicker />
+        </div>
+      {/if}
+    </section>
+
+    <section class="section">
+      <button
+        type="button"
+        class="section-header section-toggle"
         aria-expanded={sectionOpen('annotations')}
         aria-controls="documents-inspector-annotations"
         onclick={() => toggleSection('annotations')}
       >
         <span class="section-title">Annotations</span>
         <span class="section-meta">{$annotations.filter(annotation => annotation.deletedAt === null).length}</span>
-        <span class="section-chevron" aria-hidden="true">{sectionOpen('annotations') ? '⌃' : '⌄'}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('annotations') ? '^' : 'v'}</span>
       </button>
       {#if sectionOpen('annotations')}
         <div id="documents-inspector-annotations">
@@ -304,7 +324,7 @@
       >
         <span class="section-title">Version History</span>
         <span class="section-meta">{$versions.length}</span>
-        <span class="section-chevron" aria-hidden="true">{sectionOpen('versions') ? '⌃' : '⌄'}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('versions') ? '^' : 'v'}</span>
       </button>
       {#if sectionOpen('versions')}
         <div id="documents-inspector-versions" class="section-body">
@@ -337,7 +357,7 @@
         onclick={() => toggleSection('metadata')}
       >
         <span class="section-title">Metadata</span>
-        <span class="section-chevron" aria-hidden="true">{sectionOpen('metadata') ? '⌃' : '⌄'}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('metadata') ? '^' : 'v'}</span>
       </button>
       {#if sectionOpen('metadata')}
       <div id="documents-inspector-metadata" class="section-body">

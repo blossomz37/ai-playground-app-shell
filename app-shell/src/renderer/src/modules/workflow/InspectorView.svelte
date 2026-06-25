@@ -1,11 +1,13 @@
 <!-- Workflow InspectorView — chain configuration -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import {
     aiProviders,
     aiSecretNames,
     loadAiProviders,
     modelOptionsForProvider,
+    refreshAiContext,
     selectAiModel,
     selectAiProvider,
     selectedAiModel,
@@ -24,6 +26,7 @@
 
   onMount(() => {
     void loadAiProviders()
+    void refreshAiContext()
   })
 </script>
 
@@ -61,6 +64,10 @@
       <span class="meta-label">Context</span><span class="meta-value">Selected candidates</span>
       <span class="meta-label">Chain</span><span class="meta-value">{$selectedWorkflowProfile.status}</span>
     </div>
+  </section>
+  <section class="section">
+    <h3 class="section-title">Context</h3>
+    <AiContextPicker />
   </section>
   <section class="section">
     <h3 class="section-title">Options</h3>

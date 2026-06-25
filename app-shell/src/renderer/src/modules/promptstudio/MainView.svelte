@@ -2,7 +2,6 @@
   import { onDestroy, onMount } from 'svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
-  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import type { AiPreview } from '@shared/ai'
   import { aiBusy, invokeAi, previewAi, loadAiTemplates, refreshAiContext, renameAiTemplate, selectedAiTemplate } from '../../store/ai'
   import { addToast } from '../../store/toasts'
@@ -106,10 +105,6 @@
       </div>
     </section>
 
-    <section class="template-section context-section">
-      <AiContextPicker />
-    </section>
-
     {#if preview}
       <section class="template-section preview-section">
         <div class="section-title preview-title">
@@ -210,10 +205,6 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-  }
-
-  .context-section {
-    flex: 0 0 auto;
   }
 
   .preview-section {
