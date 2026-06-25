@@ -1,6 +1,6 @@
 {{selected_documents}}
 
-{{words_before}}
+{{before}}
 
 Revise the current chapter according to the [CHAPTER EDITING PLAN]. Only change what is needed to suit the plan. Do not add items not mentioned in the chapter. Remove excessive metaphors and similes that make the prose sound robotic. Maintain the same tone and style per the Writing Style Guidelines. Use only nonstandard dialogue tags and avoid cliche endings.
 

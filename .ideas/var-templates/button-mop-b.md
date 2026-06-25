@@ -1,6 +1,6 @@
 {{selected_documents}}
 
-{{words_before}}
+{{before}}
 
 Using the [MANUSCRIPT OVERHAUL PLAN] as your guiding document, please produce a detailed Editing Plan for the current chapter. Keep the following points in mind:
 

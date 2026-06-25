@@ -1,6 +1,6 @@
 {{selected_documents}}
 
-{{words_before}}
+{{before}}
 
 Read this novel and using what you know about the genre, produce a Manuscript Overhaul Plan with specific details about any areas in this manuscript that need addressing. Your goal is to provide specific, meaningful feedback that will help elevate this to the level of an acquisitions editor at a top publishing company.
 
