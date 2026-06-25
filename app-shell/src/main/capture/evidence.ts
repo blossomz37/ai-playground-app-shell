@@ -23,6 +23,9 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const moduleId = process.env['SHELL_CAPTURE_MODULE']
   const documentId = process.env['SHELL_CAPTURE_DOCUMENT']
   const aiPrompt = process.env['SHELL_CAPTURE_AI_PROMPT']
+  const aiPreviewPrompt = process.env['SHELL_CAPTURE_AI_PREVIEW_PROMPT']
+  const aiPreviewVariablesJson = process.env['SHELL_CAPTURE_AI_PREVIEW_VARIABLES']
+  const aiPreviewWritingVariablesJson = process.env['SHELL_CAPTURE_AI_PREVIEW_WRITING_VARIABLES']
   const aiProviderId = process.env['SHELL_CAPTURE_AI_PROVIDER']
   const aiModel = process.env['SHELL_CAPTURE_AI_MODEL']
   const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
@@ -198,6 +201,36 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             })
           })()
         `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (aiPreviewPrompt) {
+        const preview = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const contextCandidates = await window.shell.ai.collectContext({
+              workspaceId: workspace.id,
+              activeDocumentId: ${JSON.stringify(documentId ?? null)},
+              includeDescendants: true
+            })
+            const parseJson = (value) => {
+              if (!value) return undefined
+              try { return JSON.parse(value) } catch { return undefined }
+            }
+            return window.shell.ai.preview({
+              workspaceId: workspace.id,
+              moduleId: ${JSON.stringify(moduleId ?? 'shell.aichat')},
+              originType: 'template',
+              originId: 'capture-preview',
+              prompt: ${JSON.stringify(aiPreviewPrompt)},
+              variables: parseJson(${JSON.stringify(aiPreviewVariablesJson)}),
+              writingVariables: parseJson(${JSON.stringify(aiPreviewWritingVariablesJson)}),
+              providerId: ${JSON.stringify(aiProviderId ?? undefined)},
+              model: ${JSON.stringify(aiModel ?? undefined)},
+              contextCandidates
+            })
+          })()
+        `)
+        console.log('[SHELL_CAPTURE_AI_PREVIEW]', JSON.stringify(preview))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (moduleId) {

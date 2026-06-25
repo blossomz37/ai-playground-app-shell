@@ -1,4 +1,5 @@
 import type { AiContextCandidate, InvokeAiParams } from '@shared/ai'
+import { buildAiInput } from './prompt-builder'
 
 function summarizeContext(candidates: AiContextCandidate[]): string {
   const included = candidates.filter(c => c.included)
@@ -12,24 +13,20 @@ function summarizeContext(candidates: AiContextCandidate[]): string {
 
 export async function runMockProvider(
   params: InvokeAiParams,
-  candidates: AiContextCandidate[]
+  candidates: AiContextCandidate[],
+  renderedContext = ''
 ): Promise<string> {
-  const variables = Object.entries(params.variables ?? {})
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n')
-
   const contextSummary = summarizeContext(candidates)
-  const promptPreview = params.prompt.trim().slice(0, 500)
+  const renderedPrompt = buildAiInput(params, candidates, renderedContext)
 
   return [
     `Mock ${params.originType} run complete.`,
     '',
-    'Prompt:',
-    promptPreview || '(empty prompt)',
+    'Rendered prompt:',
+    renderedPrompt.trim().slice(0, 1200) || '(empty prompt)',
     '',
     'Included context:',
     contextSummary,
-    variables ? `\nVariables:\n${variables}` : '',
     '',
     'This response came from the shared AI orchestration layer, so Chat, Prompt Studio, and Workflow Runner can exercise the same run/context pipeline before live model wiring is added.'
   ].filter(Boolean).join('\n')

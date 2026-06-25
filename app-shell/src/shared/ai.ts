@@ -143,6 +143,16 @@ export interface CollectAiContextParams {
   manualNote?: string
 }
 
+export interface AiWritingVariables {
+  selectedText?: string
+  userInput?: string
+  before?: string
+  after?: string
+  activeDocumentTitle?: string
+  documentKind?: string
+  workspaceName?: string
+}
+
 export interface InvokeAiParams {
   workspaceId: string
   moduleId: string
@@ -150,6 +160,7 @@ export interface InvokeAiParams {
   originId?: string
   prompt: string
   variables?: Record<string, string>
+  writingVariables?: AiWritingVariables
   contextCandidates?: AiContextCandidate[]
   providerId?: AiProviderId
   model?: string

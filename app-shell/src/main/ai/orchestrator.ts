@@ -215,7 +215,7 @@ export const aiOrchestrator = {
     try {
       const output = provider.providerId === 'openai-responses'
         ? await runOpenAiProvider({ params: invokeParams, provider, candidates, renderedContext: renderedText })
-        : await runMockProvider(invokeParams, candidates)
+        : await runMockProvider(invokeParams, candidates, renderedText)
       const completed = aiRepository.completeRun(run.id, output)
       events.emit('ai.run.completed', completed)
       return { run: completed, contextPack }
