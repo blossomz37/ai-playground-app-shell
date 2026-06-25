@@ -8,14 +8,18 @@ import type {
   AiProviderId,
   AiPromptTemplate,
   AiRun,
+  AiWritingVariables,
   InvokeAiParams
 } from '@shared/ai'
+import type { DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
+import { documentsAiPromptTemplateId } from '@shared/ai-writing-prompts'
 import { activeDocId, activeWorkspace, demoModeEnabled, documents, selectDoc, workspaceId } from './index'
 import { addToast } from './toasts'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
 export const aiTemplates = writable<AiPromptTemplate[]>([])
+export const archivedAiTemplates = writable<AiPromptTemplate[]>([])
 export const selectedAiTemplateId = writable<string | null>(null)
 export const selectedAiTemplate = derived(
   [aiTemplates, selectedAiTemplateId],
@@ -204,12 +208,24 @@ export async function loadAiRuns(moduleId?: string): Promise<void> {
 }
 
 export async function loadAiTemplates(): Promise<void> {
-  const templates = await window.shell.ai.templates(get(workspaceId))
+  const [templates, archivedTemplates] = await Promise.all([
+    window.shell.ai.templates(get(workspaceId)),
+    window.shell.ai.archivedTemplates(get(workspaceId))
+  ])
   aiTemplates.set(templates)
+  archivedAiTemplates.set(archivedTemplates)
   const selectedId = get(selectedAiTemplateId)
   if (!selectedId || !templates.some(template => template.id === selectedId)) {
     selectedAiTemplateId.set(templates[0]?.id ?? null)
   }
+}
+
+function promptVariables(body: string): string[] {
+  return Array.from(new Set(
+    Array.from(body.matchAll(/{{\s*([a-zA-Z0-9_]+)\s*}}/g))
+      .map(match => match[1])
+      .filter((value): value is string => Boolean(value))
+  ))
 }
 
 export function selectAiTemplate(id: string): void {
@@ -233,8 +249,10 @@ export async function createAiTemplate(): Promise<AiPromptTemplate> {
     defaultTemperature: get(selectedAiTemperature),
     contextPolicy: { includeSelectedContext: true },
     tags: ['draft'],
+    isProtected: false,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    archivedAt: null
   }
   const saved = await window.shell.ai.saveTemplate(template)
   aiTemplates.update(templates => [saved, ...templates.filter(item => item.id !== saved.id)])
@@ -252,6 +270,66 @@ export async function renameAiTemplate(id: string, name: string): Promise<void> 
   })
   aiTemplates.update(templates => templates.map(template => template.id === id ? updated : template))
   selectedAiTemplateId.set(id)
+}
+
+export async function saveAiTemplateBody(template: AiPromptTemplate, body: string): Promise<AiPromptTemplate> {
+  const saved = await window.shell.ai.saveTemplate({
+    ...template,
+    body,
+    variables: promptVariables(body)
+  })
+  aiTemplates.update(templates => templates.map(item => item.id === saved.id ? saved : item))
+  selectedAiTemplateId.set(saved.id)
+  return saved
+}
+
+export async function duplicateAiTemplate(id: string): Promise<AiPromptTemplate> {
+  const duplicated = await window.shell.ai.duplicateTemplate({
+    workspaceId: get(workspaceId),
+    id
+  })
+  aiTemplates.update(templates => [duplicated, ...templates])
+  selectedAiTemplateId.set(duplicated.id)
+  return duplicated
+}
+
+export async function archiveAiTemplate(id: string): Promise<void> {
+  const archived = await window.shell.ai.archiveTemplate({
+    workspaceId: get(workspaceId),
+    id
+  })
+  aiTemplates.update(templates => templates.filter(template => template.id !== id))
+  archivedAiTemplates.update(templates => [archived, ...templates.filter(template => template.id !== id)])
+  if (get(selectedAiTemplateId) === id) {
+    selectedAiTemplateId.set(get(aiTemplates)[0]?.id ?? null)
+  }
+}
+
+export async function restoreAiTemplate(id: string): Promise<void> {
+  const restored = await window.shell.ai.restoreTemplate({
+    workspaceId: get(workspaceId),
+    id
+  })
+  archivedAiTemplates.update(templates => templates.filter(template => template.id !== id))
+  aiTemplates.update(templates => [restored, ...templates.filter(template => template.id !== id)])
+  selectedAiTemplateId.set(restored.id)
+}
+
+export async function deleteAiTemplate(id: string): Promise<void> {
+  await window.shell.ai.deleteTemplate({
+    workspaceId: get(workspaceId),
+    id
+  })
+  aiTemplates.update(templates => templates.filter(template => template.id !== id))
+  archivedAiTemplates.update(templates => templates.filter(template => template.id !== id))
+  if (get(selectedAiTemplateId) === id) {
+    selectedAiTemplateId.set(get(aiTemplates)[0]?.id ?? null)
+  }
+}
+
+export function documentsAiTemplateForAction(action: DocumentsAiPromptAction): AiPromptTemplate | null {
+  const id = documentsAiPromptTemplateId(get(workspaceId), action)
+  return get(aiTemplates).find(template => template.id === id) ?? null
 }
 
 export async function loadAiProviders(): Promise<void> {
@@ -331,6 +409,7 @@ interface AiRequestParams {
   originId?: string
   prompt: string
   variables?: Record<string, string>
+  writingVariables?: AiWritingVariables
   providerId?: AiProviderId
   model?: string
   temperature?: number
@@ -425,6 +504,7 @@ function buildAiPayload(params: AiRequestParams): InvokeAiParams {
     originId: params.originId,
     prompt: params.prompt,
     variables: params.variables,
+    writingVariables: params.writingVariables,
     providerId: params.providerId ?? get(selectedAiProviderId),
     model: params.model ?? get(selectedAiModel),
     temperature: params.temperature ?? get(selectedAiTemperature),

@@ -3,7 +3,16 @@
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import type { AiPreview } from '@shared/ai'
-  import { aiBusy, invokeAi, previewAi, loadAiTemplates, refreshAiContext, renameAiTemplate, selectedAiTemplate } from '../../store/ai'
+  import {
+    aiBusy,
+    invokeAi,
+    previewAi,
+    loadAiTemplates,
+    refreshAiContext,
+    renameAiTemplate,
+    saveAiTemplateBody,
+    selectedAiTemplate
+  } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
@@ -16,6 +25,7 @@
   let renamingTemplate = $state(false)
   let activeTemplate = $derived($selectedAiTemplate)
   let templateName = $derived(activeTemplate?.name ?? 'No template selected')
+  let promptDirty = $derived(Boolean(activeTemplate && promptText !== activeTemplate.body))
   let hydratedTemplateId: string | null = null
   let templateUnsubscribe: (() => void) | null = null
 
@@ -61,6 +71,12 @@
     }
   }
 
+  async function saveTemplate(): Promise<void> {
+    if (!activeTemplate) return
+    await saveAiTemplateBody(activeTemplate, promptText)
+    addToast('info', 'Prompt template saved.')
+  }
+
   async function commitRename(name: string): Promise<void> {
     if (!activeTemplate) return
     if (!name) {
@@ -88,8 +104,14 @@
           {templateName}
         </button>
       {/if}
+      {#if activeTemplate?.isProtected}
+        <span class="protected-badge">Built-in action</span>
+      {/if}
     </div>
     <div class="actions">
+      <button class="btn" onclick={saveTemplate} disabled={!activeTemplate || !promptDirty}>
+        Save
+      </button>
       <button class="btn" onclick={previewTemplate} disabled={$aiBusy}>
         Preview Prompt
       </button>
@@ -154,6 +176,9 @@
 
   .title-block {
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .template-title-button {
@@ -181,6 +206,17 @@
   .btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+
+  .protected-badge {
+    flex-shrink: 0;
+    padding: 2px var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
   }
 
   .btn.primary {

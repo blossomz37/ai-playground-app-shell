@@ -15,11 +15,12 @@
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
-  import { previewAi, refreshAiContext } from '../../store/ai'
+  import { documentsAiTemplateForAction, loadAiTemplates, previewAi, refreshAiContext } from '../../store/ai'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
   import type { AiPreview } from '@shared/ai'
+  import { documentsAiPromptDefinition, type DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
   import {
     findDocumentMatches,
     normalizeDocumentSearchState,
@@ -42,8 +43,6 @@
     count: number
     matches: DocumentSearchMatch[]
   }
-
-  type DocumentsAiPreviewAction = 'rewrite-selection' | 'continue-from-cursor' | 'summarize-active-document'
 
   let element: HTMLDivElement | null = null
   let secondaryElement: HTMLDivElement | null = null
@@ -157,63 +156,13 @@
     return cleaned.length > max ? `${cleaned.slice(0, max - 3)}...` : cleaned
   }
 
-  function promptForAiAction(action: DocumentsAiPreviewAction): string {
-    if (action === 'rewrite-selection') {
-      return [
-        'Rewrite the selected passage while preserving the document voice.',
-        '',
-        'Instruction: {{user_input}}',
-        '',
-        'Selected text:',
-        '{{selected_text}}',
-        '',
-        'Before the selection:',
-        '{{before}}',
-        '',
-        'After the selection:',
-        '{{after}}',
-        '',
-        'Selected context documents:',
-        '{{selected_documents}}'
-      ].join('\n')
-    }
-
-    if (action === 'continue-from-cursor') {
-      return [
-        'Continue the active document from the cursor in the same voice and continuity.',
-        '',
-        'Instruction: {{user_input}}',
-        '',
-        'Text before the cursor:',
-        '{{before}}',
-        '',
-        'Text after the cursor:',
-        '{{after}}',
-        '',
-        'Selected context documents:',
-        '{{selected_documents}}'
-      ].join('\n')
-    }
-
-    return [
-      'Summarize the active document for a working writer.',
-      '',
-      'Title: {{active_document_title}}',
-      'Kind: {{document_kind}}',
-      'Workspace: {{workspace_name}}',
-      '',
-      'Document and selected context:',
-      '{{selected_documents}}'
-    ].join('\n')
-  }
-
-  function labelForAiAction(action: DocumentsAiPreviewAction): string {
+  function labelForAiAction(action: DocumentsAiPromptAction): string {
     if (action === 'rewrite-selection') return 'Rewrite selection'
     if (action === 'continue-from-cursor') return 'Continue from cursor'
     return 'Summarize active document'
   }
 
-  async function previewDocumentAi(action: DocumentsAiPreviewAction): Promise<void> {
+  async function previewDocumentAi(action: DocumentsAiPromptAction): Promise<void> {
     if (!$activeDoc || !writingContext) return
     if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
       addToast('warn', 'Select text before previewing a rewrite.')
@@ -225,12 +174,14 @@
     aiPreviewLabel = labelForAiAction(action)
     try {
       refreshWritingContext()
-      await refreshAiContext()
+      await Promise.all([refreshAiContext(), loadAiTemplates()])
+      const template = documentsAiTemplateForAction(action)
+      const fallback = documentsAiPromptDefinition(action)
       aiPreview = await previewAi({
         moduleId: 'shell.documents',
         originType: 'template',
-        originId: `documents.${action}`,
-        prompt: promptForAiAction(action),
+        originId: template?.id ?? `documents.${action}`,
+        prompt: template?.body ?? fallback.body,
         writingVariables: {
           ...writingContext.writingVariables,
           userInput: aiUserInput
@@ -874,7 +825,7 @@
     window.addEventListener('shell:capture-document-selection', captureSelectionListener)
 
     captureAiPreviewListener = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPreviewAction; userInput: string }>>).detail ?? {}
+      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string }>>).detail ?? {}
       if (typeof detail.userInput === 'string') aiUserInput = detail.userInput
       const action = detail.action
       if (

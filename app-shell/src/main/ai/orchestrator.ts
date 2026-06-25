@@ -7,6 +7,7 @@ import type {
   AiPreview,
   AiProvider,
   AiPromptTemplate,
+  AiPromptTemplateLifecycleParams,
   AppendAiMessageParams,
   CollectAiContextParams,
   CreateAiConversationParams,
@@ -280,11 +281,31 @@ export const aiOrchestrator = {
     return aiRepository.listTemplates(workspaceId)
   },
 
+  listArchivedTemplates(workspaceId: string): AiPromptTemplate[] {
+    return aiRepository.listArchivedTemplates(workspaceId)
+  },
+
   saveTemplate(template: AiPromptTemplate): AiPromptTemplate {
     return aiRepository.saveTemplate(template)
   },
 
   renameTemplate(params: RenameAiPromptTemplateParams): AiPromptTemplate {
     return aiRepository.renameTemplate(params)
+  },
+
+  duplicateTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    return aiRepository.duplicateTemplate(params)
+  },
+
+  archiveTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    return aiRepository.archiveTemplate(params)
+  },
+
+  restoreTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    return aiRepository.restoreTemplate(params)
+  },
+
+  deleteTemplate(params: AiPromptTemplateLifecycleParams): { id: string } {
+    return aiRepository.deleteTemplate(params)
   }
 }

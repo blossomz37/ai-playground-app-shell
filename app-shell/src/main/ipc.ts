@@ -42,6 +42,7 @@ import { getCommandHandler } from './modules/context'
 import { themeStartupBackground, toNativeThemeSource } from './core/theme'
 import type {
   AiConversationLifecycleParams,
+  AiPromptTemplateLifecycleParams,
   AiPromptTemplate,
   AppendAiMessageParams,
   CollectAiContextParams,
@@ -341,12 +342,32 @@ export function registerIpcHandlers(): void {
     aiOrchestrator.listTemplates(workspaceId)
   )
 
+  ipcMain.handle('ai:templates:archived', (_e, { workspaceId }: { workspaceId: string }) =>
+    aiOrchestrator.listArchivedTemplates(workspaceId)
+  )
+
   ipcMain.handle('ai:templates:save', (_e, template: AiPromptTemplate) =>
     aiOrchestrator.saveTemplate(template)
   )
 
   ipcMain.handle('ai:templates:rename', (_e, params: RenameAiPromptTemplateParams) =>
     aiOrchestrator.renameTemplate(params)
+  )
+
+  ipcMain.handle('ai:templates:duplicate', (_e, params: AiPromptTemplateLifecycleParams) =>
+    aiOrchestrator.duplicateTemplate(params)
+  )
+
+  ipcMain.handle('ai:templates:archive', (_e, params: AiPromptTemplateLifecycleParams) =>
+    aiOrchestrator.archiveTemplate(params)
+  )
+
+  ipcMain.handle('ai:templates:restore', (_e, params: AiPromptTemplateLifecycleParams) =>
+    aiOrchestrator.restoreTemplate(params)
+  )
+
+  ipcMain.handle('ai:templates:delete', (_e, params: AiPromptTemplateLifecycleParams) =>
+    aiOrchestrator.deleteTemplate(params)
   )
 
   // ── Assets ───────────────────────────────────────────────────────────────

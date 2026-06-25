@@ -147,8 +147,10 @@ function createBrowserShell(): ShellApi {
         defaultTemperature: 0.7,
         contextPolicy: { includeActiveDocument: true },
         tags: ['starter', 'summary'],
+        isProtected: false,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        archivedAt: null
       }]
     : []
   const aiConversations: AiConversation[] = []
@@ -711,7 +713,8 @@ function createBrowserShell(): ShellApi {
       runs: async (params) => aiRuns
         .filter(run => !params.moduleId || run.moduleId === params.moduleId)
         .slice(0, params.limit ?? 12),
-      templates: async () => aiTemplates,
+      templates: async () => aiTemplates.filter(template => !template.archivedAt),
+      archivedTemplates: async () => aiTemplates.filter(template => template.archivedAt),
       saveTemplate: async (template) => {
         const existingIndex = aiTemplates.findIndex(item => item.id === template.id)
         if (existingIndex >= 0) {
@@ -727,6 +730,44 @@ function createBrowserShell(): ShellApi {
         template.name = params.name.trim()
         template.updatedAt = new Date().toISOString()
         return template
+      },
+      duplicateTemplate: async (params) => {
+        const template = aiTemplates.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!template) throw new Error('Prompt template not found.')
+        const copy = {
+          ...template,
+          id: `browser-template-${Date.now()}`,
+          name: `${template.name} Copy`,
+          isProtected: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null
+        }
+        aiTemplates.unshift(copy)
+        return copy
+      },
+      archiveTemplate: async (params) => {
+        const template = aiTemplates.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!template) throw new Error('Prompt template not found.')
+        if (template.isProtected) throw new Error('Built-in action prompts cannot be archived.')
+        template.archivedAt = new Date().toISOString()
+        template.updatedAt = template.archivedAt
+        return template
+      },
+      restoreTemplate: async (params) => {
+        const template = aiTemplates.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!template) throw new Error('Prompt template not found.')
+        template.archivedAt = null
+        template.updatedAt = new Date().toISOString()
+        return template
+      },
+      deleteTemplate: async (params) => {
+        const template = aiTemplates.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!template) throw new Error('Prompt template not found.')
+        if (template.isProtected) throw new Error('Built-in action prompts cannot be deleted.')
+        const index = aiTemplates.findIndex(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (index >= 0) aiTemplates.splice(index, 1)
+        return { id: params.id }
       },
       conversations: async (workspaceId) => aiConversations.filter(item => item.workspaceId === workspaceId && !item.archivedAt),
       archivedConversations: async (workspaceId) => aiConversations.filter(item => item.workspaceId === workspaceId && item.archivedAt),

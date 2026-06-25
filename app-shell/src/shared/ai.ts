@@ -59,8 +59,10 @@ export interface AiPromptTemplate {
   defaultTemperature: number
   contextPolicy: Record<string, unknown>
   tags: string[]
+  isProtected: boolean
   createdAt: string
   updatedAt: string
+  archivedAt: string | null
 }
 
 export interface AiRun {
@@ -210,6 +212,11 @@ export interface RenameAiPromptTemplateParams {
   workspaceId: string
   id: string
   name: string
+}
+
+export interface AiPromptTemplateLifecycleParams {
+  workspaceId: string
+  id: string
 }
 
 export interface ListAiProvidersParams {

@@ -8,6 +8,7 @@ import type {
   AiPreview,
   AiConversation,
   AiConversationLifecycleParams,
+  AiPromptTemplateLifecycleParams,
   AiChatMessage,
   AiProvider,
   AiPromptTemplate,
@@ -643,8 +644,13 @@ export interface ShellApi {
     providers(params: ListAiProvidersParams): Promise<AiProvider[]>
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
+    archivedTemplates(workspaceId: string): Promise<AiPromptTemplate[]>
     saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>
     renameTemplate(params: RenameAiPromptTemplateParams): Promise<AiPromptTemplate>
+    duplicateTemplate(params: AiPromptTemplateLifecycleParams): Promise<AiPromptTemplate>
+    archiveTemplate(params: AiPromptTemplateLifecycleParams): Promise<AiPromptTemplate>
+    restoreTemplate(params: AiPromptTemplateLifecycleParams): Promise<AiPromptTemplate>
+    deleteTemplate(params: AiPromptTemplateLifecycleParams): Promise<{ id: string }>
     conversations(workspaceId: string): Promise<AiConversation[]>
     archivedConversations(workspaceId: string): Promise<AiConversation[]>
     createConversation(params: CreateAiConversationParams): Promise<AiConversation>

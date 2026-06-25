@@ -138,8 +138,10 @@ function migrate(db: Database.Database): void {
       defaultTemperature  REAL NOT NULL DEFAULT 0.7,
       contextPolicyJson   TEXT NOT NULL,
       tagsJson            TEXT NOT NULL,
+      isProtected         INTEGER NOT NULL DEFAULT 0,
       createdAt           TEXT NOT NULL,
-      updatedAt           TEXT NOT NULL
+      updatedAt           TEXT NOT NULL,
+      archivedAt          TEXT
     );
 
     CREATE TABLE IF NOT EXISTS ai_runs (
@@ -293,6 +295,8 @@ function migrate(db: Database.Database): void {
   ensureColumn(db, 'documents', 'icon', 'TEXT')
   ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
   ensureColumn(db, 'ai_conversations', 'archivedAt', 'TEXT')
+  ensureColumn(db, 'ai_prompt_templates', 'isProtected', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_prompt_templates', 'archivedAt', 'TEXT')
   setupDocumentFts(db)
   const now = new Date().toISOString()
   db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)

@@ -2,11 +2,24 @@
   import { onMount } from 'svelte'
   import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
-  import { aiTemplates, createAiTemplate, loadAiTemplates, refreshAiContext, renameAiTemplate, selectAiTemplate, selectedAiTemplateId } from '../../store/ai'
+  import {
+    aiTemplates,
+    archiveAiTemplate,
+    archivedAiTemplates,
+    createAiTemplate,
+    deleteAiTemplate,
+    duplicateAiTemplate,
+    loadAiTemplates,
+    refreshAiContext,
+    renameAiTemplate,
+    restoreAiTemplate,
+    selectAiTemplate,
+    selectedAiTemplateId
+  } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
   let renamingTemplateId = $state<string | null>(null)
-  let activeTab = $state<'templates' | 'context'>('templates')
+  let activeTab = $state<'templates' | 'archive' | 'context'>('templates')
 
   onMount(async () => {
     await Promise.all([loadAiTemplates(), refreshAiContext()])
@@ -39,6 +52,33 @@
     selectAiTemplate(id)
     cancelRename()
   }
+
+  async function duplicateTemplate(event: MouseEvent, id: string): Promise<void> {
+    event.stopPropagation()
+    await duplicateAiTemplate(id)
+    activeTab = 'templates'
+    addToast('info', 'Prompt template duplicated.')
+  }
+
+  async function archiveTemplate(event: MouseEvent, id: string): Promise<void> {
+    event.stopPropagation()
+    await archiveAiTemplate(id)
+    addToast('info', 'Prompt template archived.')
+  }
+
+  async function restoreTemplate(event: MouseEvent, id: string): Promise<void> {
+    event.stopPropagation()
+    await restoreAiTemplate(id)
+    activeTab = 'templates'
+    addToast('info', 'Prompt template restored.')
+  }
+
+  async function deleteTemplate(event: MouseEvent, id: string, name: string): Promise<void> {
+    event.stopPropagation()
+    if (!window.confirm(`Delete "${name}" permanently?`)) return
+    await deleteAiTemplate(id)
+    addToast('info', 'Prompt template deleted.')
+  }
 </script>
 
 <div class="nav-view">
@@ -51,6 +91,7 @@
 
   <div class="nav-tabs" role="tablist" aria-label="Prompt Studio navigation">
     <button type="button" role="tab" class:active={activeTab === 'templates'} onclick={() => activeTab = 'templates'}>Templates</button>
+    <button type="button" role="tab" class:active={activeTab === 'archive'} onclick={() => activeTab = 'archive'}>Archive</button>
     <button type="button" role="tab" class:active={activeTab === 'context'} onclick={() => activeTab = 'context'}>Context</button>
   </div>
 
@@ -71,21 +112,85 @@
           {:else}
             <button type="button" class="template-open" onclick={() => selectAiTemplate(template.id)}>
               <div class="template-title">{template.name}</div>
-              <div class="template-meta">{template.tags.join(', ') || 'Prompt template'}</div>
+              <div class="template-meta">{template.isProtected ? 'Built-in action prompt' : template.tags.join(', ') || 'Prompt template'}</div>
             </button>
-            <button
-              type="button"
-              class="row-action"
-              title="Rename"
-              aria-label={`Rename ${template.name}`}
-              onclick={(event) => startRename(event, template.id)}
-            >
-              Edit
-            </button>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="row-action"
+                title="Rename"
+                aria-label={`Rename ${template.name}`}
+                onclick={(event) => startRename(event, template.id)}
+              >
+                Name
+              </button>
+              <button
+                type="button"
+                class="row-action"
+                title="Duplicate"
+                aria-label={`Duplicate ${template.name}`}
+                onclick={(event) => void duplicateTemplate(event, template.id)}
+              >
+                Copy
+              </button>
+              {#if !template.isProtected}
+                <button
+                  type="button"
+                  class="row-action"
+                  title="Archive"
+                  aria-label={`Archive ${template.name}`}
+                  onclick={(event) => void archiveTemplate(event, template.id)}
+                >
+                  Arc
+                </button>
+                <button
+                  type="button"
+                  class="row-action danger"
+                  title="Delete"
+                  aria-label={`Delete ${template.name}`}
+                  onclick={(event) => void deleteTemplate(event, template.id, template.name)}
+                >
+                  Del
+                </button>
+              {/if}
+            </div>
           {/if}
         </div>
       {:else}
         <div class="template-empty">No templates</div>
+      {/each}
+    </div>
+  {:else if activeTab === 'archive'}
+    <div class="template-list">
+      {#each $archivedAiTemplates as template (template.id)}
+        <div class="template-item">
+          <div class="template-open archived-template">
+            <div class="template-title">{template.name}</div>
+            <div class="template-meta">Archived {template.archivedAt ? new Date(template.archivedAt).toLocaleDateString() : ''}</div>
+          </div>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="row-action"
+              title="Restore"
+              aria-label={`Restore ${template.name}`}
+              onclick={(event) => void restoreTemplate(event, template.id)}
+            >
+              Restore
+            </button>
+            <button
+              type="button"
+              class="row-action danger"
+              title="Delete"
+              aria-label={`Delete ${template.name}`}
+              onclick={(event) => void deleteTemplate(event, template.id, template.name)}
+            >
+              Del
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="template-empty">No archived templates</div>
       {/each}
     </div>
   {:else}
@@ -126,7 +231,7 @@
 
   .nav-tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-1);
     padding: var(--space-2);
     border-bottom: 1px solid var(--color-border);
@@ -155,7 +260,7 @@
 
   .template-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 24px;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--space-1);
     width: 100%;
@@ -182,9 +287,21 @@
     cursor: pointer;
   }
 
+  .archived-template {
+    cursor: default;
+  }
+
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+
   .row-action {
-    width: 34px;
+    min-width: 34px;
     height: 22px;
+    padding: 0 5px;
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
@@ -200,6 +317,10 @@
   .row-action:hover {
     background: var(--color-bg-overlay);
     color: var(--color-fg-primary);
+  }
+
+  .row-action.danger:hover {
+    color: var(--color-error, #cf222e);
   }
 
   .template-title {

@@ -6,6 +6,7 @@ import type {
   AiConversation,
   AiProvider,
   AiPromptTemplate,
+  AiPromptTemplateLifecycleParams,
   AiRun,
   AiRunStatus,
   AppendAiMessageParams,
@@ -16,6 +17,10 @@ import type {
   RenameAiConversationParams,
   RenameAiPromptTemplateParams
 } from '@shared/ai'
+import {
+  DOCUMENTS_AI_PROMPT_DEFINITIONS,
+  createDocumentsAiPromptTemplate
+} from '@shared/ai-writing-prompts'
 import { getDb } from '../core/db'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
@@ -75,8 +80,10 @@ function templateFromRow(row: Record<string, unknown>): AiPromptTemplate {
     defaultTemperature: Number(row.defaultTemperature),
     contextPolicy: parseJson(String(row.contextPolicyJson), {}),
     tags: parseJson(String(row.tagsJson), []),
+    isProtected: Number(row.isProtected ?? 0) === 1,
     createdAt: String(row.createdAt),
-    updatedAt: String(row.updatedAt)
+    updatedAt: String(row.updatedAt),
+    archivedAt: row.archivedAt == null ? null : String(row.archivedAt)
   }
 }
 
@@ -200,10 +207,49 @@ export const aiRepository = {
         defaultTemperature: 0.7,
         contextPolicy: { includeActiveDocument: true },
         tags: ['starter', 'summary'],
+        isProtected: false,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        archivedAt: null
       })
     }
+
+    for (const definition of DOCUMENTS_AI_PROMPT_DEFINITIONS) {
+      const template = createDocumentsAiPromptTemplate({
+        workspaceId,
+        action: definition.action,
+        now,
+        defaultModel: demoMode ? 'mock-durable-context-v1' : 'gpt-4.1-mini'
+      })
+      this.ensureProtectedTemplate(template)
+    }
+  },
+
+  ensureProtectedTemplate(template: AiPromptTemplate): void {
+    const db = getDb()
+    db.prepare(`
+      INSERT INTO ai_prompt_templates
+        (id, workspaceId, name, description, body, variablesJson, defaultModel, defaultTemperature, contextPolicyJson, tagsJson, isProtected, createdAt, updatedAt, archivedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        isProtected = 1,
+        archivedAt = NULL
+    `).run(
+      template.id,
+      template.workspaceId,
+      template.name,
+      template.description,
+      template.body,
+      JSON.stringify(template.variables),
+      template.defaultModel,
+      template.defaultTemperature,
+      JSON.stringify(template.contextPolicy),
+      JSON.stringify(template.tags),
+      1,
+      template.createdAt,
+      template.updatedAt,
+      null
+    )
   },
 
   listProviders(workspaceId: string): AiProvider[] {
@@ -560,7 +606,23 @@ export const aiRepository = {
   listTemplates(workspaceId: string): AiPromptTemplate[] {
     this.ensureDefaults(workspaceId)
     return getDb()
-      .prepare('SELECT * FROM ai_prompt_templates WHERE workspaceId = ? ORDER BY updatedAt DESC')
+      .prepare(`
+        SELECT * FROM ai_prompt_templates
+        WHERE workspaceId = ? AND archivedAt IS NULL
+        ORDER BY isProtected DESC, updatedAt DESC
+      `)
+      .all(workspaceId)
+      .map(row => templateFromRow(row as Record<string, unknown>))
+  },
+
+  listArchivedTemplates(workspaceId: string): AiPromptTemplate[] {
+    this.ensureDefaults(workspaceId)
+    return getDb()
+      .prepare(`
+        SELECT * FROM ai_prompt_templates
+        WHERE workspaceId = ? AND archivedAt IS NOT NULL
+        ORDER BY archivedAt DESC, updatedAt DESC
+      `)
       .all(workspaceId)
       .map(row => templateFromRow(row as Record<string, unknown>))
   },
@@ -573,8 +635,8 @@ export const aiRepository = {
 
     db.prepare(`
       INSERT INTO ai_prompt_templates
-        (id, workspaceId, name, description, body, variablesJson, defaultModel, defaultTemperature, contextPolicyJson, tagsJson, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, workspaceId, name, description, body, variablesJson, defaultModel, defaultTemperature, contextPolicyJson, tagsJson, isProtected, createdAt, updatedAt, archivedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         description = excluded.description,
@@ -584,6 +646,8 @@ export const aiRepository = {
         defaultTemperature = excluded.defaultTemperature,
         contextPolicyJson = excluded.contextPolicyJson,
         tagsJson = excluded.tagsJson,
+        isProtected = CASE WHEN ai_prompt_templates.isProtected = 1 THEN 1 ELSE excluded.isProtected END,
+        archivedAt = excluded.archivedAt,
         updatedAt = excluded.updatedAt
     `).run(
       template.id,
@@ -596,14 +660,17 @@ export const aiRepository = {
       template.defaultTemperature,
       JSON.stringify(template.contextPolicy),
       JSON.stringify(template.tags),
+      template.isProtected ? 1 : 0,
       createdAt,
-      updatedAt
+      updatedAt,
+      template.archivedAt
     )
 
     return {
       ...template,
       createdAt,
-      updatedAt
+      updatedAt,
+      archivedAt: template.archivedAt ?? null
     }
   },
 
@@ -620,6 +687,64 @@ export const aiRepository = {
     `).run(name, updatedAt, params.id, params.workspaceId)
 
     const row = db
+      .prepare('SELECT * FROM ai_prompt_templates WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!row) throw new Error('Prompt template not found.')
+    return templateFromRow(row)
+  },
+
+  duplicateTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    const source = this.requireTemplate(params)
+    const now = new Date().toISOString()
+    const copy: AiPromptTemplate = {
+      ...source,
+      id: randomUUID(),
+      name: `${source.name} Copy`,
+      isProtected: false,
+      createdAt: now,
+      updatedAt: now,
+      archivedAt: null
+    }
+    return this.saveTemplate(copy)
+  },
+
+  archiveTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    const template = this.requireTemplate(params)
+    if (template.isProtected) throw new Error('Built-in action prompts cannot be archived.')
+
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_prompt_templates
+      SET archivedAt = ?, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(now, now, params.id, params.workspaceId)
+    return this.requireTemplate(params)
+  },
+
+  restoreTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_prompt_templates
+      SET archivedAt = NULL, updatedAt = ?
+      WHERE id = ? AND workspaceId = ?
+    `).run(now, params.id, params.workspaceId)
+    return this.requireTemplate(params)
+  },
+
+  deleteTemplate(params: AiPromptTemplateLifecycleParams): { id: string } {
+    const template = this.requireTemplate(params)
+    if (template.isProtected) throw new Error('Built-in action prompts cannot be deleted.')
+
+    getDb()
+      .prepare('DELETE FROM ai_prompt_templates WHERE id = ? AND workspaceId = ?')
+      .run(params.id, params.workspaceId)
+    return { id: params.id }
+  },
+
+  requireTemplate(params: AiPromptTemplateLifecycleParams): AiPromptTemplate {
+    const row = getDb()
       .prepare('SELECT * FROM ai_prompt_templates WHERE id = ? AND workspaceId = ?')
       .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
     if (!row) throw new Error('Prompt template not found.')
