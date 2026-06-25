@@ -14,7 +14,7 @@ import type {
 import type { ModuleListItem } from '@shared/module-contract'
 import { getModulePolicy, normalizeModuleEnabled, normalizeModuleVisible } from '@shared/module-policy'
 import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
-import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProvider, AiRun } from '@shared/ai'
+import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProposal, AiProvider, AiRun } from '@shared/ai'
 import { AI_API_KEY_REQUIRED_MESSAGE, DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 
 const MODULES = [
@@ -153,6 +153,7 @@ function createBrowserShell(): ShellApi {
         archivedAt: null
       }]
     : []
+  const aiProposals: AiProposal[] = []
   const aiConversations: AiConversation[] = []
   const assetRows: AssetRecord[] = []
   let enabledModuleIds = normalizeEnabledIds(normalizePersistedModuleIds(settings.get(MODULE_ENABLED_KEY), MODULES.map(module => module.id)))
@@ -713,6 +714,53 @@ function createBrowserShell(): ShellApi {
       runs: async (params) => aiRuns
         .filter(run => !params.moduleId || run.moduleId === params.moduleId)
         .slice(0, params.limit ?? 12),
+      proposals: async (params) => aiProposals
+        .filter(proposal =>
+          proposal.workspaceId === params.workspaceId &&
+          (!params.targetDocumentId || proposal.targetDocumentId === params.targetDocumentId) &&
+          (!params.status || proposal.status === params.status)
+        ),
+      createProposal: async (params) => {
+        const createdAt = new Date().toISOString()
+        const run: AiRun = {
+          id: `browser-run-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          moduleId: params.runParams.moduleId,
+          originType: params.runParams.originType,
+          originId: params.runParams.originId ?? 'browser-proposal',
+          providerId: params.runParams.providerId ?? 'openai-responses',
+          model: params.runParams.model ?? 'gpt-4.1-mini',
+          temperature: params.runParams.temperature ?? 0.7,
+          status: 'completed',
+          inputSummary: params.runParams.prompt.slice(0, 240),
+          outputText: params.proposedText,
+          error: null,
+          createdAt,
+          completedAt: createdAt
+        }
+        aiRuns.unshift(run)
+        const proposal: AiProposal = {
+          id: `browser-proposal-${Date.now()}`,
+          workspaceId: params.workspaceId,
+          runId: run.id,
+          targetDocumentId: params.targetDocumentId,
+          proposalType: params.proposalType,
+          sourceText: params.sourceText,
+          proposedText: params.proposedText,
+          status: 'pending',
+          createdAt,
+          resolvedAt: null
+        }
+        aiProposals.unshift(proposal)
+        return proposal
+      },
+      rejectProposal: async (params) => {
+        const proposal = aiProposals.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!proposal) throw new Error('AI proposal not found.')
+        proposal.status = 'rejected'
+        proposal.resolvedAt = new Date().toISOString()
+        return proposal
+      },
       templates: async () => aiTemplates.filter(template => !template.archivedAt),
       archivedTemplates: async () => aiTemplates.filter(template => template.archivedAt),
       saveTemplate: async (template) => {

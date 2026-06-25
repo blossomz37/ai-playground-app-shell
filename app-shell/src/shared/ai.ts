@@ -137,6 +137,26 @@ export interface AiProposal {
   resolvedAt: string | null
 }
 
+export interface CreateAiProposalParams {
+  workspaceId: string
+  targetDocumentId: string
+  proposalType: AiProposalType
+  sourceText: string
+  proposedText: string
+  runParams: InvokeAiParams
+}
+
+export interface ListAiProposalsParams {
+  workspaceId: string
+  targetDocumentId?: string
+  status?: AiProposalStatus
+}
+
+export interface ResolveAiProposalParams {
+  workspaceId: string
+  id: string
+}
+
 export interface CollectAiContextParams {
   workspaceId: string
   activeDocumentId?: string | null

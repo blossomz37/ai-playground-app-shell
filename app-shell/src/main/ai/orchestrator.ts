@@ -5,17 +5,21 @@ import type {
   AiConversationLifecycleParams,
   AiInvokeResult,
   AiPreview,
+  AiProposal,
   AiProvider,
   AiPromptTemplate,
   AiPromptTemplateLifecycleParams,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
+  ListAiProposalsParams,
   ListAiProvidersParams,
   ListAiRunsParams,
   RenameAiConversationParams,
-  RenameAiPromptTemplateParams
+  RenameAiPromptTemplateParams,
+  ResolveAiProposalParams
 } from '@shared/ai'
 import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
 import { documents } from '../core/documents'
@@ -226,6 +230,37 @@ export const aiOrchestrator = {
       events.emit('ai.run.failed', failed)
       return { run: failed, contextPack }
     }
+  },
+
+  createProposal(params: CreateAiProposalParams): AiProposal {
+    const preview = this.preview(params.runParams)
+    const run = aiRepository.createRun({
+      ...params.runParams,
+      providerId: preview.providerId,
+      model: preview.model,
+      temperature: preview.temperature
+    })
+    const proposedText = params.proposedText || preview.renderedPrompt
+    const completed = aiRepository.completeRun(run.id, proposedText)
+
+    return aiRepository.createProposal({
+      workspaceId: params.workspaceId,
+      runId: completed.id,
+      targetDocumentId: params.targetDocumentId,
+      proposalType: params.proposalType,
+      sourceText: params.sourceText,
+      proposedText
+    })
+  },
+
+  listProposals(params: ListAiProposalsParams): AiProposal[] {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.listProposals(params)
+  },
+
+  rejectProposal(params: ResolveAiProposalParams): AiProposal {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.rejectProposal(params)
   },
 
   listProviders(params: ListAiProvidersParams): AiProvider[] {

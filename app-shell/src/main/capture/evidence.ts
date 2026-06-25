@@ -36,6 +36,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentSelectionTo = Number(process.env['SHELL_CAPTURE_DOCUMENT_SELECTION_TO'] ?? NaN)
   const documentAiPreview = process.env['SHELL_CAPTURE_DOCUMENT_AI_PREVIEW']
   const documentAiUserInput = process.env['SHELL_CAPTURE_DOCUMENT_AI_USER_INPUT']
+  const documentAiSaveProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_SAVE_PROPOSAL'] === '1'
   const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
   const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
   const documentSearchReplacement = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_REPLACEMENT']
@@ -318,7 +319,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-document-ai-preview', { detail: ${JSON.stringify({
             action: documentAiPreview,
-            userInput: documentAiUserInput
+            userInput: documentAiUserInput,
+            saveProposal: documentAiSaveProposal
           })} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))

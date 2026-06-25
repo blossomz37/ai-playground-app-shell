@@ -11,15 +11,20 @@ import type {
   AiRunStatus,
   AppendAiMessageParams,
   AiConversationLifecycleParams,
+  AiProposal,
   CreateAiConversationParams,
   InvokeAiParams,
+  ListAiProposalsParams,
   ListAiRunsParams,
   RenameAiConversationParams,
-  RenameAiPromptTemplateParams
+  RenameAiPromptTemplateParams,
+  ResolveAiProposalParams
 } from '@shared/ai'
 import {
   DOCUMENTS_AI_PROMPT_DEFINITIONS,
-  createDocumentsAiPromptTemplate
+  MOP_PROMPT_DEFINITIONS,
+  createDocumentsAiPromptTemplate,
+  createMopPromptTemplate
 } from '@shared/ai-writing-prompts'
 import { getDb } from '../core/db'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
@@ -84,6 +89,21 @@ function templateFromRow(row: Record<string, unknown>): AiPromptTemplate {
     createdAt: String(row.createdAt),
     updatedAt: String(row.updatedAt),
     archivedAt: row.archivedAt == null ? null : String(row.archivedAt)
+  }
+}
+
+function proposalFromRow(row: Record<string, unknown>): AiProposal {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspaceId),
+    runId: String(row.runId),
+    targetDocumentId: String(row.targetDocumentId),
+    proposalType: row.proposalType as AiProposal['proposalType'],
+    sourceText: String(row.sourceText),
+    proposedText: String(row.proposedText),
+    status: row.status as AiProposal['status'],
+    createdAt: String(row.createdAt),
+    resolvedAt: row.resolvedAt === null ? null : String(row.resolvedAt)
   }
 }
 
@@ -223,6 +243,46 @@ export const aiRepository = {
       })
       this.ensureProtectedTemplate(template)
     }
+
+    this.ensureMopTemplates(workspaceId, now, demoMode ? 'mock-durable-context-v1' : 'gpt-4.1-mini')
+  },
+
+  ensureMopTemplates(workspaceId: string, now: string, defaultModel: string): void {
+    const db = getDb()
+    const seedKey = `ai.mopTemplatesSeeded.${workspaceId}`
+    const seeded = db
+      .prepare('SELECT value FROM shell_settings WHERE key = ?')
+      .get(seedKey) as { value: string } | undefined
+    if (seeded) return
+
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO ai_prompt_templates
+        (id, workspaceId, name, description, body, variablesJson, defaultModel, defaultTemperature, contextPolicyJson, tagsJson, isProtected, createdAt, updatedAt, archivedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+
+    for (const definition of MOP_PROMPT_DEFINITIONS) {
+      const template = createMopPromptTemplate({ workspaceId, definition, now, defaultModel })
+      insert.run(
+        template.id,
+        template.workspaceId,
+        template.name,
+        template.description,
+        template.body,
+        JSON.stringify(template.variables),
+        template.defaultModel,
+        template.defaultTemperature,
+        JSON.stringify(template.contextPolicy),
+        JSON.stringify(template.tags),
+        0,
+        template.createdAt,
+        template.updatedAt,
+        template.archivedAt
+      )
+    }
+
+    db.prepare('INSERT OR REPLACE INTO shell_settings (key, value) VALUES (?, ?)')
+      .run(seedKey, JSON.stringify({ seededAt: now }))
   },
 
   ensureProtectedTemplate(template: AiPromptTemplate): void {
@@ -579,6 +639,84 @@ export const aiRepository = {
     )
 
     return pack
+  },
+
+  createProposal(params: {
+    workspaceId: string
+    runId: string
+    targetDocumentId: string
+    proposalType: AiProposal['proposalType']
+    sourceText: string
+    proposedText: string
+  }): AiProposal {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const proposal: AiProposal = {
+      id: randomUUID(),
+      workspaceId: params.workspaceId,
+      runId: params.runId,
+      targetDocumentId: params.targetDocumentId,
+      proposalType: params.proposalType,
+      sourceText: params.sourceText,
+      proposedText: params.proposedText,
+      status: 'pending',
+      createdAt: now,
+      resolvedAt: null
+    }
+
+    db.prepare(`
+      INSERT INTO ai_proposals
+        (id, workspaceId, runId, targetDocumentId, proposalType, sourceText, proposedText, status, createdAt, resolvedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      proposal.id,
+      proposal.workspaceId,
+      proposal.runId,
+      proposal.targetDocumentId,
+      proposal.proposalType,
+      proposal.sourceText,
+      proposal.proposedText,
+      proposal.status,
+      proposal.createdAt,
+      proposal.resolvedAt
+    )
+
+    return proposal
+  },
+
+  listProposals(params: ListAiProposalsParams): AiProposal[] {
+    const clauses = ['workspaceId = ?']
+    const values: unknown[] = [params.workspaceId]
+
+    if (params.targetDocumentId) {
+      clauses.push('targetDocumentId = ?')
+      values.push(params.targetDocumentId)
+    }
+    if (params.status) {
+      clauses.push('status = ?')
+      values.push(params.status)
+    }
+
+    return getDb()
+      .prepare(`SELECT * FROM ai_proposals WHERE ${clauses.join(' AND ')} ORDER BY createdAt DESC`)
+      .all(...values)
+      .map(row => proposalFromRow(row as Record<string, unknown>))
+  },
+
+  rejectProposal(params: ResolveAiProposalParams): AiProposal {
+    const db = getDb()
+    const now = new Date().toISOString()
+    db.prepare(`
+      UPDATE ai_proposals
+      SET status = 'rejected', resolvedAt = ?
+      WHERE id = ? AND workspaceId = ? AND status = 'pending'
+    `).run(now, params.id, params.workspaceId)
+
+    const row = db
+      .prepare('SELECT * FROM ai_proposals WHERE id = ? AND workspaceId = ?')
+      .get(params.id, params.workspaceId) as Record<string, unknown> | undefined
+    if (!row) throw new Error('AI proposal not found.')
+    return proposalFromRow(row)
   },
 
   listRuns(params: ListAiRunsParams): AiRun[] {

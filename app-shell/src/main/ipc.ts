@@ -46,12 +46,15 @@ import type {
   AiPromptTemplate,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
+  ListAiProposalsParams,
   ListAiProvidersParams,
   ListAiRunsParams,
   RenameAiConversationParams,
-  RenameAiPromptTemplateParams
+  RenameAiPromptTemplateParams,
+  ResolveAiProposalParams
 } from '@shared/ai'
 
 const shellSettings = createSettingsStore('shell')
@@ -304,6 +307,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:runs', (_e, params: ListAiRunsParams) =>
     aiOrchestrator.listRuns(params)
+  )
+
+  ipcMain.handle('ai:proposals', (_e, params: ListAiProposalsParams) =>
+    aiOrchestrator.listProposals(params)
+  )
+
+  ipcMain.handle('ai:proposals:create', (_e, params: CreateAiProposalParams) =>
+    aiOrchestrator.createProposal(params)
+  )
+
+  ipcMain.handle('ai:proposals:reject', (_e, params: ResolveAiProposalParams) =>
+    aiOrchestrator.rejectProposal(params)
   )
 
   ipcMain.handle('ai:conversations', (_e, { workspaceId }: { workspaceId: string }) =>

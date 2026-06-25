@@ -6,6 +6,8 @@ import type {
   AiPreview,
   AiProvider,
   AiProviderId,
+  AiProposal,
+  AiProposalType,
   AiPromptTemplate,
   AiRun,
   AiWritingVariables,
@@ -18,6 +20,7 @@ import { addToast } from './toasts'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
 export const aiRuns = writable<AiRun[]>([])
+export const aiProposals = writable<AiProposal[]>([])
 export const aiTemplates = writable<AiPromptTemplate[]>([])
 export const archivedAiTemplates = writable<AiPromptTemplate[]>([])
 export const selectedAiTemplateId = writable<string | null>(null)
@@ -207,6 +210,15 @@ export async function loadAiRuns(moduleId?: string): Promise<void> {
   aiRuns.set(runs)
 }
 
+export async function loadAiProposals(targetDocumentId?: string): Promise<void> {
+  const proposals = await window.shell.ai.proposals({
+    workspaceId: get(workspaceId),
+    targetDocumentId,
+    status: 'pending'
+  })
+  aiProposals.set(proposals)
+}
+
 export async function loadAiTemplates(): Promise<void> {
   const [templates, archivedTemplates] = await Promise.all([
     window.shell.ai.templates(get(workspaceId)),
@@ -325,6 +337,33 @@ export async function deleteAiTemplate(id: string): Promise<void> {
   if (get(selectedAiTemplateId) === id) {
     selectedAiTemplateId.set(get(aiTemplates)[0]?.id ?? null)
   }
+}
+
+export async function createAiProposal(params: {
+  targetDocumentId: string
+  proposalType: AiProposalType
+  sourceText: string
+  proposedText: string
+  runParams: AiRequestParams
+}): Promise<AiProposal> {
+  const created = await window.shell.ai.createProposal({
+    workspaceId: get(workspaceId),
+    targetDocumentId: params.targetDocumentId,
+    proposalType: params.proposalType,
+    sourceText: params.sourceText,
+    proposedText: params.proposedText,
+    runParams: buildAiPayload(params.runParams)
+  })
+  aiProposals.update(proposals => [created, ...proposals.filter(item => item.id !== created.id)])
+  return created
+}
+
+export async function rejectAiProposal(id: string): Promise<void> {
+  await window.shell.ai.rejectProposal({
+    workspaceId: get(workspaceId),
+    id
+  })
+  aiProposals.update(proposals => proposals.filter(proposal => proposal.id !== id))
 }
 
 export function documentsAiTemplateForAction(action: DocumentsAiPromptAction): AiPromptTemplate | null {

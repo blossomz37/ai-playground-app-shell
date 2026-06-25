@@ -11,16 +11,20 @@ import type {
   AiPromptTemplateLifecycleParams,
   AiChatMessage,
   AiProvider,
+  AiProposal,
   AiPromptTemplate,
   AiRun,
   AppendAiMessageParams,
   CollectAiContextParams,
+  CreateAiProposalParams,
   CreateAiConversationParams,
   InvokeAiParams,
+  ListAiProposalsParams,
   ListAiProvidersParams,
   ListAiRunsParams,
   RenameAiConversationParams,
-  RenameAiPromptTemplateParams
+  RenameAiPromptTemplateParams,
+  ResolveAiProposalParams
 } from './ai'
 
 export type ThemeMode = 'light' | 'dark' | 'gray' | 'system'
@@ -643,6 +647,9 @@ export interface ShellApi {
     preview(params: InvokeAiParams): Promise<AiPreview>
     providers(params: ListAiProvidersParams): Promise<AiProvider[]>
     runs(params: ListAiRunsParams): Promise<AiRun[]>
+    proposals(params: ListAiProposalsParams): Promise<AiProposal[]>
+    createProposal(params: CreateAiProposalParams): Promise<AiProposal>
+    rejectProposal(params: ResolveAiProposalParams): Promise<AiProposal>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
     archivedTemplates(workspaceId: string): Promise<AiPromptTemplate[]>
     saveTemplate(template: AiPromptTemplate): Promise<AiPromptTemplate>
