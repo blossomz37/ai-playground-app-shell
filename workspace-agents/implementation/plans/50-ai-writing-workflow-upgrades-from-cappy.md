@@ -277,6 +277,12 @@ Every output can answer: what prompt, model, settings, and documents produced th
 - `app-shell/src/renderer/src/modules/promptstudio/InspectorView.svelte`
 - `app-shell/src/renderer/src/modules/documents/InspectorView.svelte`
 
+## Deferred Follow-Up - Optional Reports Plugin
+
+The manuscript analysis report discovered during Upgrade 2 investigation, including dialogue ratio tables, sentence stats, repetition proximity, passive voice, punctuation density, and flag scans, should not be treated as an already-integrated App Shell feature. The current source of that behavior is external `.myagents` / older project tooling, which is useful prior art but should not remain the runtime dependency once integrated.
+
+When revisited, implement this as an optional reports plugin/module. It should run against the active project document tree or selected folder, then write generated reports back into the active project's document tree under a `Reports` folder. If there is no active project, the report action should follow the same AI-tool rule: require creating or selecting a project before running.
+
 ## Suggested Implementation Order
 
 1. Provider-free prompt preview.
