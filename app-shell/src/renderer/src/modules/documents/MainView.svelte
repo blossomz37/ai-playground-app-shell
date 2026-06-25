@@ -53,6 +53,11 @@
     matches: DocumentSearchMatch[]
   }
 
+  interface ProposalSourceStatus {
+    label: string
+    tone: 'ok' | 'warn' | 'neutral'
+  }
+
   let element: HTMLDivElement | null = null
   let secondaryElement: HTMLDivElement | null = null
   let editor = $state<Editor | null>(null)
@@ -215,6 +220,35 @@
   function sourceTextForAiAction(action: DocumentsAiPromptAction): string {
     if (action === 'rewrite-selection') return writingContext?.writingVariables.selectedText ?? ''
     return $editorContent
+  }
+
+  function proposalSourceStatus(proposalType: AiProposalType, sourceText: string): ProposalSourceStatus {
+    const source = sourceText.trim()
+    if (!source) {
+      return { label: 'No source snapshot', tone: 'neutral' }
+    }
+
+    if (proposalType === 'replacement') {
+      const matches = exactMatchCount($editorContent, sourceText)
+      if (matches === 1) return { label: 'Source verified', tone: 'ok' }
+      if (matches > 1) return { label: 'Multiple source matches', tone: 'warn' }
+      return { label: 'Source changed', tone: 'warn' }
+    }
+
+    return $editorContent === sourceText
+      ? { label: 'Source snapshot unchanged', tone: 'ok' }
+      : { label: 'Document changed since proposal', tone: 'neutral' }
+  }
+
+  function exactMatchCount(content: string, needle: string): number {
+    if (!needle) return 0
+    let count = 0
+    let index = content.indexOf(needle)
+    while (index >= 0) {
+      count += 1
+      index = content.indexOf(needle, index + needle.length)
+    }
+    return count
   }
 
   async function createProposalFromPreview(): Promise<void> {
@@ -1097,10 +1131,16 @@
           </div>
           <div class="proposal-list">
             {#each activePendingProposals as proposal (proposal.id)}
+              {@const sourceStatus = proposalSourceStatus(proposal.proposalType, proposal.sourceText)}
               <article class="proposal-row">
                 <header>
                   <span>{proposal.proposalType}</span>
-                  <time datetime={proposal.createdAt}>{new Date(proposal.createdAt).toLocaleString()}</time>
+                  <div class="proposal-meta">
+                    <span class="source-status" class:ok={sourceStatus.tone === 'ok'} class:warn={sourceStatus.tone === 'warn'}>
+                      {sourceStatus.label}
+                    </span>
+                    <time datetime={proposal.createdAt}>{new Date(proposal.createdAt).toLocaleString()}</time>
+                  </div>
                 </header>
                 <pre>{proposal.proposedText}</pre>
                 <div class="proposal-actions">
@@ -1392,6 +1432,31 @@
     color: var(--color-fg-muted);
     font-weight: 600;
     text-transform: none;
+  }
+
+  .proposal-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .source-status {
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-fg-muted) 12%, transparent);
+    color: var(--color-fg-muted);
+    white-space: nowrap;
+  }
+
+  .source-status.ok {
+    background: color-mix(in srgb, #22c55e 16%, transparent);
+    color: color-mix(in srgb, #22c55e 70%, var(--color-fg-primary));
+  }
+
+  .source-status.warn {
+    background: color-mix(in srgb, #f7c948 18%, transparent);
+    color: color-mix(in srgb, #f7c948 68%, var(--color-fg-primary));
   }
 
   .proposal-row pre {
