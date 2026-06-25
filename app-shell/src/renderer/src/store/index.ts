@@ -1,5 +1,5 @@
 import { writable, readable, get } from 'svelte/store'
-import type { DocumentAnnotationPatch, DocumentAnnotationTarget, DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, DocumentVersionRestoreParams, ThemeMode, Workspace } from '@shared/module-contract'
+import type { DocumentAnnotationPatch, DocumentAnnotationTarget, DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, DocumentSaveOptions, DocumentVersionRestoreParams, ThemeMode, Workspace } from '@shared/module-contract'
 import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
 import { DEFAULT_DOCUMENT_KIND_OPTIONS, normalizeDocumentKindOptions, slugifyDocumentKindLabel } from '@shared/document-kinds'
 import { getModuleState } from '../modules/module-state-registry'
@@ -408,8 +408,8 @@ export function setEditorContent(content: string, options?: { dirty?: boolean })
   documentsState.setEditorContent(content, options)
 }
 
-export async function saveDoc(): Promise<void> {
-  await documentsState.saveDoc()
+export async function saveDoc(options?: DocumentSaveOptions): Promise<void> {
+  await documentsState.saveDoc(options)
 }
 
 export function countWords(text: string): number {

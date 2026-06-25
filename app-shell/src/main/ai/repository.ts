@@ -703,14 +703,22 @@ export const aiRepository = {
       .map(row => proposalFromRow(row as Record<string, unknown>))
   },
 
+  acceptProposal(params: ResolveAiProposalParams): AiProposal {
+    return this.resolveProposal(params, 'accepted')
+  },
+
   rejectProposal(params: ResolveAiProposalParams): AiProposal {
+    return this.resolveProposal(params, 'rejected')
+  },
+
+  resolveProposal(params: ResolveAiProposalParams, status: 'accepted' | 'rejected'): AiProposal {
     const db = getDb()
     const now = new Date().toISOString()
     db.prepare(`
       UPDATE ai_proposals
-      SET status = 'rejected', resolvedAt = ?
+      SET status = ?, resolvedAt = ?
       WHERE id = ? AND workspaceId = ? AND status = 'pending'
-    `).run(now, params.id, params.workspaceId)
+    `).run(status, now, params.id, params.workspaceId)
 
     const row = db
       .prepare('SELECT * FROM ai_proposals WHERE id = ? AND workspaceId = ?')

@@ -10,6 +10,7 @@ import type {
   DocumentLifecycleOptions,
   DocumentMetadataPatch,
   DocumentNodeType,
+  DocumentSaveOptions,
   DocumentVersionRestoreParams,
   DocVersion,
   ListDocumentAnnotationsOptions
@@ -27,7 +28,7 @@ export interface DocumentsPort {
   list(workspaceId: string): Promise<Doc[]>
   listArchived(workspaceId: string): Promise<Doc[]>
   open(id: string): Promise<Doc | undefined>
-  save(id: string, content: string): Promise<void>
+  save(id: string, content: string, options?: DocumentSaveOptions): Promise<void>
   update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
   updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
   duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
@@ -541,11 +542,11 @@ export class DocumentsStateSlice extends ObservableSlice<DocumentsState> {
     this.autoSaveTimer = null
   }
 
-  async saveDoc(): Promise<void> {
+  async saveDoc(options?: DocumentSaveOptions): Promise<void> {
     this.cancelAutoSave()
     if (!this.activeDocId) return
 
-    await this.port.save(this.activeDocId, this.editorContent)
+    await this.port.save(this.activeDocId, this.editorContent, options)
     this.drafts.delete(this.activeDocId)
     this.isDirty = false
     this.versions = await this.port.versions(this.activeDocId)

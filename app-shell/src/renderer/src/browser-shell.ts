@@ -754,6 +754,13 @@ function createBrowserShell(): ShellApi {
         aiProposals.unshift(proposal)
         return proposal
       },
+      acceptProposal: async (params) => {
+        const proposal = aiProposals.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
+        if (!proposal) throw new Error('AI proposal not found.')
+        proposal.status = 'accepted'
+        proposal.resolvedAt = new Date().toISOString()
+        return proposal
+      },
       rejectProposal: async (params) => {
         const proposal = aiProposals.find(item => item.id === params.id && item.workspaceId === params.workspaceId)
         if (!proposal) throw new Error('AI proposal not found.')

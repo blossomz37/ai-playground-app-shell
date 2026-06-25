@@ -86,7 +86,7 @@ export function createModuleContext(moduleId: string, workspace: Workspace): Dis
         if (!doc) throw new Error(`Document not found: ${id}`)
         return doc
       },
-      async save(id, content) { documents.save(id, String(content)) },
+      async save(id, content, options) { documents.save(id, String(content), options) },
       async update(id, patch) { return documents.update(id, patch) },
       async updateMetadata(id, patch) { return documents.updateMetadata(id, patch) },
       async duplicate(id, options) { return documents.duplicate(id, options) },

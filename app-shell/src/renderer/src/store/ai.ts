@@ -366,6 +366,14 @@ export async function rejectAiProposal(id: string): Promise<void> {
   aiProposals.update(proposals => proposals.filter(proposal => proposal.id !== id))
 }
 
+export async function acceptAiProposal(id: string): Promise<void> {
+  await window.shell.ai.acceptProposal({
+    workspaceId: get(workspaceId),
+    id
+  })
+  aiProposals.update(proposals => proposals.filter(proposal => proposal.id !== id))
+}
+
 export function documentsAiTemplateForAction(action: DocumentsAiPromptAction): AiPromptTemplate | null {
   const id = documentsAiPromptTemplateId(get(workspaceId), action)
   return get(aiTemplates).find(template => template.id === id) ?? null

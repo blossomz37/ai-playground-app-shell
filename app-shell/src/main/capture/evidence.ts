@@ -37,6 +37,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentAiPreview = process.env['SHELL_CAPTURE_DOCUMENT_AI_PREVIEW']
   const documentAiUserInput = process.env['SHELL_CAPTURE_DOCUMENT_AI_USER_INPUT']
   const documentAiSaveProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_SAVE_PROPOSAL'] === '1'
+  const documentAiApplyProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_APPLY_PROPOSAL'] === '1'
   const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
   const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
   const documentSearchReplacement = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_REPLACEMENT']
@@ -320,7 +321,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           `window.dispatchEvent(new CustomEvent('shell:capture-document-ai-preview', { detail: ${JSON.stringify({
             action: documentAiPreview,
             userInput: documentAiUserInput,
-            saveProposal: documentAiSaveProposal
+            saveProposal: documentAiSaveProposal,
+            applyProposal: documentAiApplyProposal
           })} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))

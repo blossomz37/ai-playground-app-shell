@@ -258,6 +258,11 @@ export const aiOrchestrator = {
     return aiRepository.listProposals(params)
   },
 
+  acceptProposal(params: ResolveAiProposalParams): AiProposal {
+    aiRepository.ensureDefaults(params.workspaceId)
+    return aiRepository.acceptProposal(params)
+  },
+
   rejectProposal(params: ResolveAiProposalParams): AiProposal {
     aiRepository.ensureDefaults(params.workspaceId)
     return aiRepository.rejectProposal(params)

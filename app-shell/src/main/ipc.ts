@@ -15,6 +15,7 @@ import type {
   DocumentLifecycleOptions,
   DocumentMetadataPatch,
   DocumentNodeType,
+  DocumentSaveOptions,
   DocumentVersionRestoreParams,
   ListDocumentAnnotationsOptions,
   JournalEntry,
@@ -72,8 +73,8 @@ export function registerIpcHandlers(): void {
     documents.open(id)
   )
 
-  ipcMain.handle('documents:save', (_e, { id, content }: { id: string; content: string }) => {
-    documents.save(id, content)
+  ipcMain.handle('documents:save', (_e, { id, content, options }: { id: string; content: string; options?: DocumentSaveOptions }) => {
+    documents.save(id, content, options)
   })
 
   ipcMain.handle('documents:update', (_e, { id, patch }: {
@@ -315,6 +316,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:proposals:create', (_e, params: CreateAiProposalParams) =>
     aiOrchestrator.createProposal(params)
+  )
+
+  ipcMain.handle('ai:proposals:accept', (_e, params: ResolveAiProposalParams) =>
+    aiOrchestrator.acceptProposal(params)
   )
 
   ipcMain.handle('ai:proposals:reject', (_e, params: ResolveAiProposalParams) =>

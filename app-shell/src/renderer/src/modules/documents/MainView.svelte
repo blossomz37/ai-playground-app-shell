@@ -16,6 +16,7 @@
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
   import {
+    acceptAiProposal,
     aiProposals,
     createAiProposal,
     documentsAiTemplateForAction,
@@ -28,7 +29,7 @@
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
-  import type { AiPreview, AiProposalType } from '@shared/ai'
+  import type { AiPreview, AiProposal, AiProposalType } from '@shared/ai'
   import { documentsAiPromptDefinition, type DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
   import {
     findDocumentMatches,
@@ -251,13 +252,20 @@
     return count
   }
 
-  async function createProposalFromPreview(): Promise<void> {
-    if (!$activeDoc || !writingContext || !aiPreview || !aiPreviewAction) return
+  function canApplyProposal(proposal: AiProposal): boolean {
+    return proposal.status === 'pending'
+      && proposal.proposalType === 'replacement'
+      && proposal.sourceText.trim().length > 0
+      && exactMatchCount($editorContent, proposal.sourceText) === 1
+  }
+
+  async function createProposalFromPreview(): Promise<AiProposal | null> {
+    if (!$activeDoc || !writingContext || !aiPreview || !aiPreviewAction) return null
     proposalBusy = true
     try {
       const template = documentsAiTemplateForAction(aiPreviewAction)
       const fallback = documentsAiPromptDefinition(aiPreviewAction)
-      await createAiProposal({
+      const proposal = await createAiProposal({
         targetDocumentId: $activeDoc.id,
         proposalType: proposalTypeForAiAction(aiPreviewAction),
         sourceText: sourceTextForAiAction(aiPreviewAction),
@@ -274,8 +282,10 @@
         }
       })
       addToast('info', 'AI proposal saved.')
+      return proposal
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
+      return null
     } finally {
       proposalBusy = false
     }
@@ -297,6 +307,48 @@
       addToast('info', 'Proposal rejected.')
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Proposal could not be rejected.')
+    } finally {
+      proposalBusy = false
+    }
+  }
+
+  async function applyReplacementProposal(proposal: AiProposal): Promise<void> {
+    if (!$activeDoc) return
+    if (proposal.proposalType !== 'replacement') {
+      addToast('warn', 'Only replacement proposals can be applied in this slice.')
+      return
+    }
+    if (proposal.status !== 'pending') {
+      addToast('warn', 'Only pending proposals can be applied.')
+      return
+    }
+    if (!proposal.sourceText.trim()) {
+      addToast('warn', 'This proposal has no source snapshot.')
+      return
+    }
+
+    const currentMarkdown = $editorContent
+    const matches = exactMatchCount(currentMarkdown, proposal.sourceText)
+    if (matches === 0) {
+      addToast('warn', 'Source text changed. Proposal was not applied.')
+      return
+    }
+    if (matches > 1) {
+      addToast('warn', 'Source text appears more than once. Proposal was not applied.')
+      return
+    }
+
+    proposalBusy = true
+    try {
+      if (get(isDirty)) {
+        await saveDoc()
+      }
+      setEditorContent(currentMarkdown.replace(proposal.sourceText, proposal.proposedText), { dirty: true })
+      await saveDoc({ versionLabel: 'Before AI proposal apply' })
+      await acceptAiProposal(proposal.id)
+      addToast('info', 'AI proposal applied.')
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Proposal could not be applied.')
     } finally {
       proposalBusy = false
     }
@@ -940,7 +992,7 @@
     window.addEventListener('shell:capture-document-selection', captureSelectionListener)
 
     captureAiPreviewListener = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string; saveProposal: boolean }>>).detail ?? {}
+      const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string; saveProposal: boolean; applyProposal: boolean }>>).detail ?? {}
       if (typeof detail.userInput === 'string') aiUserInput = detail.userInput
       const action = detail.action
       if (
@@ -948,8 +1000,12 @@
         action === 'continue-from-cursor' ||
         action === 'summarize-active-document'
       ) {
-        void previewDocumentAi(action).then(() => {
-          if (detail.saveProposal) void createProposalFromPreview()
+        void previewDocumentAi(action).then(async () => {
+          if (!detail.saveProposal) return
+          const proposal = await createProposalFromPreview()
+          if (detail.applyProposal && proposal) {
+            await applyReplacementProposal(proposal)
+          }
         })
       }
     }
@@ -1144,6 +1200,9 @@
                 </header>
                 <pre>{proposal.proposedText}</pre>
                 <div class="proposal-actions">
+                  {#if canApplyProposal(proposal)}
+                    <button type="button" class="ai-action-btn" disabled={proposalBusy} onclick={() => void applyReplacementProposal(proposal)}>Apply</button>
+                  {/if}
                   <button type="button" class="ai-action-btn" onclick={() => void copyProposalText(proposal.proposedText)}>Copy</button>
                   <button type="button" class="ai-action-btn ghost" disabled={proposalBusy} onclick={() => void rejectProposal(proposal.id)}>Reject</button>
                 </div>

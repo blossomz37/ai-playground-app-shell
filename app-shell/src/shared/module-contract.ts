@@ -146,6 +146,10 @@ export interface DocumentMetadataPatch {
   targetWordCount?: number | null
 }
 
+export interface DocumentSaveOptions {
+  versionLabel?: string
+}
+
 export interface DocVersion {
   id: string
   documentId: string
@@ -530,7 +534,7 @@ export interface ModuleContext {
   documents: {
     listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
-    save(id: string, content: unknown): Promise<void>
+    save(id: string, content: unknown, options?: DocumentSaveOptions): Promise<void>
     update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
@@ -591,7 +595,7 @@ export interface ShellApi {
     list(workspaceId: string): Promise<Doc[]>
     listArchived(workspaceId: string): Promise<Doc[]>
     open(id: string): Promise<Doc>
-    save(id: string, content: string): Promise<void>
+    save(id: string, content: string, options?: DocumentSaveOptions): Promise<void>
     update(id: string, patch: { title?: string; kind?: string | null; icon?: string | null }): Promise<Doc>
     updateMetadata(id: string, patch: DocumentMetadataPatch): Promise<Doc>
     duplicate(id: string, options?: DocumentLifecycleOptions): Promise<Doc[]>
@@ -649,6 +653,7 @@ export interface ShellApi {
     runs(params: ListAiRunsParams): Promise<AiRun[]>
     proposals(params: ListAiProposalsParams): Promise<AiProposal[]>
     createProposal(params: CreateAiProposalParams): Promise<AiProposal>
+    acceptProposal(params: ResolveAiProposalParams): Promise<AiProposal>
     rejectProposal(params: ResolveAiProposalParams): Promise<AiProposal>
     templates(workspaceId: string): Promise<AiPromptTemplate[]>
     archivedTemplates(workspaceId: string): Promise<AiPromptTemplate[]>

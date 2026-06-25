@@ -12,6 +12,7 @@ import type {
   DocumentLifecycleOptions,
   DocumentMetadataPatch,
   DocumentNodeType,
+  DocumentSaveOptions,
   DocumentVersionRestoreParams,
   DocVersion,
   ListDocumentAnnotationsOptions
@@ -122,15 +123,17 @@ export const documents = {
     return getDb().prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
   },
 
-  save(id: string, content: string): void {
+  save(id: string, content: string, options: DocumentSaveOptions = {}): void {
     const db = getDb()
     const now = new Date().toISOString()
     const current = db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as Doc | undefined
 
     if (current && current.content !== content) {
-      db.prepare(
-        'INSERT INTO document_versions (id, documentId, content, contentFormat, createdAt) VALUES (?, ?, ?, ?, ?)'
-      ).run(randomUUID(), id, current.content, current.contentFormat, now)
+      const label = options.versionLabel?.trim() || null
+      db.prepare(`
+        INSERT INTO document_versions (id, documentId, content, contentFormat, createdAt, label)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(randomUUID(), id, current.content, current.contentFormat, now, label)
     }
 
     db.prepare('UPDATE documents SET content = ?, updatedAt = ? WHERE id = ?').run(content, now, id)
