@@ -11,7 +11,7 @@
   import {
     activeDoc, activeDocId, annotations, closeDoc, createAnnotation, documents, editorContent, refreshAnnotations,
     saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId,
-    lockDocumentSelection, unlockDocumentSelection
+    lockDocumentSelection, unlockDocumentSelection, activeWorkspace, documentKindOptions
   } from '../../store'
   import { registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
@@ -31,6 +31,8 @@
   import { buildTextIndex, findEditorMatches, mapTextRangeToEditorRange, replaceEditorMatches, selectEditorMatch } from './editorSearch'
   import { AnnotationHighlightExtension, setAnnotationDecorations, type AnnotationDecorationRange } from './annotationDecorations'
   import { SearchHighlightExtension, setSearchDecorations } from './searchDecorations'
+  import { captureDocumentsWritingContext, type DocumentsWritingContext } from './documentWritingContext'
+  import { labelForDocumentKind } from '@shared/document-kinds'
 
   interface ProjectSearchResult {
     documentId: string
@@ -53,6 +55,7 @@
   let captureMarkdownListener: ((event: Event) => void) | null = null
   let captureSearchListener: ((event: Event) => void) | null = null
   let capturePlan47Listener: ((event: Event) => void) | null = null
+  let captureSelectionListener: ((event: Event) => void) | null = null
   let searchOpen = $state(false)
   let searchQuery = $state('')
   let searchReplacement = $state('')
@@ -68,6 +71,7 @@
   let commentMode = $state(false)
   let commentModeDocId = $state<string | null>(null)
   let annotationCreatePending = false
+  let writingContext = $state<DocumentsWritingContext | null>(null)
 
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
@@ -85,6 +89,8 @@
   ))
   const visibleSearchError = $derived(searchScope === 'project' ? projectSearch.error : editorSearch.error)
   const splitDiffRows = $derived(buildLineDiff($editorContent, secondaryContent))
+  const writingContextLabel = $derived(writingContext?.mode === 'selection' ? 'Selection' : 'Cursor')
+  const writingContextWords = $derived(writingContext?.selectedWordCount ?? 0)
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
@@ -114,6 +120,23 @@
 
   function refreshDocumentContextDescriptor(): void {
     setShellContextDescriptor(buildDocumentContextDescriptor())
+  }
+
+  function activeDocumentKindLabel(): string {
+    const doc = get(activeDoc)
+    if (!doc) return ''
+    return doc.nodeType === 'folder'
+      ? 'Folder'
+      : labelForDocumentKind(doc.kind, get(documentKindOptions))
+  }
+
+  function refreshWritingContext(): void {
+    writingContext = captureDocumentsWritingContext({
+      editor,
+      activeDocument: get(activeDoc),
+      workspace: get(activeWorkspace),
+      documentKind: activeDocumentKindLabel()
+    })
   }
 
   function toggleBold(): void {
@@ -622,6 +645,7 @@
       onUpdate: ({ editor }) => {
         setEditorContent(editor.storage.markdown.getMarkdown())
         trackAnnotationSelection()
+        refreshWritingContext()
         scheduleAutoSave()
         queueMicrotask(renderSearchDecorations)
         queueMicrotask(renderAnnotationDecorations)
@@ -629,8 +653,10 @@
       },
       onSelectionUpdate: () => {
         trackAnnotationSelection()
+        refreshWritingContext()
       }
     })
+    refreshWritingContext()
 
     // Interactive handler for documents.save: the renderer owns it because the
     // content to save lives in the open editor / store. Keybinding (CmdOrCtrl+S)
@@ -657,6 +683,9 @@
       activeDoc.subscribe(refreshDocumentContextDescriptor),
       isDirty.subscribe(refreshDocumentContextDescriptor),
       annotations.subscribe(() => queueMicrotask(renderAnnotationDecorations)),
+      activeDoc.subscribe(() => refreshWritingContext()),
+      activeWorkspace.subscribe(() => refreshWritingContext()),
+      documentKindOptions.subscribe(() => refreshWritingContext()),
       workspaceId.subscribe((id) => {
         if (id) void loadPersistedSearchState(id)
       })
@@ -717,6 +746,26 @@
     }
     window.addEventListener('shell:capture-plan47-documents', capturePlan47Listener)
 
+    captureSelectionListener = (event: Event) => {
+      if (!editor) return
+      const detail = (event as CustomEvent<Partial<{ text: string; from: number; to: number }>>).detail ?? {}
+      if (typeof detail.from === 'number' && typeof detail.to === 'number' && detail.to > detail.from) {
+        editor.chain().focus().setTextSelection({ from: detail.from, to: detail.to }).run()
+        refreshWritingContext()
+        return
+      }
+      if (typeof detail.text === 'string' && detail.text.trim()) {
+        const index = buildTextIndex(editor)
+        const start = index.text.indexOf(detail.text)
+        if (start < 0) return
+        const range = mapTextRangeToEditorRange(editor, start, start + detail.text.length)
+        if (!range) return
+        selectEditorMatch(editor, { ...range, text: detail.text })
+        refreshWritingContext()
+      }
+    }
+    window.addEventListener('shell:capture-document-selection', captureSelectionListener)
+
     annotationJumpListener = (event: Event) => {
       const id = (event as CustomEvent<string>).detail
       const annotation = get(annotations).find(item => item.id === id)
@@ -741,6 +790,9 @@
     if (capturePlan47Listener) {
       window.removeEventListener('shell:capture-plan47-documents', capturePlan47Listener)
     }
+    if (captureSelectionListener) {
+      window.removeEventListener('shell:capture-document-selection', captureSelectionListener)
+    }
     if (annotationJumpListener) {
       window.removeEventListener('documents:jump-to-annotation', annotationJumpListener)
     }
@@ -763,6 +815,17 @@
         <button type="button" class="tool-btn" aria-label="Italic" disabled={!editor} onclick={toggleItalic}><em>I</em></button>
         <button type="button" class="tool-btn" aria-label="Strikethrough" disabled={!editor} onclick={toggleStrike}><s>S</s></button>
         <button type="button" class="tool-btn" aria-label="Blockquote" disabled={!editor} onclick={toggleBlockquote}>&gt;</button>
+      </div>
+      <div class="toolbar-group ai-context-status" role="group" aria-label="AI writing context">
+        <span class="ai-status-label">AI</span>
+        <span class="context-pill">{writingContextLabel}</span>
+        <span class="context-count">
+          {#if writingContextWords > 0}
+            {writingContextWords}w
+          {:else}
+            ctx
+          {/if}
+        </span>
       </div>
       <div class="toolbar-group" role="group" aria-label="Document actions">
         <button
@@ -925,6 +988,32 @@
 
   .split-controls {
     margin-left: auto;
+  }
+
+  .ai-context-status {
+    min-width: 128px;
+    gap: 4px;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .ai-status-label {
+    color: color-mix(in srgb, var(--accent-editor) 72%, var(--color-fg-muted));
+  }
+
+  .context-pill {
+    min-width: 56px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-editor) 16%, transparent);
+    color: var(--color-fg-secondary);
+    text-align: center;
+  }
+
+  .context-count {
+    min-width: 30px;
+    color: var(--color-fg-muted);
   }
 
   .split-select {

@@ -31,6 +31,9 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const jobType = process.env['SHELL_CAPTURE_JOB_TYPE']
   const markdownMessage = process.env['SHELL_CAPTURE_MARKDOWN_MESSAGE']
   const documentMarkdown = process.env['SHELL_CAPTURE_DOCUMENT_MARKDOWN']
+  const documentSelectionText = process.env['SHELL_CAPTURE_DOCUMENT_SELECTION_TEXT']
+  const documentSelectionFrom = Number(process.env['SHELL_CAPTURE_DOCUMENT_SELECTION_FROM'] ?? NaN)
+  const documentSelectionTo = Number(process.env['SHELL_CAPTURE_DOCUMENT_SELECTION_TO'] ?? NaN)
   const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
   const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
   const documentSearchReplacement = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_REPLACEMENT']
@@ -296,6 +299,16 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (documentMarkdown) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-document-markdown', { detail: ${JSON.stringify(documentMarkdown)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentSelectionText || (Number.isFinite(documentSelectionFrom) && Number.isFinite(documentSelectionTo))) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-document-selection', { detail: ${JSON.stringify({
+            text: documentSelectionText,
+            from: Number.isFinite(documentSelectionFrom) ? documentSelectionFrom : undefined,
+            to: Number.isFinite(documentSelectionTo) ? documentSelectionTo : undefined
+          })} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
