@@ -74,6 +74,11 @@ async function persistContextSelection(): Promise<void> {
   })
 }
 
+function persistContextSelectionAndRefresh(): void {
+  loadedContextWorkspaceId = get(workspaceId)
+  void persistContextSelection().then(() => refreshAiContext())
+}
+
 function descendantDocumentIds(rootId: string): string[] {
   const liveDocs = get(documents).filter(doc => !doc.archivedAt)
   const childrenByParent = new Map<string | null, typeof liveDocs>()
@@ -136,22 +141,19 @@ export async function refreshAiContext(): Promise<void> {
 
 export function setManualContextNote(note: string): void {
   manualContextNote.set(note)
-  void persistContextSelection()
-  void refreshAiContext()
+  persistContextSelectionAndRefresh()
 }
 
 export function addContextDocument(documentId: string): void {
   manualContextDocIds.update(ids => ids.includes(documentId) ? ids : [...ids, documentId])
   manualContextExcludedDocIds.update(ids => ids.filter(id => id !== documentId))
-  void persistContextSelection()
-  void refreshAiContext()
+  persistContextSelectionAndRefresh()
 }
 
 export function removeContextDocument(documentId: string): void {
   manualContextDocIds.update(ids => ids.filter(id => id !== documentId))
   manualContextExcludedDocIds.update(ids => ids.includes(documentId) ? ids : [...ids, documentId])
-  void persistContextSelection()
-  void refreshAiContext()
+  persistContextSelectionAndRefresh()
 }
 
 export function toggleContextDocument(documentId: string): void {
@@ -175,8 +177,7 @@ export function toggleContextFolder(folderId: string): void {
     const descendants = new Set(descendantDocumentIds(folderId))
     manualContextExcludedDocIds.update(ids => ids.filter(id => !descendants.has(id)))
   }
-  void persistContextSelection()
-  void refreshAiContext()
+  persistContextSelectionAndRefresh()
 }
 
 export function toggleAiContextCandidate(id: string): void {

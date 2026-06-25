@@ -70,7 +70,9 @@
   let rowLabel = $derived(node.nodeType === 'folder'
     ? `${expanded ? 'Collapse' : 'Expand'} ${node.title}`
     : `Open ${node.title}`)
-  let contextLabel = $derived(`${contextIncluded ? 'Remove' : 'Include'} ${node.title} as AI context`)
+  let contextLabel = $derived(contextDisabled
+    ? `${node.title} has no documents to include as AI context`
+    : `${contextIncluded ? 'Remove' : 'Include'} ${node.title} as AI context`)
   let countLabel = $derived(contextTokens.toLocaleString())
 </script>
 
@@ -136,16 +138,18 @@
       <span class="context-count">{countLabel}</span>
     {/if}
     {#if showContextSwitch}
-      <label class="context-switch" class:partial={contextPartial} title={contextLabel}>
-        <input
-          type="checkbox"
-          checked={contextIncluded}
-          disabled={contextDisabled}
-          aria-label={contextLabel}
-          onclick={onToggleContext}
-          onpointerdown={(event) => event.stopPropagation()}
-        />
-      </label>
+      <button
+        type="button"
+        class="context-switch"
+        class:included={contextIncluded}
+        class:partial={contextPartial}
+        title={contextLabel}
+        aria-label={contextLabel}
+        aria-pressed={contextPartial ? 'mixed' : contextIncluded}
+        disabled={contextDisabled}
+        onclick={onToggleContext}
+        onpointerdown={(event) => event.stopPropagation()}
+      ></button>
     {/if}
   {/if}
 </div>
@@ -283,54 +287,51 @@
 
   .context-switch {
     position: relative;
-    flex: 0 0 42px;
-    width: 42px;
-    height: 22px;
+    display: inline-flex;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 18px;
+    border: none;
     border-radius: 999px;
     background: color-mix(in srgb, var(--accent-nav) 20%, var(--color-bg-overlay));
     cursor: pointer;
+    padding: 0;
     transition: background 0.15s ease, opacity 0.15s ease;
   }
 
   .context-switch::after {
     content: '';
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 16px;
-    height: 16px;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
     border-radius: 999px;
     background: var(--color-bg-base);
     box-shadow: 0 1px 2px color-mix(in srgb, var(--color-fg-primary) 18%, transparent);
     transition: transform 0.15s ease;
   }
 
-  .context-switch:has(input:checked) {
+  .context-switch.included {
     background: color-mix(in srgb, var(--color-accent) 62%, var(--accent-nav));
   }
 
-  .context-switch:has(input:checked)::after {
-    transform: translateX(20px);
+  .context-switch.included::after {
+    transform: translateX(14px);
   }
 
   .context-switch.partial {
     background: color-mix(in srgb, var(--color-accent) 34%, var(--color-bg-overlay));
   }
 
-  .context-switch input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    margin: 0;
-    cursor: pointer;
-  }
-
-  .context-switch:has(input:disabled) {
+  .context-switch:disabled {
     opacity: 0.45;
+    cursor: not-allowed;
   }
 
-  .context-switch input:disabled {
-    cursor: not-allowed;
+  .context-switch:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
   }
 
   .rename-input {

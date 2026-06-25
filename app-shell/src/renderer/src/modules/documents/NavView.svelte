@@ -20,6 +20,7 @@
     manualContextDocIds,
     manualContextExcludedDocIds,
     manualContextFolderIds,
+    refreshAiContext,
     toggleContextDocument,
     toggleContextFolder
   } from '../../store/ai'
@@ -153,10 +154,10 @@
 
   function onToggleContext(event: MouseEvent, node: DocNode): void {
     event.stopPropagation()
-    event.preventDefault()
     if (contextDisabled(node)) return
     if (node.nodeType === 'folder') {
       toggleContextFolder(node.id)
+      if (!isExpanded(node.id)) expanded.add(node.id)
     } else {
       toggleContextDocument(node.id)
     }
@@ -535,6 +536,7 @@
 
   onMount(() => {
     void loadContextTreeViewOptions()
+    void refreshAiContext()
     commandDisposables = [
       registerCommand('documents.newDocument', (target) => handleCreate(null, target)),
       registerCommand('documents.newChapter', (target) => handleCreate('chapter', target)),
