@@ -68,7 +68,7 @@ const manifest: ModuleManifest = {
 - `main` — the rich-text editor. **Editor-agnostic (F1):** the component reads/writes the active document's content through the slice + `ctx.documents`; the concrete engine (likely TipTap/ProseMirror in a thin Svelte wrapper) is a scaffolding decision and never leaks past this view.
 - `main` also supports a non-persistent secondary editor inside the Documents main pane. The secondary editor can be closed independently and can be toggled into a read-only text diff against the primary document. Split state resets on app restart.
 - `inspector` — `InspectorSection[]`:
-  - `{ id: "history", title: "Version History" }` — lists `ctx.documents.versions(id)`, restore.
+  - `{ id: "history", title: "Version History" }` — lists `ctx.documents.versions(id)`, supports read-only snapshot-vs-current diff, and restore.
   - `{ id: "annotations", title: "Annotations" }` — lists sidecar annotations, with active/resolved/orphaned filters and edit/resolve/reopen/delete actions.
   - `{ id: "metadata", title: "Details" }` — kind, word count, source provenance, timestamps.
   - `{ id: "plan", title: "Planning" }` — linked planning-material docs (F2).
@@ -164,7 +164,7 @@ Plan 47 adds shell-owned annotation sidecars:
 - `document_annotation_sessions` ties a commenting pass to a `documentId` and optionally a `documentVersionId`.
 - `document_annotations` stores note text, color, status (`active|resolved|orphaned`), soft-delete state, and a JSON text target (`exact`, `prefix`, `suffix`, `from`, `to`).
 - Annotation records are independent from document versions. Restoring a document version does not restore or delete annotations; annotations may become orphaned if their target text no longer maps.
-- Version restore supports `Restore as Copy` and `Replace Current`; replace-current creates a safety snapshot first.
+- Version history supports read-only snapshot-vs-current diff. Version restore supports `Restore as Copy` and `Replace Current`; replace-current creates a safety snapshot first.
 
 ---
 

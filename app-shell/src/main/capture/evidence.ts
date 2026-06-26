@@ -45,6 +45,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentSearchMode = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_MODE']
   const documentSearchScope = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_SCOPE']
   const documentSearchPreview = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_PREVIEW'] === '1'
+  const documentVersionDiffCapture = process.env['SHELL_CAPTURE_DOCUMENT_VERSION_DIFF'] === '1'
   const webUrl = process.env['SHELL_CAPTURE_WEB_URL']
   const webNav = process.env['SHELL_CAPTURE_WEB_NAV']
   const clearWebHistory = process.env['SHELL_CAPTURE_CLEAR_WEB_HISTORY'] === '1'
@@ -106,6 +107,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let workspaceSmokeDocumentId: string | null = null
   let documentSmokeCleanupIds: string[] = []
   let documentPlan47CleanupIds: string[] = []
+  let documentVersionDiffCleanupIds: string[] = []
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
@@ -607,6 +609,63 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           ? result.generatedDocumentIds.map(String)
           : []
         console.log('[SHELL_CAPTURE_DOCUMENT_PLAN47]', JSON.stringify(result))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentVersionDiffCapture) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const doc = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: 'chapter',
+              title: 'Version Diff Evidence',
+              parentId: null,
+              sortOrder: 0
+            })
+            await window.shell.documents.save(doc.id, [
+              'Opening paragraph for version history evidence.',
+              '',
+              'This line appears in the saved snapshot.',
+              '',
+              'The ending paragraph uses the older wording.'
+            ].join('\\n'))
+            await window.shell.documents.save(doc.id, [
+              'Opening paragraph for version history evidence.',
+              '',
+              'This line is now the current document text.',
+              '',
+              'The ending paragraph uses revised wording.'
+            ].join('\\n'))
+            const versions = await window.shell.documents.versions(doc.id)
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.documents' }))
+            window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: doc.id }))
+            await new Promise(resolve => setTimeout(resolve, 800))
+            document.querySelector('button[aria-label="Show inspector"]')?.click()
+            await new Promise(resolve => setTimeout(resolve, 250))
+            const versionsToggle = document.querySelector('button[aria-controls="documents-inspector-versions"]')
+            if (versionsToggle?.getAttribute('aria-expanded') !== 'true') {
+              versionsToggle?.click()
+            }
+            await new Promise(resolve => setTimeout(resolve, 250))
+            const diffButton = document.querySelector('[data-capture-version-diff]')
+            if (!diffButton) throw new Error('Version diff capture button not found.')
+            diffButton.click()
+            await new Promise(resolve => setTimeout(resolve, 250))
+            if (!document.querySelector('[data-capture-version-diff-panel]')) {
+              throw new Error('Version diff capture panel did not render.')
+            }
+            return {
+              documentId: doc.id,
+              generatedDocumentIds: [doc.id],
+              versionCount: versions.length
+            }
+          })()
+        `)
+        documentVersionDiffCleanupIds = Array.isArray(result.generatedDocumentIds)
+          ? result.generatedDocumentIds.map(String)
+          : []
+        console.log('[SHELL_CAPTURE_DOCUMENT_VERSION_DIFF]', JSON.stringify(result))
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (journalLifecycleSmoke) {
@@ -1204,6 +1263,19 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           }))
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_DOCUMENT_PLAN47_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (documentVersionDiffCleanupIds.length > 0) {
+        try {
+          const db = getDb()
+          const placeholders = documentVersionDiffCleanupIds.map(() => '?').join(', ')
+          db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...documentVersionDiffCleanupIds)
+          db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...documentVersionDiffCleanupIds)
+          console.log('[SHELL_CAPTURE_DOCUMENT_VERSION_DIFF_CLEANUP]', JSON.stringify({
+            deletedDocumentIds: documentVersionDiffCleanupIds
+          }))
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_DOCUMENT_VERSION_DIFF_CLEANUP] failed:', cleanupErr)
         }
       }
       if (journalSmokeCleanup) {

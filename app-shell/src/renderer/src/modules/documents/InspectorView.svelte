@@ -17,6 +17,7 @@
     documentsAiUserInput,
     documentsAiWritingContext
   } from './documentsAiPanelState'
+  import { buildLineDiff } from './lineDiff'
 
   type SourceField = { label: string; value: string; title?: string }
   type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
@@ -33,6 +34,7 @@
   })
   let editingAnnotationId = $state<string | null>(null)
   let editingAnnotationNote = $state('')
+  let selectedVersionDiffId = $state<string | null>(null)
 
   function sectionOpen(id: InspectorSectionId): boolean {
     return !collapsedSections[id]
@@ -167,6 +169,9 @@
   let filteredAnnotations = $derived(
     $annotations.filter(annotation => annotation.status === annotationFilter && annotation.deletedAt === null)
   )
+  let selectedVersionDiff = $derived($versions.find(version => version.id === selectedVersionDiffId) ?? null)
+  let versionDiffRows = $derived(selectedVersionDiff ? buildLineDiff($editorContent, selectedVersionDiff.content) : [])
+  let versionDiffChangedCount = $derived(versionDiffRows.filter(row => row.changed).length)
   let activePendingProposals = $derived($aiProposals.filter(proposal => proposal.status === 'pending'))
   let writingContextWords = $derived($documentsAiWritingContext?.selectedWordCount ?? 0)
   let selectedTextExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.selectedText ?? ''))
@@ -289,6 +294,10 @@
     if (!window.confirm('Replace the current document with this snapshot? A safety snapshot will be created first.')) return
     await restoreDocVersion(version.id, { mode: 'replace' })
     addToast('info', 'Document replaced from snapshot.')
+  }
+
+  function toggleVersionDiff(version: DocVersion): void {
+    selectedVersionDiffId = selectedVersionDiffId === version.id ? null : version.id
   }
 </script>
 
@@ -545,9 +554,38 @@
                   <span class="v-date">{fmt(v.createdAt)}</span>
                   {#if v.label}<span class="v-label">{v.label}</span>{/if}
                   <div class="version-actions">
+                    <button
+                      type="button"
+                      class="mini-btn"
+                      class:active={selectedVersionDiffId === v.id}
+                      data-capture-version-diff
+                      onclick={() => toggleVersionDiff(v)}
+                    >
+                      {selectedVersionDiffId === v.id ? 'Hide Diff' : 'Diff'}
+                    </button>
                     <button type="button" class="mini-btn" onclick={() => void restoreVersionAsCopy(v)}>Copy</button>
                     <button type="button" class="mini-btn danger" onclick={() => void replaceCurrentWithVersion(v)}>Replace</button>
                   </div>
+                  {#if selectedVersionDiffId === v.id}
+                    <div class="version-diff" aria-label="Version snapshot diff" data-capture-version-diff-panel>
+                      <header class="version-diff-summary">
+                        <span>{versionDiffChangedCount === 0 ? 'No changed lines' : `${versionDiffChangedCount} changed line${versionDiffChangedCount === 1 ? '' : 's'}`}</span>
+                        <button type="button" class="mini-btn" onclick={() => (selectedVersionDiffId = null)}>Close</button>
+                      </header>
+                      <div class="version-diff-header">
+                        <span>Current</span>
+                        <span>Snapshot</span>
+                      </div>
+                      <div class="version-diff-rows">
+                        {#each versionDiffRows as row (row.index)}
+                          <div class="version-diff-row" class:changed={row.changed}>
+                            <pre>{row.left || ' '}</pre>
+                            <pre>{row.right || ' '}</pre>
+                          </div>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -1069,8 +1107,88 @@
     color: var(--color-fg-primary);
   }
 
+  .mini-btn.active {
+    background: color-mix(in srgb, var(--accent-inspector) 14%, transparent);
+    color: var(--color-fg-primary);
+    border-color: color-mix(in srgb, var(--accent-inspector) 48%, var(--color-border));
+  }
+
   .mini-btn.danger {
     color: color-mix(in srgb, #e06c75 70%, var(--color-fg-secondary));
+  }
+
+  .version-diff {
+    min-width: 0;
+    margin-top: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 20%, var(--color-border));
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-shell-main) 54%, transparent);
+  }
+
+  .version-diff-summary {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-bottom: var(--border-subtle);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .version-diff-header,
+  .version-diff-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .version-diff-header {
+    border-bottom: var(--border-subtle);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .version-diff-header span {
+    min-width: 0;
+    padding: var(--space-1) var(--space-2);
+    border-right: var(--border-subtle);
+  }
+
+  .version-diff-header span:last-child {
+    border-right: none;
+  }
+
+  .version-diff-rows {
+    max-height: 260px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+  }
+
+  .version-diff-row {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 34%, transparent);
+  }
+
+  .version-diff-row.changed {
+    background: color-mix(in srgb, var(--accent-inspector) 12%, transparent);
+  }
+
+  .version-diff-row pre {
+    min-width: 0;
+    margin: 0;
+    padding: 6px var(--space-2);
+    border-right: var(--border-subtle);
+    color: var(--color-fg-secondary);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .version-diff-row pre:last-child {
+    border-right: none;
   }
 
   .annotation-tabs {
