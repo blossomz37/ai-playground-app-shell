@@ -8,8 +8,23 @@ import { setModulePolicySnapshot } from '../modules/module-state-registry'
 
 export const moduleList = writable<ModuleListItem[]>([])
 
+export const PROJECTS_MODULE_ID = 'shell.projects'
+
+const PROJECTS_MODULE: ModuleListItem = {
+  id: PROJECTS_MODULE_ID,
+  name: 'Projects',
+  icon: 'briefcase',
+  category: 'required',
+  required: true,
+  canDisable: false,
+  canHide: false,
+  visible: true,
+  enabled: true,
+  activated: true
+}
+
 export async function loadModules(): Promise<ModuleListItem[]> {
-  const modules = await window.shell.modules.list()
+  const modules = [PROJECTS_MODULE, ...await window.shell.modules.list()]
   setModulePolicySnapshot(modules)
   moduleList.set(modules)
   ensureActiveModuleAvailable(modules)

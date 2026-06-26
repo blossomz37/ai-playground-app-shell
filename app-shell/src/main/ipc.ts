@@ -23,7 +23,8 @@ import type {
   ThemeMode,
   WorkspaceDuplicateParams,
   WorkspaceImportParams,
-  WorkspaceListParams
+  WorkspaceListParams,
+  WorkspaceUpdatePatch
 } from '@shared/module-contract'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import path from 'path'
@@ -238,6 +239,20 @@ export function registerIpcHandlers(): void {
     await moduleRegistry.refreshWorkspace(workspace)
     return workspace
   })
+
+  ipcMain.handle('workspace:update', async (_e, { id, patch }: { id: string; patch: WorkspaceUpdatePatch }) => {
+    const previous = workspaceService.list({ includeArchived: true }).find(workspace => workspace.id === id)
+    const workspace = workspaceService.update(id, patch)
+    const active = workspaceService.getActive()
+    if (active.id === workspace.id && previous?.type !== workspace.type) {
+      await moduleRegistry.refreshWorkspace(workspace)
+    }
+    return workspace
+  })
+
+  ipcMain.handle('workspace:stats', (_e, { workspaceId }: { workspaceId: string }) =>
+    workspaceService.stats(workspaceId)
+  )
 
   ipcMain.handle('settings:get', (_e, { key }: { key: string }) =>
     shellSettings.get(key)

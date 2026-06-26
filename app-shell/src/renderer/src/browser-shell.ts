@@ -107,6 +107,9 @@ function createBrowserShell(): ShellApi {
     name: demoMode ? 'Browser Preview' : 'Local Preview',
     type: 'authoring',
     root: '/',
+    description: '',
+    status: 'active',
+    metadataJson: '{}',
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
@@ -537,6 +540,9 @@ function createBrowserShell(): ShellApi {
           name: params.name,
           type: params.type ?? 'authoring',
           root: params.root ?? '/',
+          description: '',
+          status: 'active',
+          metadataJson: '{}',
           createdAt,
           updatedAt: createdAt,
           lastOpenedAt: createdAt,
@@ -552,6 +558,9 @@ function createBrowserShell(): ShellApi {
           name: params.name ?? 'Imported Folder',
           type: params.type ?? 'authoring',
           root: params.root ?? '/',
+          description: '',
+          status: 'active',
+          metadataJson: '{}',
           createdAt,
           updatedAt: createdAt,
           lastOpenedAt: createdAt,
@@ -615,6 +624,37 @@ function createBrowserShell(): ShellApi {
         const workspace = workspaceRows.get(id)
         if (workspace && !workspace.archivedAt) activeWorkspace = workspace
         return activeWorkspace
+      },
+      update: async (id, patch) => {
+        const workspace = workspaceRows.get(id)
+        if (!workspace) throw new Error(`Workspace not found: ${id}`)
+        const updated: Workspace = {
+          ...workspace,
+          ...patch,
+          name: patch.name?.trim() || workspace.name,
+          type: patch.type?.trim() || workspace.type,
+          root: patch.root?.trim() || workspace.root,
+          description: patch.description ?? workspace.description,
+          status: patch.status ?? workspace.status,
+          metadataJson: patch.metadataJson ?? workspace.metadataJson,
+          updatedAt: new Date().toISOString()
+        }
+        workspaceRows.set(id, updated)
+        if (activeWorkspace.id === id) activeWorkspace = updated
+        return updated
+      },
+      stats: async (workspaceId) => {
+        const docRows = Array.from(docs.values()).filter(doc => doc.workspaceId === workspaceId && doc.nodeType !== 'folder')
+        return {
+          workspaceId,
+          documents: docRows.filter(doc => !doc.archivedAt).length,
+          archivedDocuments: docRows.filter(doc => doc.archivedAt).length,
+          words: docRows.filter(doc => !doc.archivedAt).reduce((sum, doc) => sum + doc.content.trim().split(/\s+/).filter(Boolean).length, 0),
+          assets: 0,
+          conversations: 0,
+          promptTemplates: 0,
+          jobs: jobRows.filter(job => job.workspaceId === workspaceId).length
+        }
       }
     },
     settings: {

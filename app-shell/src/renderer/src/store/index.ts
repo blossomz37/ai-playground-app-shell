@@ -1,5 +1,5 @@
 import { writable, readable, get } from 'svelte/store'
-import type { DocumentAnnotationPatch, DocumentAnnotationTarget, DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, DocumentSaveOptions, DocumentVersionRestoreParams, ThemeMode, Workspace } from '@shared/module-contract'
+import type { DocumentAnnotationPatch, DocumentAnnotationTarget, DocumentKindOption, DocumentMetadataPatch, DocumentNodeType, DocumentSaveOptions, DocumentVersionRestoreParams, ThemeMode, Workspace, WorkspaceStats, WorkspaceUpdatePatch } from '@shared/module-contract'
 import type { DocumentDropPlacement, DocumentsSortMode, DocumentsState, DocumentsStateSlice } from '@shared/state/documents-state'
 import { DEFAULT_DOCUMENT_KIND_OPTIONS, normalizeDocumentKindOptions, slugifyDocumentKindLabel } from '@shared/document-kinds'
 import { getModuleState } from '../modules/module-state-registry'
@@ -251,7 +251,7 @@ async function loadWorkspaceDocuments(wsId: string): Promise<void> {
   await documentsState.loadWorkspace(wsId)
 }
 
-async function refreshWorkspaceLists(): Promise<void> {
+export async function refreshWorkspaceLists(): Promise<void> {
   const rows = await window.shell.workspace.list({ includeArchived: true })
   workspaces.set(rows.filter(workspace => !workspace.archivedAt))
   archivedWorkspaces.set(rows.filter(workspace => workspace.archivedAt))
@@ -280,16 +280,18 @@ export async function switchWorkspace(id: string): Promise<void> {
   await applyWorkspaceResult(workspace)
 }
 
-export async function createWorkspace(params: { name: string; type?: string; root?: string }): Promise<void> {
+export async function createWorkspace(params: { name: string; type?: string; root?: string }): Promise<Workspace> {
   const workspace = await window.shell.workspace.create(params)
   await refreshWorkspaceLists()
   await switchWorkspace(workspace.id)
+  return workspace
 }
 
-export async function importWorkspaceFolder(params?: { root?: string; name?: string; type?: string }): Promise<void> {
+export async function importWorkspaceFolder(params?: { root?: string; name?: string; type?: string }): Promise<Workspace> {
   const workspace = await window.shell.workspace.importFolder(params)
   await refreshWorkspaceLists()
   await switchWorkspace(workspace.id)
+  return workspace
 }
 
 export async function duplicateWorkspace(id: string, params?: { name?: string }): Promise<void> {
@@ -314,6 +316,20 @@ export async function deleteWorkspace(id: string): Promise<void> {
   if (get(isDirty)) await saveDoc()
   const workspace = await window.shell.workspace.delete(id)
   await applyWorkspaceResult(workspace)
+}
+
+export async function updateWorkspace(id: string, patch: WorkspaceUpdatePatch): Promise<Workspace> {
+  const updated = await window.shell.workspace.update(id, patch)
+  await refreshWorkspaceLists()
+  if (get(workspaceId) === id) {
+    activeWorkspace.set(updated)
+    await loadModules()
+  }
+  return updated
+}
+
+export async function loadWorkspaceStats(id: string): Promise<WorkspaceStats> {
+  return window.shell.workspace.stats(id)
 }
 
 export async function selectDoc(id: string): Promise<void> {

@@ -4,7 +4,7 @@
   // Phosphor icons — curated for each module (Icon-suffixed per Phosphor convention)
   import {
     PenNibIcon, NotebookIcon, ImageSquareIcon, LightningIcon,
-    TableIcon, RobotIcon, GlobeSimpleIcon, TerminalIcon
+    TableIcon, RobotIcon, GlobeSimpleIcon, TerminalIcon, BriefcaseIcon
   } from 'phosphor-svelte'
 
   import type { Component } from 'svelte'
@@ -26,6 +26,7 @@
   let dragOverPlacement = $state<'before' | 'after'>('before')
 
   const railOrder = [
+    'shell.projects',
     'shell.tableview',
     'shell.documents',
     'shell.journal',
@@ -38,6 +39,7 @@
   const RAIL_ORDER_SETTING = 'activityRail.order'
 
   const iconMap: Record<string, Component> = {
+    'shell.projects': BriefcaseIcon,
     'shell.documents': PenNibIcon,
     'shell.journal':   NotebookIcon,
     'shell.assets':    ImageSquareIcon,

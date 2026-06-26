@@ -35,3 +35,46 @@ for project metadata, and a compact fast-switcher handoff to the hub.
 - Stats match SQLite counts for seeded workspaces.
 - Existing compact switcher still works for quick switching.
 - No author-specific rich metadata is added beyond `metadataJson`.
+
+## Outcome Log
+
+### 2026-06-26 - Completed
+
+Implemented on branch `codex/projects-hub`.
+
+Delivered:
+- Shell-owned `shell.projects` pseudo-surface with Projects rail entry,
+  navigation filters, main index, and inspector/detail edit panel.
+- Workspace metadata migration for `description`, `status`, and `metadataJson`.
+- `workspace:update` and `workspace:stats` APIs across main, preload, shared
+  contract, renderer store, and browser fallback.
+- Editable project title, type, root, description, and status.
+- Derived stats for docs, archived docs, words, assets, chats, prompts, and jobs.
+- Compact `WorkspaceSwitcher` reduced to current project, quick switching, and
+  Manage Projects handoff.
+- Command palette entries for `Projects: Open Hub`, `Projects: New Project`, and
+  `Projects: Import Folder`.
+- Capture hooks for Projects search/edit/create/update evidence.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-projects-index-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-projects-empty-filter-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-projects-edit-form-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-projects-metadata-updated-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-projects-compact-switcher-after-2026-06-26.png`
+
+Validation:
+- Svelte autofixer clean for:
+  - `app-shell/src/renderer/src/shell/projects/ProjectsMainView.svelte`
+  - `app-shell/src/renderer/src/shell/projects/ProjectsInspectorView.svelte`
+  - `app-shell/src/renderer/src/shell/projects/ProjectsNavView.svelte`
+  - `app-shell/src/renderer/src/shell/WorkspaceSwitcher.svelte`
+- `cd app-shell && npm run typecheck`
+- `cd app-shell && npm run build`
+- `git diff --check`
+- Runtime launches through `SHELL_CAPTURE` against local SQLite DB.
+- Migration verified by repeated launch and direct `sqlite3` inspection of
+  `description`, `status`, and `metadataJson` columns.
+- Direct SQLite stats counts verified for seeded workspaces; UI-driven metadata
+  update persisted `UIUX FC Evidence 2026-06-26` as `status=paused` with saved
+  description.

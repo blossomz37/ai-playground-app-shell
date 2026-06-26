@@ -40,7 +40,9 @@ const api: ShellApi = {
     archive: (id) => ipcRenderer.invoke('workspace:archive', { id }),
     restore: (id) => ipcRenderer.invoke('workspace:restore', { id }),
     delete: (id) => ipcRenderer.invoke('workspace:delete', { id }),
-    switch: (id)       => ipcRenderer.invoke('workspace:switch', { id })
+    switch: (id)       => ipcRenderer.invoke('workspace:switch', { id }),
+    update: (id, patch) => ipcRenderer.invoke('workspace:update', { id, patch }),
+    stats: (workspaceId) => ipcRenderer.invoke('workspace:stats', { workspaceId })
   },
 
   settings: {

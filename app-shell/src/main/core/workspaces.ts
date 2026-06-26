@@ -2,7 +2,17 @@ import { app } from 'electron'
 import { createHash, randomUUID } from 'crypto'
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'fs'
 import path from 'path'
-import type { Doc, DocumentNodeType, Workspace, WorkspaceDuplicateParams, WorkspaceImportParams, WorkspaceListParams } from '@shared/module-contract'
+import type {
+  Doc,
+  DocumentNodeType,
+  Workspace,
+  WorkspaceDuplicateParams,
+  WorkspaceImportParams,
+  WorkspaceListParams,
+  WorkspaceStats,
+  WorkspaceStatus,
+  WorkspaceUpdatePatch
+} from '@shared/module-contract'
 import { getDb } from './db'
 import { createSettingsStore } from './settings'
 import { events } from './events'
@@ -12,6 +22,7 @@ import { copyAssetWorkspaceLinks, deleteAssetWorkspaceLinks } from './assets'
 const shellSettings = createSettingsStore('shell')
 const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceId'
 const IMPORTABLE_EXTENSIONS = new Set(['.md', '.markdown', '.txt'])
+const WORKSPACE_STATUSES = new Set<WorkspaceStatus>(['active', 'paused', 'draft'])
 
 type ImportedDocument = {
   id: string
@@ -27,11 +38,15 @@ type ImportedDocument = {
 }
 
 function rowToWorkspace(row: Record<string, unknown>): Workspace {
+  const status = String(row.status ?? 'active')
   return {
     id: String(row.id),
     name: String(row.name),
     type: String(row.type),
     root: String(row.root),
+    description: String(row.description ?? ''),
+    status: WORKSPACE_STATUSES.has(status as WorkspaceStatus) ? status as WorkspaceStatus : 'active',
+    metadataJson: String(row.metadataJson ?? '{}'),
     createdAt: String(row.createdAt),
     updatedAt: String(row.updatedAt),
     lastOpenedAt: row.lastOpenedAt ? String(row.lastOpenedAt) : null,
@@ -52,6 +67,9 @@ function workspaceInsertParams(workspace: Workspace): unknown[] {
     workspace.name,
     workspace.type,
     workspace.root,
+    workspace.description,
+    workspace.status,
+    workspace.metadataJson,
     workspace.createdAt,
     workspace.updatedAt,
     workspace.lastOpenedAt,
@@ -61,8 +79,8 @@ function workspaceInsertParams(workspace: Workspace): unknown[] {
 
 function insertWorkspace(workspace: Workspace): void {
   getDb().prepare(`
-    INSERT INTO workspaces (id, name, type, root, createdAt, updatedAt, lastOpenedAt, archivedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO workspaces (id, name, type, root, description, status, metadataJson, createdAt, updatedAt, lastOpenedAt, archivedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(...workspaceInsertParams(workspace))
 }
 
@@ -72,6 +90,9 @@ function createWorkspaceRecord(params: { name: string; type?: string; root?: str
     name: params.name.trim() || 'Untitled Workspace',
     type: params.type?.trim() || 'authoring',
     root: params.root?.trim() || app.getPath('home'),
+    description: '',
+    status: 'active',
+    metadataJson: '{}',
     createdAt: now,
     updatedAt: now,
     lastOpenedAt: now,
@@ -89,6 +110,56 @@ function mostRecentActiveWorkspace(): Workspace | null {
     `)
     .get() as Record<string, unknown> | undefined
   return row ? rowToWorkspace(row) : null
+}
+
+function countWords(text: string): number {
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).filter(Boolean).length
+}
+
+function scalarCount(sql: string, workspaceId: string): number {
+  const row = getDb().prepare(sql).get(workspaceId) as { n: number } | undefined
+  return Number(row?.n ?? 0)
+}
+
+function validateWorkspacePatch(patch: WorkspaceUpdatePatch): WorkspaceUpdatePatch {
+  const next: WorkspaceUpdatePatch = {}
+
+  if (patch.name !== undefined) {
+    const name = patch.name.trim()
+    if (!name) throw new Error('Workspace name is required.')
+    next.name = name
+  }
+
+  if (patch.type !== undefined) {
+    const type = patch.type.trim()
+    if (!type) throw new Error('Workspace type is required.')
+    next.type = type
+  }
+
+  if (patch.root !== undefined) {
+    const root = patch.root.trim()
+    if (!root) throw new Error('Workspace root is required.')
+    next.root = root
+  }
+
+  if (patch.description !== undefined) {
+    next.description = patch.description.trim()
+  }
+
+  if (patch.status !== undefined) {
+    if (!WORKSPACE_STATUSES.has(patch.status)) throw new Error(`Unsupported workspace status: ${patch.status}`)
+    next.status = patch.status
+  }
+
+  if (patch.metadataJson !== undefined) {
+    const metadataJson = patch.metadataJson.trim() || '{}'
+    JSON.parse(metadataJson)
+    next.metadataJson = metadataJson
+  }
+
+  return next
 }
 
 function createDefaultWorkspace(): Workspace {
@@ -447,5 +518,67 @@ export const workspaceService = {
     const updated = getWorkspace(id) ?? { ...workspace, lastOpenedAt: now, updatedAt: now }
     events.emit('workspace:changed', updated)
     return updated
+  },
+
+  update(id: string, patch: WorkspaceUpdatePatch): Workspace {
+    const workspace = getWorkspace(id, { includeArchived: true })
+    if (!workspace) throw new Error(`Workspace not found: ${id}`)
+
+    const next = validateWorkspacePatch(patch)
+    const fields = Object.entries(next).filter(([, value]) => value !== undefined)
+    if (fields.length === 0) return workspace
+
+    const now = new Date().toISOString()
+    const assignments = fields.map(([key]) => `${key} = ?`).join(', ')
+    getDb()
+      .prepare(`UPDATE workspaces SET ${assignments}, updatedAt = ? WHERE id = ?`)
+      .run(...fields.map(([, value]) => value), now, id)
+
+    const updated = getWorkspace(id, { includeArchived: true })
+    if (!updated) throw new Error(`Workspace not found after update: ${id}`)
+    events.emit('workspace:changed', updated)
+    return updated
+  },
+
+  stats(workspaceId: string): WorkspaceStats {
+    const docRows = getDb()
+      .prepare(`
+        SELECT content
+        FROM documents
+        WHERE workspaceId = ? AND archivedAt IS NULL AND nodeType != 'folder'
+      `)
+      .all(workspaceId) as Array<{ content: string }>
+
+    return {
+      workspaceId,
+      documents: docRows.length,
+      archivedDocuments: scalarCount(`
+        SELECT COUNT(*) AS n
+        FROM documents
+        WHERE workspaceId = ? AND archivedAt IS NOT NULL AND nodeType != 'folder'
+      `, workspaceId),
+      words: docRows.reduce((sum, row) => sum + countWords(row.content ?? ''), 0),
+      assets: scalarCount(`
+        SELECT COUNT(DISTINCT asset_workspace_links.assetId) AS n
+        FROM asset_workspace_links
+        JOIN assets ON assets.id = asset_workspace_links.assetId
+        WHERE asset_workspace_links.workspaceId = ? AND assets.archivedAt IS NULL
+      `, workspaceId),
+      conversations: scalarCount(`
+        SELECT COUNT(*) AS n
+        FROM ai_conversations
+        WHERE workspaceId = ? AND archivedAt IS NULL
+      `, workspaceId),
+      promptTemplates: scalarCount(`
+        SELECT COUNT(*) AS n
+        FROM ai_prompt_templates
+        WHERE workspaceId = ? AND archivedAt IS NULL
+      `, workspaceId),
+      jobs: scalarCount(`
+        SELECT COUNT(*) AS n
+        FROM job_runs
+        WHERE workspaceId = ?
+      `, workspaceId)
+    }
   }
 }

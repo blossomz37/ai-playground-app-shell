@@ -61,6 +61,11 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const searchNavSmoke = process.env['SHELL_CAPTURE_SEARCH_NAV_SMOKE'] === '1'
   const navSearch = process.env['SHELL_CAPTURE_NAV_SEARCH']
   const navTab = process.env['SHELL_CAPTURE_NAV_TAB']
+  const projectsSearch = process.env['SHELL_CAPTURE_PROJECTS_SEARCH']
+  const projectsEdit = process.env['SHELL_CAPTURE_PROJECTS_EDIT'] === '1'
+  const projectsCreate = process.env['SHELL_CAPTURE_PROJECTS_CREATE'] === '1'
+  const projectsFormDescription = process.env['SHELL_CAPTURE_PROJECTS_FORM_DESCRIPTION']
+  const projectsFormStatus = process.env['SHELL_CAPTURE_PROJECTS_FORM_STATUS']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
   const exitZen = process.env['SHELL_CAPTURE_EXIT_ZEN'] === '1'
@@ -300,6 +305,84 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           `window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: ${JSON.stringify(moduleId)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (projectsSearch !== undefined) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const input = document.querySelector('[data-capture-projects-search]')
+              if (!(input instanceof HTMLInputElement)) {
+                if (attempts >= 30) {
+                  clearInterval(timer)
+                  reject(new Error('Projects search input is not available for capture.'))
+                }
+                return
+              }
+              clearInterval(timer)
+              input.focus()
+              input.value = ${JSON.stringify(projectsSearch)}
+              input.dispatchEvent(new Event('input', { bubbles: true }))
+              resolve(true)
+            }, 100)
+          })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (projectsEdit || projectsCreate) {
+        await win.webContents.executeJavaScript(`
+          (() => {
+            if (${JSON.stringify(projectsCreate)}) {
+              window.dispatchEvent(new Event('projects:create'))
+              return true
+            }
+            const edit = document.querySelector('[data-capture-projects-edit]')
+            if (edit instanceof HTMLButtonElement) {
+              edit.click()
+              return true
+            }
+            return false
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (projectsFormDescription !== undefined || projectsFormStatus !== undefined) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const form = document.querySelector('.project-inspector form')
+              if (!(form instanceof HTMLFormElement)) {
+                if (attempts >= 40) {
+                  clearInterval(timer)
+                  reject(new Error('Projects edit form is not available for capture update.'))
+                }
+                return
+              }
+              clearInterval(timer)
+
+              const textarea = form.querySelector('textarea')
+              if (textarea instanceof HTMLTextAreaElement && ${JSON.stringify(projectsFormDescription !== undefined)}) {
+                textarea.value = ${JSON.stringify(projectsFormDescription ?? '')}
+                textarea.dispatchEvent(new Event('input', { bubbles: true }))
+              }
+
+              const selects = Array.from(form.querySelectorAll('select'))
+              const statusSelect = selects[1]
+              if (statusSelect instanceof HTMLSelectElement && ${JSON.stringify(projectsFormStatus !== undefined)}) {
+                statusSelect.value = ${JSON.stringify(projectsFormStatus ?? '')}
+                statusSelect.dispatchEvent(new Event('change', { bubbles: true }))
+              }
+
+              const submit = form.querySelector('button[type="submit"]')
+              if (submit instanceof HTMLButtonElement) submit.click()
+              resolve(true)
+            }, 100)
+          })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay * 2))
       }
       if (exitZen) {
         await win.webContents.executeJavaScript(`

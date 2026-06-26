@@ -6,6 +6,7 @@ type Loader = () => Promise<{ default: ModuleComponent }>
 
 const loaders: Record<Zone, Record<string, Loader>> = {
   navigation: {
+    'shell.projects': () => import('./projects/ProjectsNavView.svelte'),
     'shell.documents': () => import('../modules/documents/NavView.svelte'),
     'shell.journal': () => import('../modules/journal/NavView.svelte'),
     'shell.assets': () => import('../modules/assets/NavView.svelte'),
@@ -15,6 +16,7 @@ const loaders: Record<Zone, Record<string, Loader>> = {
     'shell.promptstudio': () => import('../modules/promptstudio/NavView.svelte')
   },
   main: {
+    'shell.projects': () => import('./projects/ProjectsMainView.svelte'),
     'shell.documents': () => import('../modules/documents/MainView.svelte'),
     'shell.journal': () => import('../modules/journal/MainView.svelte'),
     'shell.assets': () => import('../modules/assets/MainView.svelte'),
@@ -25,6 +27,7 @@ const loaders: Record<Zone, Record<string, Loader>> = {
     'shell.promptstudio': () => import('../modules/promptstudio/MainView.svelte')
   },
   inspector: {
+    'shell.projects': () => import('./projects/ProjectsInspectorView.svelte'),
     'shell.documents': () => import('../modules/documents/InspectorView.svelte'),
     'shell.journal': () => import('../modules/journal/InspectorView.svelte'),
     'shell.assets': () => import('../modules/assets/InspectorView.svelte'),

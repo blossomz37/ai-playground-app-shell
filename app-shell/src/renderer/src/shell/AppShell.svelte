@@ -21,7 +21,7 @@
   import JobsPanel from './JobsPanel.svelte'
   import { handleGlobalKeydown, registerCommand } from '../store/commands'
   import { activeModuleId } from '../store'
-  import { ensureActiveModuleAvailable, isModuleReachable, loadModules } from '../store/modules'
+  import { PROJECTS_MODULE_ID, ensureActiveModuleAvailable, isModuleReachable, loadModules } from '../store/modules'
   import { FALLBACK_MODULE_ID } from '@shared/module-policy'
   import { toggleJobsPanel } from '../store/jobs'
   import { importAssets } from '../modules/assets/state'
@@ -137,6 +137,7 @@
     activeModuleId.set(id)
     webInspectorSuppressed = id === 'shell.web' && webInspectorDefaultPending
     closeNarrowPanels()
+    if (id === PROJECTS_MODULE_ID) return
     await window.shell.modules.activate(id)
   }
 
@@ -214,6 +215,15 @@
       registerCommand('shell.layout.toggleInspector', toggleInspector),
       registerCommand('shell.layout.zenMode', toggleZen),
       registerCommand('shell.jobs.toggle', toggleJobsPanel),
+      registerCommand('projects.open', () => selectModule(PROJECTS_MODULE_ID)),
+      registerCommand('projects.new', () => {
+        void selectModule(PROJECTS_MODULE_ID)
+        window.dispatchEvent(new Event('projects:create'))
+      }),
+      registerCommand('projects.import', () => {
+        void selectModule(PROJECTS_MODULE_ID)
+        window.dispatchEvent(new Event('projects:import'))
+      }),
       registerCommand('assets.import', () => importAssets()),
       registerCommand('web.newTab', () => webNewTab()),
       registerCommand('web.closeTab', closeActiveTab),

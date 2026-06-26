@@ -279,11 +279,16 @@ export interface Workspace {
   name: string
   type: string
   root: string
+  description: string
+  status: WorkspaceStatus
+  metadataJson: string
   createdAt?: string
   updatedAt?: string
   lastOpenedAt?: string | null
   archivedAt?: string | null
 }
+
+export type WorkspaceStatus = 'active' | 'paused' | 'draft'
 
 export interface WorkspaceListParams {
   includeArchived?: boolean
@@ -297,6 +302,26 @@ export interface WorkspaceImportParams {
 
 export interface WorkspaceDuplicateParams {
   name?: string
+}
+
+export interface WorkspaceUpdatePatch {
+  name?: string
+  type?: string
+  root?: string
+  description?: string
+  status?: WorkspaceStatus
+  metadataJson?: string
+}
+
+export interface WorkspaceStats {
+  workspaceId: string
+  documents: number
+  archivedDocuments: number
+  words: number
+  assets: number
+  conversations: number
+  promptTemplates: number
+  jobs: number
 }
 
 export type JobRunner = (payload: unknown, handle: JobHandle) => Promise<void>
@@ -641,6 +666,8 @@ export interface ShellApi {
     restore(id: string): Promise<Workspace>
     delete(id: string): Promise<Workspace>
     switch(id: string): Promise<Workspace>
+    update(id: string, patch: WorkspaceUpdatePatch): Promise<Workspace>
+    stats(workspaceId: string): Promise<WorkspaceStats>
   }
   settings: {
     get(key: string): Promise<unknown>

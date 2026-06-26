@@ -291,6 +291,9 @@ function migrate(db: Database.Database): void {
 
   ensureColumn(db, 'workspaces', 'lastOpenedAt', 'TEXT')
   ensureColumn(db, 'workspaces', 'archivedAt', 'TEXT')
+  ensureColumn(db, 'workspaces', 'description', "TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'workspaces', 'status', "TEXT NOT NULL DEFAULT 'active'")
+  ensureColumn(db, 'workspaces', 'metadataJson', "TEXT NOT NULL DEFAULT '{}'")
   migrateDocumentsNodeType(db)
   ensureColumn(db, 'documents', 'icon', 'TEXT')
   ensureColumn(db, 'documents', 'metadataJson', 'TEXT')

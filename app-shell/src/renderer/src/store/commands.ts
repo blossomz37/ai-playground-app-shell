@@ -15,8 +15,18 @@ import type { CommandCatalogEntry, Disposable } from '@shared/module-contract'
 export const commandCatalog = writable<CommandCatalogEntry[]>([])
 export const paletteOpen = writable<boolean>(false)
 
+const RENDERER_COMMANDS: CommandCatalogEntry[] = [
+  { id: 'projects.open', title: 'Projects: Open Hub', moduleId: 'shell.projects', keybinding: 'CmdOrCtrl+Shift+P' },
+  { id: 'projects.new', title: 'Projects: New Project', moduleId: 'shell.projects' },
+  { id: 'projects.import', title: 'Projects: Import Folder', moduleId: 'shell.projects' }
+]
+
 export async function loadCommands(): Promise<void> {
-  commandCatalog.set(await window.shell.commands.list())
+  const mainCommands = await window.shell.commands.list()
+  commandCatalog.set([
+    ...RENDERER_COMMANDS,
+    ...mainCommands.filter(command => !RENDERER_COMMANDS.some(rendererCommand => rendererCommand.id === command.id))
+  ])
 }
 
 // --- Renderer handler registry -------------------------------------------------
