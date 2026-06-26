@@ -298,6 +298,7 @@ function migrate(db: Database.Database): void {
   ensureColumn(db, 'ai_prompt_templates', 'isProtected', 'INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'ai_prompt_templates', 'archivedAt', 'TEXT')
   setupDocumentFts(db)
+  setupEntityFts(db)
   const now = new Date().toISOString()
   db.prepare('UPDATE workspaces SET lastOpenedAt = COALESCE(lastOpenedAt, updatedAt, createdAt, ?)').run(now)
 }
@@ -405,6 +406,188 @@ function setupDocumentFts(db: Database.Database): void {
       VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
     END;
   `)
+}
+
+/**
+ * FTS5 indexes for the non-document entity types surfaced by universal search:
+ * AI conversations (title + message content), prompt templates
+ * (name + description + body), and assets (label + originalName + comments + tags).
+ *
+ * Unlike `documents_fts` these are *standalone* (own-content) FTS5 tables keyed by
+ * an UNINDEXED entity id column.  Standalone tables accept ordinary
+ * INSERT/UPDATE/DELETE, so triggers maintain them with plain SQL — no external
+ * 'delete' command juggling.  Conversation content aggregates `ai_messages`, so its
+ * row is rebuilt whenever a message or the conversation title changes.
+ *
+ * The whole setup is idempotent (IF NOT EXISTS everywhere) and back-compatible:
+ * existing databases gain the tables/triggers and are back-filled from current
+ * rows the first time they are empty.
+ */
+function setupEntityFts(db: Database.Database): void {
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS ai_conversations_fts USING fts5(
+      entityId UNINDEXED, title, content
+    );
+
+    CREATE TRIGGER IF NOT EXISTS ai_conversations_fts_insert AFTER INSERT ON ai_conversations
+    BEGIN
+      INSERT INTO ai_conversations_fts(entityId, title, content)
+      VALUES (NEW.id, NEW.title, '');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_conversations_fts_update AFTER UPDATE ON ai_conversations
+    BEGIN
+      UPDATE ai_conversations_fts SET title = NEW.title WHERE entityId = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_conversations_fts_delete AFTER DELETE ON ai_conversations
+    BEGIN
+      DELETE FROM ai_conversations_fts WHERE entityId = OLD.id;
+    END;
+
+    -- Keep the conversation's aggregated message content in sync.
+    CREATE TRIGGER IF NOT EXISTS ai_messages_fts_insert AFTER INSERT ON ai_messages
+    BEGIN
+      UPDATE ai_conversations_fts
+      SET content = (
+        SELECT COALESCE(group_concat(content, ' '), '')
+        FROM ai_messages WHERE conversationId = NEW.conversationId
+      )
+      WHERE entityId = NEW.conversationId;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_messages_fts_update AFTER UPDATE ON ai_messages
+    BEGIN
+      UPDATE ai_conversations_fts
+      SET content = (
+        SELECT COALESCE(group_concat(content, ' '), '')
+        FROM ai_messages WHERE conversationId = NEW.conversationId
+      )
+      WHERE entityId = NEW.conversationId;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_messages_fts_delete AFTER DELETE ON ai_messages
+    BEGIN
+      UPDATE ai_conversations_fts
+      SET content = (
+        SELECT COALESCE(group_concat(content, ' '), '')
+        FROM ai_messages WHERE conversationId = OLD.conversationId
+      )
+      WHERE entityId = OLD.conversationId;
+    END;
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS ai_prompt_templates_fts USING fts5(
+      entityId UNINDEXED, title, content
+    );
+
+    CREATE TRIGGER IF NOT EXISTS ai_prompt_templates_fts_insert AFTER INSERT ON ai_prompt_templates
+    BEGIN
+      INSERT INTO ai_prompt_templates_fts(entityId, title, content)
+      VALUES (NEW.id, NEW.name, NEW.description || ' ' || NEW.body);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_prompt_templates_fts_update AFTER UPDATE ON ai_prompt_templates
+    BEGIN
+      UPDATE ai_prompt_templates_fts
+      SET title = NEW.name, content = NEW.description || ' ' || NEW.body
+      WHERE entityId = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ai_prompt_templates_fts_delete AFTER DELETE ON ai_prompt_templates
+    BEGIN
+      DELETE FROM ai_prompt_templates_fts WHERE entityId = OLD.id;
+    END;
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS assets_fts USING fts5(
+      entityId UNINDEXED, title, content
+    );
+
+    CREATE TRIGGER IF NOT EXISTS assets_fts_insert AFTER INSERT ON assets
+    BEGIN
+      INSERT INTO assets_fts(entityId, title, content)
+      VALUES (NEW.id, NEW.label, NEW.originalName || ' ' || NEW.comments);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS assets_fts_update AFTER UPDATE ON assets
+    BEGIN
+      UPDATE assets_fts
+      SET title = NEW.label,
+          content = NEW.originalName || ' ' || NEW.comments || ' ' || (
+            SELECT COALESCE(group_concat(tag, ' '), '') FROM asset_tags WHERE assetId = NEW.id
+          )
+      WHERE entityId = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS assets_fts_delete AFTER DELETE ON assets
+    BEGIN
+      DELETE FROM assets_fts WHERE entityId = OLD.id;
+    END;
+
+    -- Asset tags feed the content column; refresh on tag add/remove.
+    CREATE TRIGGER IF NOT EXISTS asset_tags_fts_insert AFTER INSERT ON asset_tags
+    BEGIN
+      UPDATE assets_fts
+      SET content = (
+        SELECT a.originalName || ' ' || a.comments || ' ' || (
+          SELECT COALESCE(group_concat(tag, ' '), '') FROM asset_tags WHERE assetId = NEW.assetId
+        )
+        FROM assets a WHERE a.id = NEW.assetId
+      )
+      WHERE entityId = NEW.assetId;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS asset_tags_fts_delete AFTER DELETE ON asset_tags
+    BEGIN
+      UPDATE assets_fts
+      SET content = (
+        SELECT a.originalName || ' ' || a.comments || ' ' || (
+          SELECT COALESCE(group_concat(tag, ' '), '') FROM asset_tags WHERE assetId = OLD.assetId
+        )
+        FROM assets a WHERE a.id = OLD.assetId
+      )
+      WHERE entityId = OLD.assetId;
+    END;
+  `)
+
+  backfillEntityFts(db)
+}
+
+/**
+ * One-time population of the entity FTS tables from existing rows.  Idempotent:
+ * each table is only back-filled while it is empty, so re-running migrate() (or
+ * opening an already-migrated DB) is a no-op.
+ */
+function backfillEntityFts(db: Database.Database): void {
+  const isEmpty = (table: string): boolean =>
+    (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n === 0
+
+  db.transaction(() => {
+    if (isEmpty('ai_conversations_fts')) {
+      db.exec(`
+        INSERT INTO ai_conversations_fts(entityId, title, content)
+        SELECT c.id, c.title, COALESCE((
+          SELECT group_concat(m.content, ' ')
+          FROM ai_messages m WHERE m.conversationId = c.id
+        ), '')
+        FROM ai_conversations c;
+      `)
+    }
+    if (isEmpty('ai_prompt_templates_fts')) {
+      db.exec(`
+        INSERT INTO ai_prompt_templates_fts(entityId, title, content)
+        SELECT id, name, description || ' ' || body FROM ai_prompt_templates;
+      `)
+    }
+    if (isEmpty('assets_fts')) {
+      db.exec(`
+        INSERT INTO assets_fts(entityId, title, content)
+        SELECT a.id, a.label, a.originalName || ' ' || a.comments || ' ' || COALESCE((
+          SELECT group_concat(tag, ' ') FROM asset_tags WHERE assetId = a.id
+        ), '')
+        FROM assets a;
+      `)
+    }
+  })()
 }
 
 function ensureColumn(db: Database.Database, table: string, column: string, definition: string): void {

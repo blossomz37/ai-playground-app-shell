@@ -342,8 +342,20 @@ export interface FsStat {
   mtime: string
 }
 
+export type SearchEntityType = 'document' | 'conversation' | 'template' | 'asset'
+
 export interface SearchResult {
-  documentId: string
+  /** Which kind of entity this result points at. */
+  entityType: SearchEntityType
+  /** The entity's primary key (document/conversation/template/asset id). */
+  entityId: string
+  /**
+   * Back-compat alias for document results. Populated only when
+   * `entityType === 'document'`; undefined for other entity types.
+   */
+  documentId?: string
+  /** Owning module id used to route navigation (e.g. 'shell.documents'). */
+  moduleId?: string
   title: string
   snippet: string
   rank: number
@@ -520,6 +532,7 @@ export interface ModuleContext {
 
   search: {
     query(text: string, opts?: { limit?: number }): Promise<SearchResult[]>
+    recents(limit?: number): Promise<SearchResult[]>
   }
 
   jobs: {
@@ -645,6 +658,7 @@ export interface ShellApi {
   }
   search: {
     query(text: string, limit?: number): Promise<SearchResult[]>
+    recents(limit?: number): Promise<SearchResult[]>
   }
   ai: {
     collectContext(params: CollectAiContextParams): Promise<AiContextCandidate[]>
