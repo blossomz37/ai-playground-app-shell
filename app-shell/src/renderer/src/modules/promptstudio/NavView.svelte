@@ -173,7 +173,18 @@
           {:else}
             <button type="button" class="template-open" onclick={() => selectAiTemplate(template.id)}>
               <div class="template-title">{template.name}</div>
-              <div class="template-meta">{template.isProtected ? 'Built-in action prompt' : template.tags.join(', ') || 'Prompt template'}</div>
+              <div class="template-meta">
+                {#if template.isProtected}
+                  <span class="meta-chip">Built-in</span>
+                {:else if template.tags.length > 0}
+                  <span class="meta-chip">{template.tags[0]}</span>
+                  {#if template.tags.length > 1}
+                    <span class="meta-count">+{template.tags.length - 1}</span>
+                  {/if}
+                {:else}
+                  <span>Prompt template</span>
+                {/if}
+              </div>
             </button>
             <div class="row-actions">
               <button
@@ -183,7 +194,7 @@
                 aria-label={`Rename ${template.name}`}
                 onclick={(event) => startRename(event, template.id)}
               >
-                Name
+                Rename
               </button>
               <button
                 type="button"
@@ -360,12 +371,13 @@
 
   .template-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     align-items: center;
     gap: var(--space-1);
     width: 100%;
-    padding: var(--space-1);
-    border-radius: var(--radius-md);
+    min-height: 48px;
+    padding: 2px var(--space-1);
+    border-radius: var(--radius-sm);
     margin-bottom: var(--space-1);
     color: var(--color-fg-secondary);
     text-align: left;
@@ -381,7 +393,7 @@
 
   .template-open {
     min-width: 0;
-    padding: var(--space-2);
+    padding: 5px var(--space-2);
     color: inherit;
     text-align: left;
     cursor: pointer;
@@ -393,19 +405,24 @@
 
   .row-actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
     gap: 2px;
+    max-width: 78px;
+    overflow: hidden;
   }
 
   .row-action {
-    min-width: 34px;
+    min-width: 22px;
     height: 22px;
-    padding: 0 5px;
+    padding: 0 4px;
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
+    font-weight: 700;
     opacity: 0;
+    overflow: hidden;
+    text-overflow: clip;
   }
 
   .template-item:hover .row-action,
@@ -424,14 +441,39 @@
   }
 
   .template-title {
+    min-width: 0;
     font-size: var(--font-size-sm);
-    font-weight: 500;
-    margin-bottom: var(--space-1);
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .template-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    margin-top: 2px;
     font-size: var(--font-size-xs);
     color: var(--color-fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta-chip {
+    min-width: 0;
+    max-width: 118px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta-count {
+    flex-shrink: 0;
+    color: color-mix(in srgb, var(--color-fg-muted) 82%, var(--color-accent));
+    font-weight: 700;
   }
 
   .template-empty {

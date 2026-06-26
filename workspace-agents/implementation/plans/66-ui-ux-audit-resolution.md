@@ -373,3 +373,34 @@ Notes:
 
 - Documents still has several AI actions because those are the primary task controls; only preview/audit machinery was demoted.
 - QA subagent accepted the screenshots for the Slice 2 goal. Follow-ups deferred: compact Documents AI run metadata chips/status and Prompt Studio left-nav wrapping, which belongs to Slice 3.
+
+### 2026-06-26 - Slice 3 Prompt Studio Navigation Density
+
+Status: implemented, pending QA and commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/modules/promptstudio/NavView.svelte`
+
+Outcome:
+
+- Template rows now use stable compact height, ellipsized titles, and compact metadata rather than long comma-separated tag text.
+- Built-in and tag metadata is summarized as a small label/count.
+- Secondary row actions remain available on hover/active state but no longer wrap into tall rows.
+- Import/export, archive, duplicate, rename, restore, and delete behavior remains unchanged.
+
+Validation:
+
+- `svelte_autofixer` clean on `promptstudio/NavView.svelte`.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-promptstudio-nav-after-2026-06-26.png`
+
+Notes:
+
+- Focused edit mode and hiding variables/output bands remain deferred as planned; this slice only targeted navigation density.
+- QA subagent accepted the screenshot for the Slice 3 goal. Follow-ups deferred: full-title affordance for truncated rows and lower-weight icon treatment for row actions.
