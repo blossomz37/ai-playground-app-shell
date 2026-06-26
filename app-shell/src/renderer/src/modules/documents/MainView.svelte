@@ -30,7 +30,7 @@
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
-  import type { AiPreview, AiProposal, AiProposalType } from '@shared/ai'
+  import type { AiProposal, AiProposalType } from '@shared/ai'
   import {
     documentsAiPromptDefinition,
     documentsAiPromptWithOutputContract,
@@ -49,7 +49,17 @@
   import { buildTextIndex, findEditorMatches, mapTextRangeToEditorRange, replaceEditorMatches, selectEditorMatch } from './editorSearch'
   import { AnnotationHighlightExtension, setAnnotationDecorations, type AnnotationDecorationRange } from './annotationDecorations'
   import { SearchHighlightExtension, setSearchDecorations } from './searchDecorations'
-  import { captureDocumentsWritingContext, type DocumentsWritingContext } from './documentWritingContext'
+  import { captureDocumentsWritingContext } from './documentWritingContext'
+  import {
+    clearDocumentsAiPreview,
+    documentsAiPreview,
+    documentsAiPreviewAction,
+    documentsAiPreviewBusy,
+    documentsAiPreviewLabel,
+    documentsAiProposalBusy,
+    documentsAiUserInput,
+    documentsAiWritingContext
+  } from './documentsAiPanelState'
   import { labelForDocumentKind } from '@shared/document-kinds'
 
   interface ProjectSearchResult {
@@ -57,11 +67,6 @@
     title: string
     count: number
     matches: DocumentSearchMatch[]
-  }
-
-  interface ProposalSourceStatus {
-    label: string
-    tone: 'ok' | 'warn' | 'neutral'
   }
 
   let element: HTMLDivElement | null = null
@@ -80,6 +85,7 @@
   let capturePlan47Listener: ((event: Event) => void) | null = null
   let captureSelectionListener: ((event: Event) => void) | null = null
   let captureAiPreviewListener: ((event: Event) => void) | null = null
+  let documentsAiPanelListener: ((event: Event) => void) | null = null
   let searchOpen = $state(false)
   let searchQuery = $state('')
   let searchReplacement = $state('')
@@ -95,14 +101,6 @@
   let commentMode = $state(false)
   let commentModeDocId = $state<string | null>(null)
   let annotationCreatePending = false
-  let writingContext = $state<DocumentsWritingContext | null>(null)
-  let aiUserInput = $state('')
-  let aiPreview = $state<AiPreview | null>(null)
-  let aiPreviewLabel = $state('')
-  let aiPreviewAction = $state<DocumentsAiPromptAction | null>(null)
-  let aiPreviewBusy = $state(false)
-  let proposalBusy = $state(false)
-
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
   const editorSearch = $derived(
@@ -119,12 +117,8 @@
   ))
   const visibleSearchError = $derived(searchScope === 'project' ? projectSearch.error : editorSearch.error)
   const splitDiffRows = $derived(buildLineDiff($editorContent, secondaryContent))
-  const writingContextLabel = $derived(writingContext?.mode === 'selection' ? 'Selection' : 'Cursor')
-  const writingContextWords = $derived(writingContext?.selectedWordCount ?? 0)
-  const selectedTextExcerpt = $derived(excerpt(writingContext?.writingVariables.selectedText ?? ''))
-  const beforeExcerpt = $derived(excerpt(writingContext?.writingVariables.before ?? ''))
-  const afterExcerpt = $derived(excerpt(writingContext?.writingVariables.after ?? ''))
-  const activePendingProposals = $derived($aiProposals.filter(proposal => proposal.status === 'pending'))
+  const writingContextLabel = $derived($documentsAiWritingContext?.mode === 'selection' ? 'Selection' : 'Cursor')
+  const writingContextWords = $derived($documentsAiWritingContext?.selectedWordCount ?? 0)
 
   function buildDocumentContextDescriptor(): ShellContextDescriptor {
     const doc = get(activeDoc)
@@ -165,18 +159,12 @@
   }
 
   function refreshWritingContext(): void {
-    writingContext = captureDocumentsWritingContext({
+    documentsAiWritingContext.set(captureDocumentsWritingContext({
       editor,
       activeDocument: get(activeDoc),
       workspace: get(activeWorkspace),
       documentKind: activeDocumentKindLabel()
-    })
-  }
-
-  function excerpt(value: string, max = 180): string {
-    const cleaned = value.replace(/\s+/g, ' ').trim()
-    if (!cleaned) return 'No text captured.'
-    return cleaned.length > max ? `${cleaned.slice(0, max - 3)}...` : cleaned
+    }))
   }
 
   function labelForAiAction(action: DocumentsAiPromptAction): string {
@@ -194,34 +182,35 @@
   async function previewDocumentAi(action: DocumentsAiPromptAction): Promise<void> {
     if (!$activeDoc) return
     refreshWritingContext()
+    const writingContext = get(documentsAiWritingContext)
     if (!writingContext) return
     if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
       addToast('warn', 'Select text before previewing a rewrite.')
       return
     }
 
-    aiPreviewBusy = true
-    aiPreview = null
-    aiPreviewLabel = labelForAiAction(action)
-    aiPreviewAction = action
+    documentsAiPreviewBusy.set(true)
+    documentsAiPreview.set(null)
+    documentsAiPreviewLabel.set(labelForAiAction(action))
+    documentsAiPreviewAction.set(action)
     try {
       await Promise.all([refreshAiContext(), loadAiTemplates()])
       const template = documentsAiTemplateForAction(action)
-      aiPreview = await previewAi({
+      documentsAiPreview.set(await previewAi({
         moduleId: 'shell.documents',
         originType: 'template',
         originId: template?.id ?? `documents.${action}`,
         prompt: promptForAiAction(action),
         writingVariables: {
           ...writingContext.writingVariables,
-          userInput: aiUserInput
+          userInput: get(documentsAiUserInput)
         }
-      })
+      }))
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'AI preview could not be created.')
-      aiPreviewAction = null
+      documentsAiPreviewAction.set(null)
     } finally {
-      aiPreviewBusy = false
+      documentsAiPreviewBusy.set(false)
     }
   }
 
@@ -230,26 +219,8 @@
   }
 
   function sourceTextForAiAction(action: DocumentsAiPromptAction): string {
-    if (action === 'rewrite-selection') return writingContext?.writingVariables.selectedText ?? ''
+    if (action === 'rewrite-selection') return get(documentsAiWritingContext)?.writingVariables.selectedText ?? ''
     return $editorContent
-  }
-
-  function proposalSourceStatus(proposalType: AiProposalType, sourceText: string): ProposalSourceStatus {
-    const source = sourceText.trim()
-    if (!source) {
-      return { label: 'No source snapshot', tone: 'neutral' }
-    }
-
-    if (proposalType === 'replacement') {
-      const matches = exactMatchCount($editorContent, sourceText)
-      if (matches === 1) return { label: 'Source verified', tone: 'ok' }
-      if (matches > 1) return { label: 'Multiple source matches', tone: 'warn' }
-      return { label: 'Source changed', tone: 'warn' }
-    }
-
-    return $editorContent === sourceText
-      ? { label: 'Source snapshot unchanged', tone: 'ok' }
-      : { label: 'Document changed since proposal', tone: 'neutral' }
   }
 
   function exactMatchCount(content: string, needle: string): number {
@@ -263,16 +234,12 @@
     return count
   }
 
-  function canApplyProposal(proposal: AiProposal): boolean {
-    return proposal.status === 'pending'
-      && proposal.proposalType === 'replacement'
-      && proposal.sourceText.trim().length > 0
-      && exactMatchCount($editorContent, proposal.sourceText) === 1
-  }
-
   async function createProposalFromPreview(): Promise<AiProposal | null> {
+    const writingContext = get(documentsAiWritingContext)
+    const aiPreview = get(documentsAiPreview)
+    const aiPreviewAction = get(documentsAiPreviewAction)
     if (!$activeDoc || !writingContext || !aiPreview || !aiPreviewAction) return null
-    proposalBusy = true
+    documentsAiProposalBusy.set(true)
     try {
       const template = documentsAiTemplateForAction(aiPreviewAction)
       const proposal = await createAiProposal({
@@ -287,7 +254,7 @@
           prompt: promptForAiAction(aiPreviewAction),
           writingVariables: {
             ...writingContext.writingVariables,
-            userInput: aiUserInput
+            userInput: get(documentsAiUserInput)
           }
         }
       })
@@ -297,15 +264,16 @@
       addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
       return null
     } finally {
-      proposalBusy = false
+      documentsAiProposalBusy.set(false)
     }
   }
 
-  async function createProposalFromLiveRun(action: DocumentsAiPromptAction | null = aiPreviewAction): Promise<AiProposal | null> {
+  async function createProposalFromLiveRun(action: DocumentsAiPromptAction | null = get(documentsAiPreviewAction)): Promise<AiProposal | null> {
     if (!$activeDoc || !action) return null
-    proposalBusy = true
+    documentsAiProposalBusy.set(true)
     try {
       refreshWritingContext()
+      const writingContext = get(documentsAiWritingContext)
       if (!writingContext) return null
       if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
         addToast('warn', 'Select text before running a rewrite.')
@@ -313,8 +281,8 @@
       }
 
       await Promise.all([refreshAiContext(), loadAiTemplates()])
-      aiPreviewAction = action
-      aiPreviewLabel = labelForAiAction(action)
+      documentsAiPreviewAction.set(action)
+      documentsAiPreviewLabel.set(labelForAiAction(action))
       const template = documentsAiTemplateForAction(action)
       const proposal = await createAiProposalFromInvocation({
         targetDocumentId: $activeDoc.id,
@@ -327,40 +295,30 @@
           prompt: promptForAiAction(action),
           writingVariables: {
             ...writingContext.writingVariables,
-            userInput: aiUserInput
+            userInput: get(documentsAiUserInput)
           }
         }
       })
-      aiPreview = null
-      aiPreviewAction = null
+      clearDocumentsAiPreview()
       addToast('info', 'AI proposal created.')
       return proposal
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
       return null
     } finally {
-      proposalBusy = false
-    }
-  }
-
-  async function copyProposalText(text: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(text)
-      addToast('info', 'Proposal copied.')
-    } catch {
-      addToast('warn', 'Proposal could not be copied.')
+      documentsAiProposalBusy.set(false)
     }
   }
 
   async function rejectProposal(id: string): Promise<void> {
-    proposalBusy = true
+    documentsAiProposalBusy.set(true)
     try {
       await rejectAiProposal(id)
       addToast('info', 'Proposal rejected.')
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Proposal could not be rejected.')
     } finally {
-      proposalBusy = false
+      documentsAiProposalBusy.set(false)
     }
   }
 
@@ -390,7 +348,7 @@
       return
     }
 
-    proposalBusy = true
+    documentsAiProposalBusy.set(true)
     try {
       if (get(isDirty)) {
         await saveDoc()
@@ -402,7 +360,7 @@
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Proposal could not be applied.')
     } finally {
-      proposalBusy = false
+      documentsAiProposalBusy.set(false)
     }
   }
 
@@ -1045,7 +1003,7 @@
 
     captureAiPreviewListener = (event: Event) => {
       const detail = (event as CustomEvent<Partial<{ action: DocumentsAiPromptAction; userInput: string; saveProposal: boolean; runProposal: boolean; applyProposal: boolean }>>).detail ?? {}
-      if (typeof detail.userInput === 'string') aiUserInput = detail.userInput
+      if (typeof detail.userInput === 'string') documentsAiUserInput.set(detail.userInput)
       const action = detail.action
       if (
         action === 'rewrite-selection' ||
@@ -1068,6 +1026,30 @@
       }
     }
     window.addEventListener('shell:capture-document-ai-preview', captureAiPreviewListener)
+
+    documentsAiPanelListener = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<{
+        type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply'
+        action: DocumentsAiPromptAction
+        proposal: AiProposal
+        proposalId: string
+      }>>).detail ?? {}
+
+      if (detail.type === 'preview' && detail.action) {
+        void previewDocumentAi(detail.action)
+      } else if (detail.type === 'run' && detail.action) {
+        void createProposalFromLiveRun(detail.action)
+      } else if (detail.type === 'send-preview') {
+        void createProposalFromLiveRun()
+      } else if (detail.type === 'close-preview') {
+        clearDocumentsAiPreview()
+      } else if (detail.type === 'reject' && detail.proposalId) {
+        void rejectProposal(detail.proposalId)
+      } else if (detail.type === 'apply' && detail.proposal) {
+        void applyReplacementProposal(detail.proposal)
+      }
+    }
+    window.addEventListener('documents:ai-panel-action', documentsAiPanelListener)
 
     annotationJumpListener = (event: Event) => {
       const id = (event as CustomEvent<string>).detail
@@ -1098,6 +1080,9 @@
     }
     if (captureAiPreviewListener) {
       window.removeEventListener('shell:capture-document-ai-preview', captureAiPreviewListener)
+    }
+    if (documentsAiPanelListener) {
+      window.removeEventListener('documents:ai-panel-action', documentsAiPanelListener)
     }
     if (annotationJumpListener) {
       window.removeEventListener('documents:jump-to-annotation', annotationJumpListener)
@@ -1199,123 +1184,6 @@
       onConfirmProjectReplace={() => void confirmProjectReplace()}
       onCancelProjectReplace={() => (projectReplacePreview = false)}
     />
-  {/if}
-
-  {#if $activeDoc}
-    <section class="ai-preview-panel" aria-label="AI writing actions">
-      <div class="ai-preview-controls">
-        <label class="ai-input-label" for="documents-ai-user-input">Instruction</label>
-        <input
-          id="documents-ai-user-input"
-          class="ai-user-input"
-          type="text"
-          bind:value={aiUserInput}
-          placeholder="Optional direction for this AI request"
-          data-capture-documents-ai-user-input
-        />
-        <button
-          type="button"
-          class="ai-action-btn"
-          disabled={proposalBusy || aiPreviewBusy || writingContextWords === 0}
-          onclick={() => void createProposalFromLiveRun('rewrite-selection')}
-        >Rewrite</button>
-        <button
-          type="button"
-          class="ai-action-btn"
-          disabled={proposalBusy || aiPreviewBusy}
-          onclick={() => void createProposalFromLiveRun('continue-from-cursor')}
-        >Continue</button>
-        <button
-          type="button"
-          class="ai-action-btn"
-          disabled={proposalBusy || aiPreviewBusy}
-          onclick={() => void createProposalFromLiveRun('summarize-active-document')}
-        >Summary</button>
-        <button
-          type="button"
-          class="ai-action-btn ghost"
-          disabled={proposalBusy || aiPreviewBusy || writingContextWords === 0}
-          onclick={() => void previewDocumentAi('rewrite-selection')}
-        >Preview rewrite</button>
-        <button
-          type="button"
-          class="ai-action-btn ghost"
-          disabled={proposalBusy || aiPreviewBusy}
-          onclick={() => void previewDocumentAi('continue-from-cursor')}
-        >Preview continue</button>
-        <button
-          type="button"
-          class="ai-action-btn ghost"
-          disabled={proposalBusy || aiPreviewBusy}
-          onclick={() => void previewDocumentAi('summarize-active-document')}
-        >Preview summary</button>
-        {#if aiPreview}
-          <button type="button" class="ai-action-btn" disabled={proposalBusy || aiPreviewBusy} onclick={() => void createProposalFromLiveRun()}>Send preview</button>
-          <button type="button" class="ai-action-btn ghost" onclick={() => { aiPreview = null; aiPreviewAction = null }}>Close</button>
-        {/if}
-      </div>
-
-      {#if activePendingProposals.length > 0}
-        <div class="proposal-panel" data-capture-documents-ai-proposals>
-          <div class="proposal-heading">
-            <span>Pending AI proposals</span>
-            <span>{activePendingProposals.length}</span>
-          </div>
-          <div class="proposal-list">
-            {#each activePendingProposals as proposal (proposal.id)}
-              {@const sourceStatus = proposalSourceStatus(proposal.proposalType, proposal.sourceText)}
-              <article class="proposal-row">
-                <header>
-                  <span>{proposal.proposalType}</span>
-                  <div class="proposal-meta">
-                    <span class="source-status" class:ok={sourceStatus.tone === 'ok'} class:warn={sourceStatus.tone === 'warn'}>
-                      {sourceStatus.label}
-                    </span>
-                    <time datetime={proposal.createdAt}>{new Date(proposal.createdAt).toLocaleString()}</time>
-                  </div>
-                </header>
-                <pre>{proposal.proposedText}</pre>
-                <div class="proposal-actions">
-                  {#if canApplyProposal(proposal)}
-                    <button type="button" class="ai-action-btn" disabled={proposalBusy} onclick={() => void applyReplacementProposal(proposal)}>Apply</button>
-                  {/if}
-                  <button type="button" class="ai-action-btn" onclick={() => void copyProposalText(proposal.proposedText)}>Copy</button>
-                  <button type="button" class="ai-action-btn ghost" disabled={proposalBusy} onclick={() => void rejectProposal(proposal.id)}>Reject</button>
-                </div>
-              </article>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      {#if aiPreview}
-        <div class="ai-preview-result" data-capture-documents-ai-preview>
-          <div class="preview-heading">
-            <span>{aiPreviewLabel}</span>
-            <span>{aiPreview.providerId} / {aiPreview.model} / ~{aiPreview.tokenEstimate} tok / not sent</span>
-          </div>
-          <div class="variable-preview-grid" aria-label="Captured AI variables">
-            <div>
-              <span>selected_text</span>
-              <p>{selectedTextExcerpt}</p>
-            </div>
-            <div>
-              <span>before</span>
-              <p>{beforeExcerpt}</p>
-            </div>
-            <div>
-              <span>after</span>
-              <p>{afterExcerpt}</p>
-            </div>
-            <div>
-              <span>selected_documents</span>
-              <p>{aiPreview.includedTitles.length > 0 ? aiPreview.includedTitles.join(', ') : 'No context documents included.'}</p>
-            </div>
-          </div>
-          <pre class="rendered-prompt">{aiPreview.renderedPrompt}</pre>
-        </div>
-      {/if}
-    </section>
   {/if}
 
   <div class="editor-shell" class:split={Boolean(secondaryDoc)} class:diffing={splitDiffMode && Boolean(secondaryDoc)}>
@@ -1448,220 +1316,6 @@
     background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
-  }
-
-  .ai-preview-panel {
-    flex-shrink: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--accent-editor) 18%, var(--color-border));
-    background: color-mix(in srgb, var(--color-shell-main) 94%, var(--color-panel-glint));
-  }
-
-  .ai-preview-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) clamp(var(--space-5), 6vw, 72px);
-  }
-
-  .ai-input-label {
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .ai-user-input {
-    flex: 1 1 220px;
-    min-width: 0;
-    max-width: 360px;
-    height: 28px;
-    padding: 0 var(--space-2);
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-shell-main) 78%, var(--color-panel-glint));
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-sm);
-  }
-
-  .ai-action-btn {
-    height: 28px;
-    padding: 0 var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 22%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--accent-editor) 12%, transparent);
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-  }
-
-  .ai-action-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent-editor) 18%, transparent);
-    color: var(--color-fg-primary);
-  }
-
-  .ai-action-btn.ghost {
-    background: transparent;
-  }
-
-  .ai-action-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  .ai-preview-result {
-    display: grid;
-    gap: var(--space-3);
-    max-height: 360px;
-    padding: 0 clamp(var(--space-5), 6vw, 72px) var(--space-3);
-    overflow: auto;
-  }
-
-  .proposal-panel {
-    display: grid;
-    gap: var(--space-2);
-    padding: 0 clamp(var(--space-5), 6vw, 72px) var(--space-3);
-  }
-
-  .proposal-heading,
-  .proposal-row header,
-  .proposal-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .proposal-heading {
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .proposal-list {
-    display: grid;
-    gap: var(--space-2);
-    max-height: 280px;
-    overflow: auto;
-  }
-
-  .proposal-row {
-    display: grid;
-    gap: var(--space-2);
-    min-width: 0;
-    padding: var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 14%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-panel-glint) 22%, transparent);
-  }
-
-  .proposal-row header {
-    color: color-mix(in srgb, var(--accent-editor) 70%, var(--color-fg-muted));
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .proposal-row time {
-    color: var(--color-fg-muted);
-    font-weight: 600;
-    text-transform: none;
-  }
-
-  .proposal-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
-  .source-status {
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-fg-muted) 12%, transparent);
-    color: var(--color-fg-muted);
-    white-space: nowrap;
-  }
-
-  .source-status.ok {
-    background: color-mix(in srgb, #22c55e 16%, transparent);
-    color: color-mix(in srgb, #22c55e 70%, var(--color-fg-primary));
-  }
-
-  .source-status.warn {
-    background: color-mix(in srgb, #f7c948 18%, transparent);
-    color: color-mix(in srgb, #f7c948 68%, var(--color-fg-primary));
-  }
-
-  .proposal-row pre {
-    max-height: 150px;
-    margin: 0;
-    overflow: auto;
-    color: var(--color-fg-secondary);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-xs);
-    line-height: 1.45;
-    white-space: pre-wrap;
-  }
-
-  .proposal-actions {
-    justify-content: flex-end;
-  }
-
-  .preview-heading {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-3);
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .variable-preview-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .variable-preview-grid div {
-    min-width: 0;
-    padding: var(--space-2);
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 14%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-panel-glint) 24%, transparent);
-  }
-
-  .variable-preview-grid span {
-    color: color-mix(in srgb, var(--accent-editor) 70%, var(--color-fg-muted));
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-  }
-
-  .variable-preview-grid p {
-    min-width: 0;
-    max-height: 76px;
-    margin: 3px 0 0;
-    overflow: hidden;
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-xs);
-    line-height: 1.35;
-  }
-
-  .rendered-prompt {
-    max-height: 190px;
-    margin: 0;
-    padding: var(--space-3);
-    overflow: auto;
-    border: 1px solid color-mix(in srgb, var(--accent-editor) 14%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-shell-main) 82%, black);
-    color: var(--color-fg-secondary);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-xs);
-    line-height: 1.45;
-    white-space: pre-wrap;
   }
 
   .tool-btn {

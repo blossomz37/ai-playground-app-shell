@@ -1,19 +1,32 @@
 <script lang="ts">
   import type { DocumentAnnotation, DocumentAnnotationStatus, DocumentAnnotationTarget, DocumentSourceMetadata, DocVersion } from '@shared/module-contract'
+  import type { AiProposal, AiProposalType } from '@shared/ai'
+  import type { DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
   import { documentKindFromValue, documentKindValue, labelForDocumentKind, UNCATEGORIZED_KIND_LABEL, UNCATEGORIZED_KIND_VALUE } from '@shared/document-kinds'
   import {
     activeDoc, annotations, versions, editorContent, countWords, updateDoc, documents, documentKindOptions,
     updateDocMetadata, restoreDocVersion, updateAnnotation, resolveAnnotation, reopenAnnotation, deleteAnnotation
   } from '../../store'
+  import { aiProposals } from '../../store/ai'
   import { addToast } from '../../store/toasts'
+  import {
+    documentsAiPreview,
+    documentsAiPreviewBusy,
+    documentsAiPreviewLabel,
+    documentsAiProposalBusy,
+    documentsAiUserInput,
+    documentsAiWritingContext
+  } from './documentsAiPanelState'
 
   type SourceField = { label: string; value: string; title?: string }
   type DocumentMetadata = DocumentSourceMetadata & { targetWordCount?: unknown }
   type AnnotationFilter = DocumentAnnotationStatus
-  type InspectorSectionId = 'annotations' | 'versions' | 'metadata'
+  type InspectorSectionId = 'ai' | 'annotations' | 'versions' | 'metadata'
+  type ProposalSourceStatus = { label: string; tone: 'ok' | 'warn' | 'neutral' }
 
   let annotationFilter = $state<AnnotationFilter>('active')
   let collapsedSections = $state<Record<InspectorSectionId, boolean>>({
+    ai: false,
     annotations: true,
     versions: true,
     metadata: true
@@ -154,6 +167,71 @@
   let filteredAnnotations = $derived(
     $annotations.filter(annotation => annotation.status === annotationFilter && annotation.deletedAt === null)
   )
+  let activePendingProposals = $derived($aiProposals.filter(proposal => proposal.status === 'pending'))
+  let writingContextWords = $derived($documentsAiWritingContext?.selectedWordCount ?? 0)
+  let selectedTextExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.selectedText ?? ''))
+  let beforeExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.before ?? ''))
+  let afterExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.after ?? ''))
+
+  function excerpt(value: string, max = 180): string {
+    const cleaned = value.replace(/\s+/g, ' ').trim()
+    if (!cleaned) return 'No text captured.'
+    return cleaned.length > max ? `${cleaned.slice(0, max - 3)}...` : cleaned
+  }
+
+  function exactMatchCount(content: string, needle: string): number {
+    if (!needle) return 0
+    let count = 0
+    let index = content.indexOf(needle)
+    while (index >= 0) {
+      count += 1
+      index = content.indexOf(needle, index + needle.length)
+    }
+    return count
+  }
+
+  function proposalSourceStatus(proposalType: AiProposalType, sourceText: string): ProposalSourceStatus {
+    const source = sourceText.trim()
+    if (!source) {
+      return { label: 'No source snapshot', tone: 'neutral' }
+    }
+
+    if (proposalType === 'replacement') {
+      const matches = exactMatchCount($editorContent, sourceText)
+      if (matches === 1) return { label: 'Source verified', tone: 'ok' }
+      if (matches > 1) return { label: 'Multiple source matches', tone: 'warn' }
+      return { label: 'Source changed', tone: 'warn' }
+    }
+
+    return $editorContent === sourceText
+      ? { label: 'Source snapshot unchanged', tone: 'ok' }
+      : { label: 'Document changed since proposal', tone: 'neutral' }
+  }
+
+  function canApplyProposal(proposal: AiProposal): boolean {
+    return proposal.status === 'pending'
+      && proposal.proposalType === 'replacement'
+      && proposal.sourceText.trim().length > 0
+      && exactMatchCount($editorContent, proposal.sourceText) === 1
+  }
+
+  function dispatchAiPanelAction(detail: {
+    type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply'
+    action?: DocumentsAiPromptAction
+    proposal?: AiProposal
+    proposalId?: string
+  }): void {
+    window.dispatchEvent(new CustomEvent('documents:ai-panel-action', { detail }))
+  }
+
+  async function copyProposalText(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+      addToast('info', 'Proposal copied.')
+    } catch {
+      addToast('warn', 'Proposal could not be copied.')
+    }
+  }
 
   function annotationExcerpt(annotation: DocumentAnnotation): string {
     const target = parseAnnotationTarget(annotation)
@@ -216,6 +294,156 @@
 
 <div class="inspector-view">
   {#if $activeDoc}
+    <section class="section">
+      <button
+        type="button"
+        class="section-header section-toggle"
+        aria-expanded={sectionOpen('ai')}
+        aria-controls="documents-inspector-ai"
+        onclick={() => toggleSection('ai')}
+      >
+        <span class="section-title">AI</span>
+        <span class="section-meta">{activePendingProposals.length}</span>
+        <span class="section-chevron" aria-hidden="true">{sectionOpen('ai') ? '^' : 'v'}</span>
+      </button>
+      {#if sectionOpen('ai')}
+        <div id="documents-inspector-ai" class="section-body ai-panel">
+          <label class="ai-input-label" for="documents-ai-user-input">Instruction</label>
+          <input
+            id="documents-ai-user-input"
+            class="ai-user-input"
+            type="text"
+            bind:value={$documentsAiUserInput}
+            placeholder="Optional direction for this AI request"
+            data-capture-documents-ai-user-input
+          />
+
+          <div class="ai-action-grid" aria-label="AI writing actions">
+            <button
+              type="button"
+              class="ai-action-btn"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy || writingContextWords === 0}
+              onclick={() => dispatchAiPanelAction({ type: 'run', action: 'rewrite-selection' })}
+            >Rewrite</button>
+            <button
+              type="button"
+              class="ai-action-btn"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+              onclick={() => dispatchAiPanelAction({ type: 'run', action: 'continue-from-cursor' })}
+            >Continue</button>
+            <button
+              type="button"
+              class="ai-action-btn"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+              onclick={() => dispatchAiPanelAction({ type: 'run', action: 'summarize-active-document' })}
+            >Summary</button>
+          </div>
+
+          <div class="ai-action-grid" aria-label="AI preview actions">
+            <button
+              type="button"
+              class="ai-action-btn ghost"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy || writingContextWords === 0}
+              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'rewrite-selection' })}
+            >Preview rewrite</button>
+            <button
+              type="button"
+              class="ai-action-btn ghost"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'continue-from-cursor' })}
+            >Preview continue</button>
+            <button
+              type="button"
+              class="ai-action-btn ghost"
+              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'summarize-active-document' })}
+            >Preview summary</button>
+          </div>
+
+          {#if $documentsAiPreview}
+            <div class="ai-inline-actions">
+              <button
+                type="button"
+                class="ai-action-btn"
+                disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+                onclick={() => dispatchAiPanelAction({ type: 'send-preview' })}
+              >Send preview</button>
+              <button type="button" class="ai-action-btn ghost" onclick={() => dispatchAiPanelAction({ type: 'close-preview' })}>Close</button>
+            </div>
+          {/if}
+
+          {#if activePendingProposals.length > 0}
+            <div class="proposal-panel" data-capture-documents-ai-proposals>
+              <div class="proposal-heading">
+                <span>Pending proposals</span>
+                <span>{activePendingProposals.length}</span>
+              </div>
+              <div class="proposal-list">
+                {#each activePendingProposals as proposal (proposal.id)}
+                  {@const sourceStatus = proposalSourceStatus(proposal.proposalType, proposal.sourceText)}
+                  <article class="proposal-row">
+                    <header>
+                      <span>{proposal.proposalType}</span>
+                      <span class="source-status" class:ok={sourceStatus.tone === 'ok'} class:warn={sourceStatus.tone === 'warn'}>
+                        {sourceStatus.label}
+                      </span>
+                    </header>
+                    <time datetime={proposal.createdAt}>{fmt(proposal.createdAt)}</time>
+                    <pre>{proposal.proposedText}</pre>
+                    <div class="proposal-actions">
+                      {#if canApplyProposal(proposal)}
+                        <button
+                          type="button"
+                          class="ai-action-btn"
+                          disabled={$documentsAiProposalBusy}
+                          onclick={() => dispatchAiPanelAction({ type: 'apply', proposal })}
+                        >Apply</button>
+                      {/if}
+                      <button type="button" class="ai-action-btn" onclick={() => void copyProposalText(proposal.proposedText)}>Copy</button>
+                      <button
+                        type="button"
+                        class="ai-action-btn ghost"
+                        disabled={$documentsAiProposalBusy}
+                        onclick={() => dispatchAiPanelAction({ type: 'reject', proposalId: proposal.id })}
+                      >Reject</button>
+                    </div>
+                  </article>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          {#if $documentsAiPreview}
+            <div class="ai-preview-result" data-capture-documents-ai-preview>
+              <div class="preview-heading">
+                <span>{$documentsAiPreviewLabel}</span>
+                <span>{$documentsAiPreview.providerId} / {$documentsAiPreview.model} / ~{$documentsAiPreview.tokenEstimate} tok / not sent</span>
+              </div>
+              <div class="variable-preview-grid" aria-label="Captured AI variables">
+                <div>
+                  <span>selected_text</span>
+                  <p>{selectedTextExcerpt}</p>
+                </div>
+                <div>
+                  <span>before</span>
+                  <p>{beforeExcerpt}</p>
+                </div>
+                <div>
+                  <span>after</span>
+                  <p>{afterExcerpt}</p>
+                </div>
+                <div>
+                  <span>selected_documents</span>
+                  <p>{$documentsAiPreview.includedTitles.length > 0 ? $documentsAiPreview.includedTitles.join(', ') : 'No context documents included.'}</p>
+                </div>
+              </div>
+              <pre class="rendered-prompt">{$documentsAiPreview.renderedPrompt}</pre>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </section>
+
     <section class="section">
       <button
         type="button"
@@ -613,6 +841,183 @@
   .kind-select option {
     background: var(--color-bg-surface);
     color: var(--color-fg-primary);
+  }
+
+  .ai-panel {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .ai-input-label {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .ai-user-input {
+    width: 100%;
+    height: 28px;
+    min-width: 0;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 24%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 54%, transparent);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+  }
+
+  .ai-user-input:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .ai-action-grid,
+  .ai-inline-actions,
+  .proposal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .ai-action-btn {
+    min-height: 26px;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 24%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-inspector) 12%, transparent);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .ai-action-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent-inspector) 18%, transparent);
+    color: var(--color-fg-primary);
+  }
+
+  .ai-action-btn.ghost {
+    background: transparent;
+  }
+
+  .ai-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .proposal-panel,
+  .proposal-list,
+  .proposal-row,
+  .ai-preview-result {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .proposal-heading,
+  .proposal-row header,
+  .preview-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .proposal-list {
+    max-height: 280px;
+    overflow: auto;
+  }
+
+  .proposal-row {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 18%, var(--color-border));
+    border-left: 3px solid var(--accent-inspector);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-shell-main) 40%, transparent);
+  }
+
+  .proposal-row time {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .source-status {
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-fg-muted) 12%, transparent);
+    color: var(--color-fg-muted);
+    white-space: nowrap;
+  }
+
+  .source-status.ok {
+    background: color-mix(in srgb, #22c55e 16%, transparent);
+    color: color-mix(in srgb, #22c55e 70%, var(--color-fg-primary));
+  }
+
+  .source-status.warn {
+    background: color-mix(in srgb, #f7c948 18%, transparent);
+    color: color-mix(in srgb, #f7c948 68%, var(--color-fg-primary));
+  }
+
+  .proposal-row pre,
+  .rendered-prompt {
+    margin: 0;
+    overflow: auto;
+    color: var(--color-fg-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+
+  .proposal-row pre {
+    max-height: 140px;
+  }
+
+  .ai-preview-result {
+    max-height: 420px;
+    overflow: auto;
+  }
+
+  .variable-preview-grid {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .variable-preview-grid div {
+    min-width: 0;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 16%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-panel-glint) 22%, transparent);
+  }
+
+  .variable-preview-grid span {
+    color: color-mix(in srgb, var(--accent-inspector) 70%, var(--color-fg-muted));
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .variable-preview-grid p {
+    min-width: 0;
+    max-height: 70px;
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+  }
+
+  .rendered-prompt {
+    max-height: 220px;
+    padding: var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 16%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 82%, black);
   }
 
   .empty-text {
