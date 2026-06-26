@@ -1,4 +1,4 @@
-import { ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
+import { app, ipcMain, nativeTheme, BrowserWindow, dialog, shell } from 'electron'
 import type {
   AssetDocumentLinkParams,
   AssetDocumentLinkUpdateParams,
@@ -193,6 +193,12 @@ export function registerIpcHandlers(): void {
     let root = params.root
     if (!root) {
       const win = BrowserWindow.fromWebContents(event.sender)
+      if (win) {
+        if (win.isMinimized()) win.restore()
+        if (!win.isVisible()) win.show()
+        win.focus()
+        app.focus({ steal: true })
+      }
       const result = await dialog.showOpenDialog(win ?? undefined, {
         title: 'Import folder as project',
         properties: ['openDirectory']
