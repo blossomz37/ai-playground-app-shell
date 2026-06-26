@@ -385,7 +385,7 @@
   .primary {
     border-color: var(--color-accent);
     background: var(--color-accent);
-    color: var(--color-accent-contrast);
+    color: var(--color-bg-base);
   }
 
   .secondary {
