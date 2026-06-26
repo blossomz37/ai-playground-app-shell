@@ -13,11 +13,31 @@
     renameAsset,
     restoreAsset,
     selectAsset,
+    type AssetItem,
     selectedAssetId
   } from './state'
 
   let renamingAssetId = $state<string | null>(null)
   let archivedOpen = $state(true)
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
+  let visibleAssets = $derived(
+    normalizedFilter ? $assets.filter(asset => assetMatches(asset, normalizedFilter)) : $assets
+  )
+  let visibleArchivedAssets = $derived(
+    normalizedFilter ? $archivedAssets.filter(asset => assetMatches(asset, normalizedFilter)) : $archivedAssets
+  )
+
+  function assetMatches(asset: AssetItem, query: string): boolean {
+    return [
+      asset.label,
+      asset.originalName,
+      asset.extension,
+      asset.mediaType,
+      asset.comments,
+      ...asset.tags
+    ].some(value => value.toLowerCase().includes(query))
+  }
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -46,8 +66,19 @@
     <span class="zone-title nav-title">Library</span>
     <button class="nav-icon-btn" title="Import assets" aria-label="Import assets" onclick={() => void importAssets()}>＋</button>
   </header>
+  <div class="nav-filter">
+    <input
+      bind:value={filterQuery}
+      data-capture-nav-search
+      type="search"
+      class="filter-input"
+      placeholder="Filter assets"
+      aria-label="Filter assets"
+      autocomplete="off"
+    />
+  </div>
   <div class="asset-list">
-    {#each $assets as asset (asset.id)}
+    {#each visibleAssets as asset (asset.id)}
       <div class="asset-item" class:active={$selectedAssetId === asset.id}>
         {#if renamingAssetId === asset.id}
           <InlineRename
@@ -79,6 +110,8 @@
           <button type="button" class="row-action" title="Archive asset" aria-label={`Archive ${asset.label}`} onclick={() => void archiveAsset(asset.id)}>⧉</button>
         {/if}
       </div>
+    {:else}
+      <div class="list-empty">No assets match.</div>
     {/each}
   </div>
 
@@ -86,11 +119,11 @@
     <section class="archived-section">
       <button type="button" class="archived-header" onclick={() => archivedOpen = !archivedOpen}>
         <span>Archived</span>
-        <span class="archived-count">{$archivedAssets.length}</span>
+        <span class="archived-count">{visibleArchivedAssets.length}</span>
       </button>
       {#if archivedOpen}
         <div class="archived-list">
-          {#each $archivedAssets as asset (asset.id)}
+          {#each visibleArchivedAssets as asset (asset.id)}
             <div class="archived-item" class:active={$selectedAssetId === asset.id}>
               <button type="button" class="archived-copy" onclick={() => selectAsset(asset.id)}>
                 <span class="asset-name">{asset.label}</span>
@@ -98,6 +131,8 @@
               </button>
               <button type="button" class="row-action restore-action" title="Restore asset" aria-label={`Restore ${asset.label}`} onclick={() => void restoreAsset(asset.id)}>↩</button>
             </div>
+          {:else}
+            <div class="list-empty compact">No archived assets match.</div>
           {/each}
         </div>
       {/if}
@@ -114,7 +149,13 @@
     cursor: pointer; font-size: 16px; line-height: 1;
   }
   .nav-icon-btn:hover, .nav-icon-btn:focus-visible { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
+  .nav-filter { flex: 0 0 auto; padding: var(--space-2) var(--space-2) 0; }
+  .filter-input { width: 100%; height: 28px; padding: 0 var(--space-2); border: var(--border-subtle); border-radius: var(--radius-sm); background: var(--color-bg-base); color: var(--color-fg-primary); font-size: var(--font-size-xs); }
+  .filter-input::placeholder { color: var(--color-fg-muted); }
+  .filter-input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
   .asset-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
+  .list-empty { padding: var(--space-3) var(--space-2); color: var(--color-fg-muted); font-size: var(--font-size-sm); }
+  .list-empty.compact { padding: var(--space-2); font-size: var(--font-size-xs); }
   .asset-item {
     display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 24px); align-items: center; gap: var(--space-1);
     width: 100%; padding: var(--space-1); border-radius: var(--radius-md); text-align: left;

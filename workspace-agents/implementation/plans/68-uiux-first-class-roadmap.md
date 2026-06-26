@@ -435,7 +435,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 |---|---|---|---|---|---|
 | 0 Discovery | **done** | 4 explorers (search, stores, AI, tokens) | n/a | n/a | 1 |
 | 1 Go-to-anything | **done** | worker + local runtime verifier + adversarial QA | before/after + edge proofs captured | QA pass after 2 fix rounds | 2 |
-| 2 NavView search | ready (no gate) | — | — | — | 0 |
+| 2 NavView search | **done** | worker + adversarial QA | before/after + archive/history proofs captured | QA pass after evidence-gap fix | 2 |
 | 3 AI unification | ready (renderer-only path) | — | — | — | 0 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
 | 5 Color discipline | ready (renderer-only) | — | — | — | 0 |
@@ -558,8 +558,53 @@ Adversarial QA note: QA correctly flagged that the original Slice 1 goal text
 still said prompt chains, bookmarks, and journal entries. That text is superseded
 by the Slice 0 contract gate and `HANDOFF_75` deferral: chains/journal/bookmarks
 are not silently dropped, but deferred until the Slice 4 data-model contract
-decision because they are settings-backed or otherwise not currently part of the
-SQLite FTS entity contract.
+gate.
+
+### Slice 2 — Outcome (2026-06-26)
+
+Inline search/filter added to every listed NavView without schema, IPC, package,
+or shared contract changes. AI Chat filters active/archived conversations by
+title/date/message content; Prompt Studio filters templates and archive while
+preserving tag filtering; Workflow filters chains; Assets filters active and
+archived assets by label/name/type/comments/tags; Journal filters active and
+archived entries by date/title/preview/content/tags; Web filters bookmarks and
+history. Documents already had a first-class search/filter surface, so it was
+left unchanged.
+
+Runtime proof also exposed an early-startup race: AI module mounts could read the
+renderer bootstrap `ws-default` before `initStore()` hydrated the real workspace,
+causing SQLite foreign-key errors during evidence capture. The fix is a small
+renderer helper, `resolveWorkspaceId()`, used by AI loaders/actions that can run
+on mount. This does not change schema or IPC contracts.
+
+Evidence capture was hardened with `SHELL_CAPTURE_NAV_SEARCH` and
+`SHELL_CAPTURE_NAV_TAB` so future runs can open a module, select a Nav tab, and
+fill the inline filter deterministically.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-aichat-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-aichat-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-promptstudio-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-promptstudio-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-promptstudio-archive-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-assets-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-assets-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-workflow-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-workflow-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-journal-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-journal-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-web-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-web-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-navsearch-web-history-after-2026-06-26.png`
+
+Validation: Svelte autofixer on all touched NavViews (no issues); `npm run
+typecheck`; `npm run build`; `git diff --check`; built Electron screenshot
+captures against seeded workspace `ws-uiux-fc-20260626`; adversarial QA.
+
+Adversarial QA note: first pass found an evidence gap for Prompt Studio Archive
+and Web History. `SHELL_CAPTURE_NAV_TAB` plus two extra screenshots closed it;
+follow-up QA passed with no blockers. Residual risk: current list rendering is
+still non-virtualized, matching the pre-existing Slice 2 risk register.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 

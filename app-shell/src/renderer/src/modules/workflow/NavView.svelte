@@ -3,8 +3,19 @@
   import InlineRename from '../../shell/InlineRename.svelte'
   import { addToast } from '../../store/toasts'
   import { renameWorkflowProfile, selectedWorkflowProfileId, selectWorkflowProfile, workflowProfiles } from './state'
+  import type { WorkflowProfile } from './state'
 
   let renamingProfileId = $state<string | null>(null)
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
+  let visibleProfiles = $derived(
+    normalizedFilter ? $workflowProfiles.filter(profile => profileMatches(profile, normalizedFilter)) : $workflowProfiles
+  )
+
+  function profileMatches(profile: WorkflowProfile, query: string): boolean {
+    return [profile.name, profile.format, profile.status, profile.prompt]
+      .some(value => value.toLowerCase().includes(query))
+  }
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -30,8 +41,19 @@
 
 <div class="nav-view">
   <header class="zone-header nav-header"><span class="zone-title nav-title">Chains</span></header>
+  <div class="nav-filter">
+    <input
+      bind:value={filterQuery}
+      data-capture-nav-search
+      type="search"
+      class="filter-input"
+      placeholder="Filter chains"
+      aria-label="Filter prompt chains"
+      autocomplete="off"
+    />
+  </div>
   <div class="profile-list">
-    {#each $workflowProfiles as profile (profile.id)}
+    {#each visibleProfiles as profile (profile.id)}
       <div
         class="profile-item"
         class:active={$selectedWorkflowProfileId === profile.id}
@@ -67,13 +89,20 @@
           </button>
         {/if}
       </div>
+    {:else}
+      <div class="list-empty">No chains match.</div>
     {/each}
   </div>
 </div>
 
 <style>
   .nav-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  .nav-filter { flex: 0 0 auto; padding: var(--space-2) var(--space-2) 0; }
+  .filter-input { width: 100%; height: 28px; padding: 0 var(--space-2); border: var(--border-subtle); border-radius: var(--radius-sm); background: var(--color-bg-base); color: var(--color-fg-primary); font-size: var(--font-size-xs); }
+  .filter-input::placeholder { color: var(--color-fg-muted); }
+  .filter-input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
   .profile-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
+  .list-empty { padding: var(--space-3) var(--space-2); color: var(--color-fg-muted); font-size: var(--font-size-sm); }
   .profile-item { display: grid; grid-template-columns: minmax(0, 1fr) 24px; align-items: center; gap: var(--space-1); width: 100%; padding: var(--space-1); border-radius: var(--radius-md); text-align: left; color: var(--color-fg-secondary); transition: background 0.1s; }
   .profile-item:hover { background: var(--color-bg-overlay); }
   .profile-item.active { background: var(--color-accent-dim); color: var(--color-accent); }

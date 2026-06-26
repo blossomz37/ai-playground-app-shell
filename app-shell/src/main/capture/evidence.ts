@@ -59,6 +59,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const searchSmoke = process.env['SHELL_CAPTURE_SEARCH_SMOKE'] === '1'
   const searchSmokeQuery = process.env['SHELL_CAPTURE_SEARCH_SMOKE_QUERY'] ?? searchPaletteQuery ?? ''
   const searchNavSmoke = process.env['SHELL_CAPTURE_SEARCH_NAV_SMOKE'] === '1'
+  const navSearch = process.env['SHELL_CAPTURE_NAV_SEARCH']
+  const navTab = process.env['SHELL_CAPTURE_NAV_TAB']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
   const exitZen = process.env['SHELL_CAPTURE_EXIT_ZEN'] === '1'
@@ -1289,6 +1291,54 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           `window.dispatchEvent(new CustomEvent('shell:capture-open-search-palette', { detail: ${JSON.stringify(searchPaletteQuery)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, Math.max(interactionDelay, 1300)))
+      }
+      if (navTab !== undefined) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            const target = ${JSON.stringify(navTab)}.trim().toLowerCase()
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const controls = Array.from(document.querySelectorAll('[role="tab"], button'))
+              const control = controls.find((item) => item.textContent?.trim().toLowerCase() === target)
+              if (!(control instanceof HTMLButtonElement)) {
+                if (attempts >= 30) {
+                  clearInterval(timer)
+                  reject(new Error('Navigation tab is not available for capture: ' + target))
+                }
+                return
+              }
+              clearInterval(timer)
+              control.click()
+              resolve(true)
+            }, 100)
+          })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (navSearch !== undefined) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const input = document.querySelector('[data-capture-nav-search]')
+              if (!(input instanceof HTMLInputElement)) {
+                if (attempts >= 30) {
+                  clearInterval(timer)
+                  reject(new Error('Navigation search input is not available for capture.'))
+                }
+                return
+              }
+              clearInterval(timer)
+              input.focus()
+              input.value = ${JSON.stringify(navSearch)}
+              input.dispatchEvent(new Event('input', { bubbles: true }))
+              resolve(true)
+            }, 100)
+          })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (isThemeMode(captureTheme) && captureTheme !== 'system') {
         await win.webContents.executeJavaScript(

@@ -19,15 +19,24 @@
     selectedAiTemplateId
   } from '../../store/ai'
   import { addToast } from '../../store/toasts'
+  import type { AiPromptTemplate } from '@shared/ai'
 
   let renamingTemplateId = $state<string | null>(null)
   let activeTab = $state<'templates' | 'archive' | 'context'>('templates')
   let tagFilter = $state('all')
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
   let templateTags = $derived(Array.from(new Set($aiTemplates.flatMap(template => template.tags))).sort())
   let visibleTemplates = $derived(
-    tagFilter === 'all'
-      ? $aiTemplates
-      : $aiTemplates.filter(template => template.tags.includes(tagFilter))
+    $aiTemplates.filter(template =>
+      (tagFilter === 'all' || template.tags.includes(tagFilter)) &&
+      (!normalizedFilter || templateMatches(template, normalizedFilter))
+    )
+  )
+  let visibleArchivedTemplates = $derived(
+    normalizedFilter
+      ? $archivedAiTemplates.filter(template => templateMatches(template, normalizedFilter))
+      : $archivedAiTemplates
   )
 
   onMount(async () => {
@@ -39,6 +48,16 @@
     renamingTemplateId = template.id
     activeTab = 'templates'
     addToast('info', 'New prompt template created.')
+  }
+
+  function templateMatches(template: AiPromptTemplate, query: string): boolean {
+    return [
+      template.name,
+      template.description,
+      template.body,
+      template.defaultModel,
+      ...template.tags
+    ].some(value => value.toLowerCase().includes(query))
   }
 
   function startRename(event: MouseEvent, id: string): void {
@@ -137,6 +156,15 @@
 
   {#if activeTab === 'templates'}
     <div class="library-tools">
+      <input
+        bind:value={filterQuery}
+        data-capture-nav-search
+        type="search"
+        class="filter-input"
+        placeholder="Filter prompts"
+        aria-label="Filter prompt templates"
+        autocomplete="off"
+      />
       <select
         aria-label="Filter prompt templates by tag"
         value={tagFilter}
@@ -229,12 +257,23 @@
           {/if}
         </div>
       {:else}
-        <div class="template-empty">No templates match this tag</div>
+        <div class="template-empty">No templates match.</div>
       {/each}
     </div>
   {:else if activeTab === 'archive'}
+    <div class="archive-tools">
+      <input
+        bind:value={filterQuery}
+        data-capture-nav-search
+        type="search"
+        class="filter-input"
+        placeholder="Filter archived prompts"
+        aria-label="Filter archived prompt templates"
+        autocomplete="off"
+      />
+    </div>
     <div class="template-list">
-      {#each $archivedAiTemplates as template (template.id)}
+      {#each visibleArchivedTemplates as template (template.id)}
         <div class="template-item">
           <div class="template-open archived-template">
             <div class="template-title">{template.name}</div>
@@ -262,7 +301,7 @@
           </div>
         </div>
       {:else}
-        <div class="template-empty">No archived templates</div>
+        <div class="template-empty">No archived templates match.</div>
       {/each}
     </div>
   {:else}
@@ -338,12 +377,18 @@
     border-bottom: 1px solid var(--color-border);
   }
 
+  .archive-tools {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .filter-input,
   .library-tools select,
   .tool-btn {
     min-width: 0;
     height: 28px;
     padding: 0 var(--space-2);
-    border: 1px solid var(--border-subtle);
+    border: var(--border-subtle);
     border-radius: var(--radius-sm);
     background: var(--color-bg-base);
     color: var(--color-fg-secondary);
@@ -354,6 +399,16 @@
     cursor: pointer;
   }
 
+  .filter-input {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+
+  .filter-input::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  .filter-input:focus,
   .library-tools select:focus,
   .tool-btn:focus-visible {
     outline: none;

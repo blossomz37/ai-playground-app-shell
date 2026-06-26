@@ -15,11 +15,30 @@
     webHistory
   } from './state'
   import { formatUrlSecondary, formatVisitedAt } from './url-display'
+  import type { WebBookmark, WebHistoryItem } from '@shared/state/web-state'
 
   let renamingBookmarkId = $state<string | null>(null)
   let navMode = $state<'bookmarks' | 'history'>('bookmarks')
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
+  let visibleBookmarks = $derived(
+    normalizedFilter ? $webBookmarks.filter(bookmark => bookmarkMatches(bookmark, normalizedFilter)) : $webBookmarks
+  )
+  let visibleHistory = $derived(
+    normalizedFilter ? $webHistory.filter(item => historyMatches(item, normalizedFilter)) : $webHistory
+  )
   let captureNavListener: EventListener | null = null
   let captureClearHistoryListener: EventListener | null = null
+
+  function bookmarkMatches(bookmark: WebBookmark, query: string): boolean {
+    return [bookmark.title, bookmark.url, formatUrlSecondary(bookmark.url)]
+      .some(value => value.toLowerCase().includes(query))
+  }
+
+  function historyMatches(item: WebHistoryItem, query: string): boolean {
+    return [item.title, item.url, formatUrlSecondary(item.url), formatVisitedAt(item.visitedAt)]
+      .some(value => value.toLowerCase().includes(query))
+  }
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -82,14 +101,25 @@
       </button>
     </div>
   </header>
+  <div class="nav-filter">
+    <input
+      bind:value={filterQuery}
+      data-capture-nav-search
+      type="search"
+      class="filter-input"
+      placeholder={navMode === 'bookmarks' ? 'Filter bookmarks' : 'Filter history'}
+      aria-label={navMode === 'bookmarks' ? 'Filter bookmarks' : 'Filter browsing history'}
+      autocomplete="off"
+    />
+  </div>
 
   {#if navMode === 'bookmarks'}
     <section class="nav-section bookmarks" aria-label="Bookmarks">
       <div class="bookmark-list">
-        {#if $webBookmarks.length === 0}
-          <p class="empty-state">No bookmarks saved yet.</p>
+        {#if visibleBookmarks.length === 0}
+          <p class="empty-state">{normalizedFilter ? 'No bookmarks match.' : 'No bookmarks saved yet.'}</p>
         {/if}
-        {#each $webBookmarks as bm (bm.id)}
+        {#each visibleBookmarks as bm (bm.id)}
           <div class="bm-row" class:active={$selectedBookmarkId === bm.id}>
             {#if renamingBookmarkId === bm.id}
               <InlineRename
@@ -136,7 +166,7 @@
   {:else}
     <section class="nav-section history" aria-label="History">
       <div class="history-tools">
-        <span>{$webHistory.length} {$webHistory.length === 1 ? 'visit' : 'visits'}</span>
+        <span>{visibleHistory.length} {visibleHistory.length === 1 ? 'visit' : 'visits'}</span>
         <button
           type="button"
           class="clear-history"
@@ -151,10 +181,10 @@
         </button>
       </div>
       <div class="history-list">
-        {#if $webHistory.length === 0}
-          <p class="empty-state">Browsing history is clear.</p>
+        {#if visibleHistory.length === 0}
+          <p class="empty-state">{normalizedFilter ? 'No history matches.' : 'Browsing history is clear.'}</p>
         {/if}
-        {#each $webHistory as item (item.id)}
+        {#each visibleHistory as item (item.id)}
           <button class="history-item" onclick={() => openHistoryItem(item.id)}>
             <span class="history-title">{item.title}</span>
             <span class="history-url">{formatUrlSecondary(item.url)}</span>
@@ -178,6 +208,31 @@
     min-height: 34px;
     height: 34px;
     padding: var(--space-1);
+  }
+
+  .nav-filter {
+    flex: 0 0 auto;
+    padding: 0 var(--space-1) var(--space-1);
+  }
+
+  .filter-input {
+    width: 100%;
+    height: 28px;
+    padding: 0 var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xs);
+  }
+
+  .filter-input::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  .filter-input:focus {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
   }
 
   .segmented-control {

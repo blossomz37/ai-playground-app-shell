@@ -16,7 +16,7 @@ import type {
 } from '@shared/ai'
 import type { DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
 import { documentsAiPromptTemplateId } from '@shared/ai-writing-prompts'
-import { activeDocId, activeWorkspace, demoModeEnabled, documents, selectDoc, workspaceId } from './index'
+import { activeDocId, activeWorkspace, demoModeEnabled, documents, resolveWorkspaceId, selectDoc, workspaceId } from './index'
 import { addToast } from './toasts'
 
 export const aiContextCandidates = writable<AiContextCandidate[]>([])
@@ -167,7 +167,7 @@ async function loadPersistedContextSelection(wsId: string): Promise<void> {
 }
 
 async function persistContextSelection(): Promise<void> {
-  const wsId = get(workspaceId)
+  const wsId = await resolveWorkspaceId()
   await window.shell.settings.set(contextSelectionKey(wsId), {
     documentIds: get(manualContextDocIds),
     folderIds: get(manualContextFolderIds),
@@ -219,7 +219,7 @@ activeDocId.subscribe((id) => {
 })
 
 export async function refreshAiContext(): Promise<void> {
-  const wsId = get(workspaceId)
+  const wsId = await resolveWorkspaceId()
   await loadPersistedContextSelection(wsId)
   // Preserve any include/exclude toggles the user made before re-collecting.
   const previousIncluded = new Map(get(aiContextCandidates).map(c => [c.id, c.included]))
@@ -296,7 +296,7 @@ export function includedAiContextCandidates(): AiContextCandidate[] {
 
 export async function loadAiRuns(moduleId?: string): Promise<void> {
   const runs = await window.shell.ai.runs({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     moduleId,
     limit: 12
   })
@@ -305,7 +305,7 @@ export async function loadAiRuns(moduleId?: string): Promise<void> {
 
 export async function loadAiProposals(targetDocumentId?: string): Promise<void> {
   const proposals = await window.shell.ai.proposals({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     targetDocumentId,
     status: 'pending'
   })
@@ -313,9 +313,10 @@ export async function loadAiProposals(targetDocumentId?: string): Promise<void> 
 }
 
 export async function loadAiTemplates(): Promise<void> {
+  const wsId = await resolveWorkspaceId()
   const [templates, archivedTemplates] = await Promise.all([
-    window.shell.ai.templates(get(workspaceId)),
-    window.shell.ai.archivedTemplates(get(workspaceId))
+    window.shell.ai.templates(wsId),
+    window.shell.ai.archivedTemplates(wsId)
   ])
   aiTemplates.set(templates)
   archivedAiTemplates.set(archivedTemplates)
@@ -368,7 +369,7 @@ function importedObject(value: unknown): Record<string, unknown> {
     : {}
 }
 
-function importedTemplate(value: unknown): AiPromptTemplate | null {
+function importedTemplate(value: unknown, wsId: string): AiPromptTemplate | null {
   if (!value || typeof value !== 'object') return null
   const row = value as Partial<AiPromptTemplate>
   const body = importedString(row.body).trim()
@@ -380,7 +381,7 @@ function importedTemplate(value: unknown): AiPromptTemplate | null {
     : `template-${Date.now()}-${Math.random().toString(36).slice(2)}`
   return {
     id,
-    workspaceId: get(workspaceId),
+    workspaceId: wsId,
     name: importedString(row.name, 'Imported Prompt').trim() || 'Imported Prompt',
     description: importedString(row.description),
     body,
@@ -402,13 +403,14 @@ export function selectAiTemplate(id: string): void {
 }
 
 export async function createAiTemplate(): Promise<AiPromptTemplate> {
+  const wsId = await resolveWorkspaceId()
   const now = new Date().toISOString()
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `template-${Date.now()}`
   const template: AiPromptTemplate = {
     id,
-    workspaceId: get(workspaceId),
+    workspaceId: wsId,
     name: 'Untitled Prompt',
     description: '',
     body: 'Use the selected context to help with this writing task.\n\n{{text}}',
@@ -432,7 +434,7 @@ export async function renameAiTemplate(id: string, name: string): Promise<void> 
   const nextName = name.trim()
   if (!nextName) return
   const updated = await window.shell.ai.renameTemplate({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id,
     name: nextName
   })
@@ -479,8 +481,9 @@ export function exportAiTemplatesJson(): string {
 }
 
 export async function importAiTemplatesFromJson(json: string): Promise<number> {
+  const wsId = await resolveWorkspaceId()
   const incoming = parseTemplateList(json)
-    .map(importedTemplate)
+    .map(value => importedTemplate(value, wsId))
     .filter((template): template is AiPromptTemplate => Boolean(template))
   if (incoming.length === 0) throw new Error('No usable prompt templates were found in the JSON file.')
 
@@ -498,7 +501,7 @@ export async function importAiTemplatesFromJson(json: string): Promise<number> {
 
 export async function duplicateAiTemplate(id: string): Promise<AiPromptTemplate> {
   const duplicated = await window.shell.ai.duplicateTemplate({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   aiTemplates.update(templates => [duplicated, ...templates])
@@ -508,7 +511,7 @@ export async function duplicateAiTemplate(id: string): Promise<AiPromptTemplate>
 
 export async function archiveAiTemplate(id: string): Promise<void> {
   const archived = await window.shell.ai.archiveTemplate({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   aiTemplates.update(templates => templates.filter(template => template.id !== id))
@@ -520,7 +523,7 @@ export async function archiveAiTemplate(id: string): Promise<void> {
 
 export async function restoreAiTemplate(id: string): Promise<void> {
   const restored = await window.shell.ai.restoreTemplate({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   archivedAiTemplates.update(templates => templates.filter(template => template.id !== id))
@@ -530,7 +533,7 @@ export async function restoreAiTemplate(id: string): Promise<void> {
 
 export async function deleteAiTemplate(id: string): Promise<void> {
   await window.shell.ai.deleteTemplate({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   aiTemplates.update(templates => templates.filter(template => template.id !== id))
@@ -547,8 +550,9 @@ export async function createAiProposal(params: {
   proposedText: string
   runParams: AiRequestParams
 }): Promise<AiProposal> {
+  const wsId = await resolveWorkspaceId()
   const created = await window.shell.ai.createProposal({
-    workspaceId: get(workspaceId),
+    workspaceId: wsId,
     targetDocumentId: params.targetDocumentId,
     proposalType: params.proposalType,
     sourceText: params.sourceText,
@@ -572,8 +576,9 @@ export async function createAiProposalFromInvocation(params: {
       await loadAiProviders()
     }
 
+    const wsId = await resolveWorkspaceId()
     const created = await window.shell.ai.createProposalFromInvocation({
-      workspaceId: get(workspaceId),
+      workspaceId: wsId,
       targetDocumentId: params.targetDocumentId,
       proposalType: params.proposalType,
       sourceText: params.sourceText,
@@ -590,7 +595,7 @@ export async function createAiProposalFromInvocation(params: {
 
 export async function rejectAiProposal(id: string): Promise<void> {
   await window.shell.ai.rejectProposal({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   aiProposals.update(proposals => proposals.filter(proposal => proposal.id !== id))
@@ -598,7 +603,7 @@ export async function rejectAiProposal(id: string): Promise<void> {
 
 export async function acceptAiProposal(id: string): Promise<void> {
   await window.shell.ai.acceptProposal({
-    workspaceId: get(workspaceId),
+    workspaceId: await resolveWorkspaceId(),
     id
   })
   aiProposals.update(proposals => proposals.filter(proposal => proposal.id !== id))
@@ -610,8 +615,9 @@ export function documentsAiTemplateForAction(action: DocumentsAiPromptAction): A
 }
 
 export async function loadAiProviders(): Promise<void> {
+  const wsId = await resolveWorkspaceId()
   const [providers, secretNames] = await Promise.all([
-    window.shell.ai.providers({ workspaceId: get(workspaceId) }),
+    window.shell.ai.providers({ workspaceId: wsId }),
     window.shell.secrets.list()
   ])
   aiProviders.set(providers)

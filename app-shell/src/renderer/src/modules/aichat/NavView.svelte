@@ -18,10 +18,30 @@
   } from './state'
 
   let renamingConversationId = $state<string | null>(null)
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
+  let visibleConversations = $derived(
+    normalizedFilter
+      ? $aiConversations.filter(chat => conversationMatches(chat, normalizedFilter))
+      : $aiConversations
+  )
+  let visibleArchivedConversations = $derived(
+    normalizedFilter
+      ? $archivedAiConversations.filter(chat => conversationMatches(chat, normalizedFilter))
+      : $archivedAiConversations
+  )
 
   onMount(() => {
     void loadAiConversations()
   })
+
+  function conversationMatches(chat: { title: string; date: string; messages: Array<{ content: string }> }, query: string): boolean {
+    return [
+      chat.title,
+      chat.date,
+      ...chat.messages.map(message => message.content)
+    ].some(value => value.toLowerCase().includes(query))
+  }
 
   function messageCountLabel(count: number): string {
     return count === 1 ? '1 message' : `${count} messages`
@@ -73,8 +93,19 @@
     <span class="zone-title nav-title">Conversations</span>
     <button class="new-btn" title="New conversation" onclick={() => void createAiConversation()}>+</button>
   </header>
+  <div class="nav-filter">
+    <input
+      bind:value={filterQuery}
+      data-capture-nav-search
+      type="search"
+      class="filter-input"
+      placeholder="Filter conversations"
+      aria-label="Filter conversations"
+      autocomplete="off"
+    />
+  </div>
   <div class="chat-list">
-    {#each $aiConversations as chat (chat.id)}
+    {#each visibleConversations as chat (chat.id)}
       <div
         class="chat-item"
         class:active={$selectedAiConversationId === chat.id}
@@ -128,16 +159,18 @@
           </button>
         {/if}
       </div>
+    {:else}
+      <div class="list-empty">No conversations match.</div>
     {/each}
   </div>
   {#if $archivedAiConversations.length > 0}
     <section class="archived-section" aria-label="Archived conversations">
       <div class="archived-header">
         <span>Archived</span>
-        <span class="archived-count">{$archivedAiConversations.length}</span>
+        <span class="archived-count">{visibleArchivedConversations.length}</span>
       </div>
       <div class="archived-list">
-        {#each $archivedAiConversations as chat (chat.id)}
+        {#each visibleArchivedConversations as chat (chat.id)}
           <div class="archived-item">
             <div class="archived-copy">
               <span class="chat-title">{chat.title}</span>
@@ -162,6 +195,8 @@
               <TrashIcon size={14} weight="bold" aria-hidden="true" />
             </button>
           </div>
+        {:else}
+          <div class="list-empty compact">No archived conversations match.</div>
         {/each}
       </div>
     </section>
@@ -173,7 +208,13 @@
   .nav-header { justify-content: space-between; }
   .new-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--color-fg-muted); font-size: 16px; cursor: pointer; transition: background 0.1s, color 0.1s; }
   .new-btn:hover { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
+  .nav-filter { flex: 0 0 auto; padding: var(--space-2) var(--space-2) 0; }
+  .filter-input { width: 100%; height: 28px; padding: 0 var(--space-2); border: var(--border-subtle); border-radius: var(--radius-sm); background: var(--color-bg-base); color: var(--color-fg-primary); font-size: var(--font-size-xs); }
+  .filter-input::placeholder { color: var(--color-fg-muted); }
+  .filter-input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
   .chat-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
+  .list-empty { padding: var(--space-3) var(--space-2); color: var(--color-fg-muted); font-size: var(--font-size-sm); }
+  .list-empty.compact { padding: var(--space-2); font-size: var(--font-size-xs); }
   .chat-item { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 24px); align-items: center; gap: var(--space-1); width: 100%; padding: var(--space-1); border-radius: var(--radius-md); text-align: left; color: var(--color-fg-secondary); transition: background 0.1s; }
   .chat-item:hover { background: var(--color-bg-overlay); }
   .chat-item.active { background: var(--color-accent-dim); color: var(--color-accent); }

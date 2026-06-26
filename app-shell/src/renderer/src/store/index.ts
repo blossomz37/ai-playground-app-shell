@@ -206,6 +206,16 @@ export async function setDemoModePreference(enabled: boolean): Promise<void> {
   await window.shell.settings.set(DEMO_MODE_SETTING_KEY, enabled)
 }
 
+export async function resolveWorkspaceId(): Promise<string> {
+  const workspace = get(activeWorkspace)
+  if (workspace?.id && workspace.id !== 'ws-default') return workspace.id
+
+  const resolved = await window.shell.workspace.get()
+  activeWorkspace.set(resolved)
+  workspaceId.set(resolved.id)
+  return resolved.id
+}
+
 export async function initStore(): Promise<void> {
   initToasts()
   await loadModules()

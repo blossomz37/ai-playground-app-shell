@@ -14,9 +14,28 @@
     selectJournalEntry,
     selectedJournalEntryId
   } from './state'
+  import type { JournalEntry } from './state'
 
   let renamingEntryId = $state<string | null>(null)
   let archivedOpen = $state(true)
+  let filterQuery = $state('')
+  let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
+  let visibleEntries = $derived(
+    normalizedFilter ? $journalEntries.filter(entry => entryMatches(entry, normalizedFilter)) : $journalEntries
+  )
+  let visibleArchivedEntries = $derived(
+    normalizedFilter ? $archivedJournalEntries.filter(entry => entryMatches(entry, normalizedFilter)) : $archivedJournalEntries
+  )
+
+  function entryMatches(entry: JournalEntry, query: string): boolean {
+    return [
+      entry.date,
+      entry.title,
+      entry.preview,
+      entry.content,
+      ...entry.tags
+    ].some(value => value.toLowerCase().includes(query))
+  }
 
   function startRename(event: MouseEvent, id: string): void {
     event.stopPropagation()
@@ -89,8 +108,19 @@
       <button type="button" class="nav-icon-btn" title="Import" aria-label="Import journal entries" onclick={() => void importEntries()}>⇧</button>
     </div>
   </header>
+  <div class="nav-filter">
+    <input
+      bind:value={filterQuery}
+      data-capture-nav-search
+      type="search"
+      class="filter-input"
+      placeholder="Filter journal"
+      aria-label="Filter journal entries"
+      autocomplete="off"
+    />
+  </div>
   <div class="nav-list">
-    {#each $journalEntries as entry (entry.id)}
+    {#each visibleEntries as entry (entry.id)}
       <div
         class="entry-item"
         class:active={$selectedJournalEntryId === entry.id}
@@ -142,6 +172,8 @@
           </button>
         {/if}
       </div>
+    {:else}
+      <div class="list-empty">No journal entries match.</div>
     {/each}
   </div>
   {#if $archivedJournalEntries.length > 0}
@@ -153,11 +185,11 @@
         aria-expanded={archivedOpen}
       >
         <span>Archived</span>
-        <span class="archived-count">{$archivedJournalEntries.length}</span>
+        <span class="archived-count">{visibleArchivedEntries.length}</span>
       </button>
       {#if archivedOpen}
         <div class="archived-list">
-          {#each $archivedJournalEntries as entry (entry.id)}
+          {#each visibleArchivedEntries as entry (entry.id)}
             <div class="archived-item">
               <span class="archived-copy">
                 <span class="entry-date">{entry.date}</span>
@@ -173,6 +205,8 @@
                 ↩
               </button>
             </div>
+          {:else}
+            <div class="list-empty compact">No archived entries match.</div>
           {/each}
         </div>
       {/if}
@@ -190,7 +224,13 @@
     cursor: pointer; font-size: 14px; line-height: 1;
   }
   .nav-icon-btn:hover, .nav-icon-btn:focus-visible { color: var(--color-fg-primary); background: var(--color-hover); }
+  .nav-filter { flex: 0 0 auto; padding: var(--space-2) var(--space-2) 0; }
+  .filter-input { width: 100%; height: 28px; padding: 0 var(--space-2); border: var(--border-subtle); border-radius: var(--radius-sm); background: var(--color-bg-base); color: var(--color-fg-primary); font-size: var(--font-size-xs); }
+  .filter-input::placeholder { color: var(--color-fg-muted); }
+  .filter-input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
   .nav-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
+  .list-empty { padding: var(--space-3) var(--space-2); color: var(--color-fg-muted); font-size: var(--font-size-sm); }
+  .list-empty.compact { padding: var(--space-2); font-size: var(--font-size-xs); }
   .entry-item {
     display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 24px); align-items: center; gap: var(--space-1); width: 100%; padding: var(--space-1);
     border-radius: var(--radius-md); text-align: left; color: var(--color-fg-secondary);

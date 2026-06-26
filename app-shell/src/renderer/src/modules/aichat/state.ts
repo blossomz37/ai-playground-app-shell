@@ -1,7 +1,7 @@
-import { get, readable } from 'svelte/store'
+import { readable } from 'svelte/store'
 import type { AiChatMessage, AiChatMessageRole } from '@shared/ai'
 import { AiChatStateSlice, type AiChatState, type AiConversationView } from '@shared/state/aichat-state'
-import { workspaceId } from '../../store'
+import { resolveWorkspaceId } from '../../store'
 import { getModuleState } from '../module-state-registry'
 
 export type { AiConversationView }
@@ -20,7 +20,7 @@ export const selectedAiConversationId = fromAiChatState(state => state.selectedC
 export const selectedAiConversation = fromAiChatState(state => state.selectedConversation)
 
 export async function loadAiConversations(force = false): Promise<void> {
-  await aiChatState.load(get(workspaceId), force)
+  await aiChatState.load(await resolveWorkspaceId(), force)
 }
 
 export function selectAiConversation(id: string): void {
@@ -28,30 +28,30 @@ export function selectAiConversation(id: string): void {
 }
 
 export async function renameAiConversation(id: string, title: string): Promise<void> {
-  await aiChatState.renameConversation(get(workspaceId), id, title)
+  await aiChatState.renameConversation(await resolveWorkspaceId(), id, title)
 }
 
 export async function archiveAiConversation(id: string): Promise<void> {
-  await aiChatState.archiveConversation(get(workspaceId), id)
+  await aiChatState.archiveConversation(await resolveWorkspaceId(), id)
 }
 
 export async function restoreAiConversation(id: string): Promise<void> {
-  await aiChatState.restoreConversation(get(workspaceId), id)
+  await aiChatState.restoreConversation(await resolveWorkspaceId(), id)
 }
 
 export async function deleteAiConversation(id: string): Promise<void> {
-  await aiChatState.deleteConversation(get(workspaceId), id)
+  await aiChatState.deleteConversation(await resolveWorkspaceId(), id)
 }
 
 export async function createAiConversation(): Promise<string> {
-  return aiChatState.createConversation(get(workspaceId))
+  return aiChatState.createConversation(await resolveWorkspaceId())
 }
 
 export async function appendAiChatMessage(
   conversationId: string,
   message: { role: AiChatMessageRole; content: string; runId?: string | null }
 ): Promise<AiChatMessage> {
-  return aiChatState.appendMessage(get(workspaceId), conversationId, message)
+  return aiChatState.appendMessage(await resolveWorkspaceId(), conversationId, message)
 }
 
 export function activeConversationId(): string {
