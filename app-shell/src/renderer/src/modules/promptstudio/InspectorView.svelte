@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import type { AiRun } from '@shared/ai'
   import AiModelPresetPicker from '../../shell/AiModelPresetPicker.svelte'
   import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
@@ -18,6 +19,7 @@
     selectedAiProviderId,
     selectedAiTemperature
   } from '../../store/ai'
+  import { addToast } from '../../store/toasts'
 
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let modelOptions = $derived(modelOptionsForProvider(activeProvider))
@@ -28,6 +30,13 @@
     void refreshAiContext()
     void loadAiRuns('shell.promptstudio')
   })
+
+  async function useRunSettings(run: AiRun): Promise<void> {
+    await selectAiProvider(run.providerId)
+    await selectAiModel(run.model)
+    await selectAiTemperature(run.temperature)
+    addToast('info', 'Run settings applied.')
+  }
 </script>
 
 <div class="inspector-view">
@@ -103,7 +112,7 @@
 
   <div class="section">
     <h3>Run History</h3>
-    <RunHistoryList runs={$aiRuns} emptyLabel="No prompt runs yet." />
+    <RunHistoryList runs={$aiRuns} emptyLabel="No prompt runs yet." onUseSettings={useRunSettings} />
   </div>
 </div>
 

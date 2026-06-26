@@ -1193,6 +1193,9 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               const trigger = document.querySelector('[data-capture-run-history-toggle]')
               if (trigger) {
                 trigger.click()
+                setTimeout(() => {
+                  trigger.closest('.run-item')?.scrollIntoView({ block: 'start' })
+                }, 150)
                 clearInterval(timer)
                 resolve(true)
               } else if (attempts >= 30) {

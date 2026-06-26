@@ -1,6 +1,7 @@
 <!-- AI Chat InspectorView — context and settings -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import type { AiRun } from '@shared/ai'
   import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
@@ -18,6 +19,7 @@
     selectedAiProviderId,
     selectedAiTemperature
   } from '../../store/ai'
+  import { addToast } from '../../store/toasts'
 
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let modelOptions = $derived(modelOptionsForProvider(activeProvider))
@@ -28,6 +30,13 @@
     void refreshAiContext()
     void loadAiRuns('shell.aichat')
   })
+
+  async function useRunSettings(run: AiRun): Promise<void> {
+    await selectAiProvider(run.providerId)
+    await selectAiModel(run.model)
+    await selectAiTemperature(run.temperature)
+    addToast('info', 'Run settings applied.')
+  }
 </script>
 
 <div class="inspector-view">
@@ -84,7 +93,7 @@
   </section>
   <section class="section">
     <h3 class="section-title">Runs</h3>
-    <RunHistoryList runs={$aiRuns} emptyLabel="No chat runs yet." />
+    <RunHistoryList runs={$aiRuns} emptyLabel="No chat runs yet." onUseSettings={useRunSettings} />
   </section>
 </div>
 

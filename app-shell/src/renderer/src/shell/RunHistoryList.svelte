@@ -5,9 +5,10 @@
   interface Props {
     runs: AiRun[]
     emptyLabel: string
+    onUseSettings?: (run: AiRun) => void | Promise<void>
   }
 
-  let { runs, emptyLabel }: Props = $props()
+  let { runs, emptyLabel, onUseSettings }: Props = $props()
   let expandedRunId = $state<string | null>(null)
 
   function fmt(iso: string | null): string {
@@ -36,6 +37,12 @@
 
       {#if expandedRunId === run.id}
         <div class="run-detail">
+          {#if onUseSettings}
+            <button type="button" class="use-settings-btn" onclick={() => void onUseSettings?.(run)}>
+              Use Settings
+            </button>
+          {/if}
+
           <dl class="run-meta">
             <div>
               <dt>Provider</dt>
@@ -181,6 +188,23 @@
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     line-height: 1.45;
+  }
+
+  .use-settings-btn {
+    align-self: flex-start;
+    min-height: 28px;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .use-settings-btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-fg-primary);
   }
 
   .error-box {
