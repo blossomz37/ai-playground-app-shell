@@ -22,6 +22,7 @@ export default defineConfig({
   renderer: {
     plugins: [svelte({ preprocess: vitePreprocess() })],
     server: {
+      host: '127.0.0.1',
       port: 5183,
       strictPort: true
     },
