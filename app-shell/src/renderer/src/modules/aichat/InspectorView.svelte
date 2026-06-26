@@ -2,6 +2,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import AiContextPicker from '../../shell/AiContextPicker.svelte'
+  import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
     aiProviders,
     aiRuns,
@@ -83,16 +84,7 @@
   </section>
   <section class="section">
     <h3 class="section-title">Runs</h3>
-    <div class="run-list">
-      {#each $aiRuns as run (run.id)}
-        <div class="run-item">
-          <span class="run-status">{run.status}</span>
-          <span class="run-summary">{run.inputSummary || run.originType}</span>
-        </div>
-      {:else}
-        <p class="context-hint">No chat runs yet.</p>
-      {/each}
-    </div>
+    <RunHistoryList runs={$aiRuns} emptyLabel="No chat runs yet." />
   </section>
 </div>
 
@@ -100,8 +92,6 @@
   .inspector-view { padding: var(--space-4); }
   .section { margin-bottom: var(--space-5); }
   .section-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); margin-bottom: var(--space-3); }
-  .context-hint { font-size: var(--font-size-sm); color: var(--color-fg-muted); margin-bottom: var(--space-2); }
-  .run-list { display: flex; flex-direction: column; gap: var(--space-2); }
   .field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
   label { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-fg-primary); }
   .select-input {
@@ -121,7 +111,4 @@
   .status-mock { color: var(--color-warn); }
   .status-live { color: var(--color-success); }
   .status-error { color: var(--color-danger); }
-  .run-item { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); background: var(--color-bg-overlay); border-radius: var(--radius-sm); }
-  .run-status { color: var(--color-success); font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; }
-  .run-summary { color: var(--color-fg-secondary); font-size: var(--font-size-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

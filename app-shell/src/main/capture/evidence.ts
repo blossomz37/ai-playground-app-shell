@@ -66,6 +66,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
+  const openRunHistory = process.env['SHELL_CAPTURE_OPEN_RUN_HISTORY'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
   const tableSearchMode = process.env['SHELL_CAPTURE_TABLE_SEARCH_MODE']
   const tableFolder = process.env['SHELL_CAPTURE_TABLE_FOLDER']
@@ -1147,6 +1148,26 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (showInspector) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[aria-label="Show inspector"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openRunHistory) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const trigger = document.querySelector('[data-capture-run-history-toggle]')
+              if (trigger) {
+                trigger.click()
+                clearInterval(timer)
+                resolve(true)
+              } else if (attempts >= 30) {
+                clearInterval(timer)
+                resolve(false)
+              }
+            }, 100)
+          })
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

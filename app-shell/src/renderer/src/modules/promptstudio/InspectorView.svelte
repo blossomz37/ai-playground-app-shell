@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
     aiContextCandidates,
     aiProviders,
@@ -100,19 +101,7 @@
 
   <div class="section">
     <h3>Run History</h3>
-    <div class="history-list">
-      {#each $aiRuns as run (run.id)}
-        <div class="history-item">
-          <div class="time">{run.inputSummary || run.originType}</div>
-          <div class:success={run.status === 'completed'} class:error={run.status === 'failed'} class="status">{run.status}</div>
-        </div>
-      {:else}
-        <div class="history-item">
-          <div class="time">No runs yet</div>
-          <div class="status">Ready</div>
-        </div>
-      {/each}
-    </div>
+    <RunHistoryList runs={$aiRuns} emptyLabel="No prompt runs yet." />
   </div>
 </div>
 
