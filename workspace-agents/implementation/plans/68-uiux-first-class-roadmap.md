@@ -430,7 +430,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 | Slice | State | Subagent(s) | Screenshots | QA verdict | Iterations |
 |---|---|---|---|---|---|
 | 0 Discovery | **done** | 4 explorers (search, stores, AI, tokens) | n/a | n/a | 1 |
-| 1 Go-to-anything | awaiting contract gate | — | — | — | 0 |
+| 1 Go-to-anything | code complete; **screenshots blocked by env** | worker + adversarial QA | pending (app can't launch here) | QA pass after 1 fix round | 1 |
 | 2 NavView search | ready (no gate) | — | — | — | 0 |
 | 3 AI unification | ready (renderer-only path) | — | — | — | 0 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
@@ -493,6 +493,30 @@ prompt run as an `ai.chain.run` job — not multi-step.
   inherit dark-theme jewel values — a pre-existing bug to fix during the color
   pass; ~98 accent usages across ~17 files; party mode is the only jewel
   consumer and must be preserved.
+
+### Slice 1 — Outcome (2026-06-26)
+
+Backend FTS implemented (chosen at the contract gate): FTS5 tables + sync
+triggers + idempotent backfill for AI conversations, prompt templates, and
+assets, alongside the existing `documents_fts`; `search.ts` UNIONs all four with
+a non-FTS `recents()` empty-query fallback; `SearchResult` (module contract)
+extended with `entityType`/`entityId`/`moduleId`; palette routes selection to the
+right module+entity, shows entity-type badges and a visible result count, and the
+20-result cap is gone (limit 50). Adversarial QA fixed one blocking bug (asset
+row duplication → `EXISTS` subquery) and hardened snippet rendering (STX/ETX
+sentinels + HTML-escape before `<mark>`). Static gates: `npm run typecheck` and
+`npm run build` clean. Commits: `ad7a8b4` (impl), `5f51659` (QA fixes).
+
+**Blocked on environment for screenshot/runtime proof.** The First-Class Bar
+requires screenshot evidence, but the Electron app cannot launch in this remote
+sandbox: the native `better-sqlite3` module cannot be built (network policy
+blocks `nodejs.org` headers and GitHub release-asset prebuilds, both 403), so no
+`SHELL_CAPTURE` run and no runtime SQL execution are possible here. Prior
+screenshots were macOS captures, i.e. produced on a machine that can build the
+app. Verification achieved here is limited to static gates + adversarial code
+review. Awaiting a decision on how to satisfy the screenshot requirement (capture
+locally, loosen the env network policy, or accept code-review-only for this
+environment). Same constraint applies to every UI-visible slice that follows.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 
