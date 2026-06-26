@@ -83,6 +83,7 @@
   let confirmDeleteKey = $state<string | null>(null)
   let folderInputOverride = $state<string | null>(null)
   let folderOptionsOpen = $state(false)
+  let filtersOpen = $state(false)
   let captureFilterListener: ((event: Event) => void) | null = null
   let captureBulkListener: ((event: Event) => void) | null = null
 
@@ -279,6 +280,14 @@
     folderInputOverride = null
     folderOptionsOpen = false
     resetTableFilters()
+  }
+
+  function toggleFiltersOpen(): void {
+    filtersOpen = !filtersOpen
+    if (!filtersOpen) {
+      kindPopoverOpen = false
+      folderOptionsOpen = false
+    }
   }
 
   function activeFilterChips(): Array<{ id: string; label: string; clear: () => void }> {
@@ -577,6 +586,58 @@
           data-capture-table-search
         />
       </div>
+      <label class="toolbar-field" for="table-sort">
+        <span class="sr-only">Sort</span>
+        <select id="table-sort" value={$tableSortBy} onchange={(event) => setSortBy(event.currentTarget.value as TableSortBy)} data-capture-table-sort>
+          <option value="title">Title</option>
+          <option value="updatedAt">Modified</option>
+          <option value="createdAt">Created</option>
+          <option value="kind">Kind</option>
+          <option value="wordCount">Words</option>
+          <option value="targetWordCount">Target</option>
+        </select>
+      </label>
+      <label class="toolbar-field sort-direction-field" for="table-sort-direction">
+        <span class="sr-only">Sort direction</span>
+        <select
+          id="table-sort-direction"
+          value={$tableSortDirection}
+          aria-label="Sort direction"
+          onchange={(event) => setSortDirection(event.currentTarget.value as TableSortDirection)}
+          data-capture-table-sort-direction
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </label>
+      <button
+        class="filters-toggle"
+        class:active={filtersOpen || filterChips.length > 0}
+        type="button"
+        aria-expanded={filtersOpen}
+        aria-controls="table-advanced-filters"
+        onclick={toggleFiltersOpen}
+      >
+        <span>Filters{filterChips.length ? ` (${filterChips.length})` : ''}</span>
+        <span class="filters-chevron" aria-hidden="true">{filtersOpen ? '^' : 'v'}</span>
+      </button>
+      <button
+        class="reset-btn"
+        type="button"
+        disabled={!$tableHasActiveFilters}
+        aria-label="Reset table filters"
+        title="Reset filters"
+        onclick={resetFilters}
+      >
+        <XIcon size={14} weight="bold" aria-hidden="true" />
+      </button>
+    </header>
+    <section
+      id="table-advanced-filters"
+      class="advanced-filters"
+      aria-label="Advanced table filters"
+      hidden={!filtersOpen}
+    >
       <div class="search-mode" aria-label="Search mode">
         <button
           type="button"
@@ -716,41 +777,7 @@
           {/each}
         </select>
       </label>
-      <label class="toolbar-field" for="table-sort">
-        <span class="sr-only">Sort</span>
-        <select id="table-sort" value={$tableSortBy} onchange={(event) => setSortBy(event.currentTarget.value as TableSortBy)} data-capture-table-sort>
-          <option value="title">Title</option>
-          <option value="updatedAt">Modified</option>
-          <option value="createdAt">Created</option>
-          <option value="kind">Kind</option>
-          <option value="wordCount">Words</option>
-          <option value="targetWordCount">Target</option>
-        </select>
-      </label>
-      <label class="toolbar-field sort-direction-field" for="table-sort-direction">
-        <span class="sr-only">Sort direction</span>
-        <select
-          id="table-sort-direction"
-          value={$tableSortDirection}
-          aria-label="Sort direction"
-          onchange={(event) => setSortDirection(event.currentTarget.value as TableSortDirection)}
-          data-capture-table-sort-direction
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-      </label>
-      <button
-        class="reset-btn"
-        type="button"
-        disabled={!$tableHasActiveFilters}
-        aria-label="Reset table filters"
-        title="Reset filters"
-        onclick={resetFilters}
-      >
-        <XIcon size={14} weight="bold" aria-hidden="true" />
-      </button>
-    </header>
+    </section>
     <div class="filter-summary">
       <span>{$tableFilterSummary}</span>
       {#if $tableVisibleSelectedCount > 0}
@@ -956,6 +983,16 @@
     outline: none;
   }
   .search-input { padding: 0 var(--space-3); }
+  .advanced-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 var(--space-2) var(--space-2);
+  }
+  .advanced-filters[hidden] {
+    display: none;
+  }
   .folder-filter {
     position: relative;
     flex: 0 1 160px;
@@ -1116,9 +1153,34 @@
   .number-input:focus-visible,
   .sort-header:focus-visible,
   .filter-chip:focus-visible,
+  .filters-toggle:focus-visible,
   .reset-btn:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 1px;
+  }
+  .filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+  .filters-toggle:hover,
+  .filters-toggle.active {
+    background: var(--color-bg-active);
+    color: var(--color-fg-primary);
+  }
+  .filters-chevron {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1;
   }
   .reset-btn {
     display: inline-flex;

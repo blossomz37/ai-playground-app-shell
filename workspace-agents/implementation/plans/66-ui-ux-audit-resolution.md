@@ -339,7 +339,7 @@ Notes:
 
 ### 2026-06-26 - Slice 2 AI Inspector Progressive Disclosure
 
-Status: implemented, pending QA and commit.
+Status: completed in commit pending.
 
 Changed:
 
@@ -404,3 +404,34 @@ Notes:
 
 - Focused edit mode and hiding variables/output bands remain deferred as planned; this slice only targeted navigation density.
 - QA subagent accepted the screenshot for the Slice 3 goal. Follow-ups deferred: full-title affordance for truncated rows and lower-weight icon treatment for row actions.
+
+### 2026-06-26 - Slice 4 Table View Filter Disclosure
+
+Status: implemented, pending QA and commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/modules/tableview/MainView.svelte`
+
+Outcome:
+
+- Default Table View now shows search, sort, filter disclosure, reset, result summary, active filter chips, and the table.
+- Advanced controls for text/regex mode, folder, kind, word count, and date now sit behind a local Filters disclosure.
+- Existing filter handlers, active chips, reset behavior, bulk controls, and `data-capture-*` hooks remain in place.
+- Worker subagent implemented the single-file patch; lead agent inspected the diff and ran validation.
+- QA subagent accepted the screenshot for the Slice 4 goal. Lead agent added a visible chevron and active filter count after QA noted the disclosure could use a clearer affordance.
+
+Validation:
+
+- `svelte_autofixer` clean on `tableview/MainView.svelte`.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-table-filters-after-2026-06-26.png`
+
+Notes:
+
+- No persistence was added for the disclosure state; it remains local UI state to avoid broadening the slice.
