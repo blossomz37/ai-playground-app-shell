@@ -407,7 +407,7 @@ Notes:
 
 ### 2026-06-26 - Slice 4 Table View Filter Disclosure
 
-Status: implemented, pending QA and commit.
+Status: completed in commit pending.
 
 Changed:
 
@@ -438,7 +438,7 @@ Notes:
 
 ### 2026-06-26 - Slice 5 Settings Wording and Grouping
 
-Status: implemented, pending QA and commit.
+Status: completed in commit pending.
 
 Changed:
 
@@ -471,3 +471,35 @@ Notes:
 - No storage keys, module registry semantics, or settings behavior changed; this was intentionally copy and grouping only.
 - QA subagent passed the slice and found no scope creep. It noted the top screenshot did not prove the Advanced grouping; the existing lower capture hook scrolls to Document Kinds rather than Advanced, so the lower wording changes remain verified through diff review rather than a perfect screenshot.
 - AI Tools stays in Everyday Settings intentionally because API key/model setup is a normal user setup path for this shell, while tool toggles, sample workspace mode, and secrets are grouped under Advanced.
+
+### 2026-06-26 - Slice 6 Run History Summary and Detail Split
+
+Status: implemented, pending QA and commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/shell/RunHistoryList.svelte`
+- `app-shell/src/main/capture/evidence.ts`
+
+Outcome:
+
+- Run history rows now read as compact summary cards with status, summary, time, and a simple Result/Hide affordance.
+- Expanded rows prioritize the recorded result or error before any technical metadata.
+- Provider, model, temperature, source, completed time, and run ID now sit behind a nested `Run details` disclosure.
+- The run-history screenshot helper now opens the existing inspector Run History/Runs disclosure before clicking the first run; this affects evidence capture only.
+- QA subagent passed the screenshot and diff. Follow-up handled before commit: `aria-expanded` was added to the run summary button, and the capture helper selector was narrowed to inspector disclosures.
+
+Validation:
+
+- `svelte_autofixer` clean on `RunHistoryList.svelte`.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-run-history-summary-after-2026-06-26.png`
+
+Notes:
+
+- No new run fields, AI repository changes, or rendered-prompt storage were added. The slice uses the existing `AiRun` contract only.

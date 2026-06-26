@@ -1190,6 +1190,13 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             let attempts = 0
             const timer = setInterval(() => {
               attempts += 1
+              for (const details of Array.from(document.querySelectorAll('.inspector details'))) {
+                const summaryText = details.querySelector('summary')?.textContent?.trim().toLowerCase() ?? ''
+                const sectionTitle = details.querySelector('.section-title')?.textContent?.trim().toLowerCase() ?? ''
+                if (sectionTitle === 'run history' || sectionTitle === 'runs' || summaryText.includes('run history')) {
+                  details.open = true
+                }
+              }
               const trigger = document.querySelector('[data-capture-run-history-toggle]')
               if (trigger) {
                 trigger.click()

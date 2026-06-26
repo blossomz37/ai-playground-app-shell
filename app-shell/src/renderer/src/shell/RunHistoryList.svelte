@@ -24,61 +24,95 @@
   function toggleRun(id: string): void {
     expandedRunId = expandedRunId === id ? null : id
   }
+
+  function providerLabel(run: AiRun): string {
+    if (run.providerId === 'mock-local') return 'Practice AI'
+    if (run.providerId === 'openai-responses') return 'OpenAI'
+    return run.providerId
+  }
+
+  function originLabel(run: AiRun): string {
+    const labels: Record<AiRun['originType'], string> = {
+      chat: 'Chat',
+      template: 'Prompt',
+      chain: 'Chain',
+      workflow: 'Workflow'
+    }
+    return labels[run.originType]
+  }
 </script>
 
 <div class="run-list">
   {#each runs as run (run.id)}
     <article class="run-item" class:expanded={expandedRunId === run.id}>
-      <button type="button" class="run-summary-button" data-capture-run-history-toggle onclick={() => toggleRun(run.id)}>
+      <button
+        type="button"
+        class="run-summary-button"
+        data-capture-run-history-toggle
+        aria-expanded={expandedRunId === run.id}
+        onclick={() => toggleRun(run.id)}
+      >
         <span class="run-status" class:success={run.status === 'completed'} class:error={run.status === 'failed'}>{run.status}</span>
         <span class="run-summary">{run.inputSummary || run.originType}</span>
+        <span class="run-toggle-hint">{expandedRunId === run.id ? 'Hide' : 'Result'}</span>
         <span class="run-time">{fmt(run.createdAt)}</span>
       </button>
 
       {#if expandedRunId === run.id}
         <div class="run-detail">
-          {#if onUseSettings}
-            <button type="button" class="use-settings-btn" onclick={() => void onUseSettings?.(run)}>
-              Use Settings
-            </button>
-          {/if}
-
-          <dl class="run-meta">
-            <div>
-              <dt>Provider</dt>
-              <dd>{run.providerId}</dd>
-            </div>
-            <div>
-              <dt>Model</dt>
-              <dd>{run.model}</dd>
-            </div>
-            <div>
-              <dt>Temp</dt>
-              <dd>{run.temperature.toFixed(1)}</dd>
-            </div>
-            <div>
-              <dt>Origin</dt>
-              <dd>{run.originType} / {run.originId}</dd>
-            </div>
-            <div>
-              <dt>Completed</dt>
-              <dd>{fmt(run.completedAt)}</dd>
-            </div>
-            <div>
-              <dt>Run ID</dt>
-              <dd>{run.id}</dd>
-            </div>
-          </dl>
-
           {#if run.error}
-            <div class="run-output error-box">{run.error}</div>
+            <section class="run-result error-box" aria-label="Run error">
+              <span class="result-label">Error</span>
+              <p>{run.error}</p>
+            </section>
           {:else if run.outputText}
-            <div class="run-output">
+            <section class="run-result" aria-label="Run result">
+              <span class="result-label">Result</span>
               <MarkdownContent content={run.outputText} />
-            </div>
+            </section>
           {:else}
-            <div class="run-output muted">No output recorded.</div>
+            <section class="run-result muted" aria-label="Run result">
+              <span class="result-label">Result</span>
+              <p>No output recorded.</p>
+            </section>
           {/if}
+
+          <div class="run-actions">
+            {#if onUseSettings}
+              <button type="button" class="use-settings-btn" onclick={() => void onUseSettings?.(run)}>
+                Use these settings
+              </button>
+            {/if}
+            <details class="run-technical">
+              <summary>Run details</summary>
+              <dl class="run-meta">
+                <div>
+                  <dt>AI</dt>
+                  <dd>{providerLabel(run)}</dd>
+                </div>
+                <div>
+                  <dt>Model</dt>
+                  <dd>{run.model}</dd>
+                </div>
+                <div>
+                  <dt>Temperature</dt>
+                  <dd>{run.temperature.toFixed(1)}</dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>{originLabel(run)} / {run.originId}</dd>
+                </div>
+                <div>
+                  <dt>Completed</dt>
+                  <dd>{fmt(run.completedAt)}</dd>
+                </div>
+                <div>
+                  <dt>Run ID</dt>
+                  <dd>{run.id}</dd>
+                </div>
+              </dl>
+            </details>
+          </div>
         </div>
       {/if}
     </article>
@@ -108,7 +142,7 @@
   .run-summary-button {
     width: 100%;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 2px var(--space-2);
     padding: var(--space-2);
     text-align: left;
@@ -143,9 +177,18 @@
   }
 
   .run-time {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
+  }
+
+  .run-toggle-hint {
+    grid-row: 1 / 3;
+    grid-column: 3;
+    align-self: center;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
   }
 
   .run-detail {
@@ -153,6 +196,13 @@
     flex-direction: column;
     gap: var(--space-2);
     padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .run-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   .run-meta {
@@ -179,7 +229,7 @@
     overflow-wrap: anywhere;
   }
 
-  .run-output {
+  .run-result {
     max-height: 220px;
     overflow: auto;
     padding: var(--space-2);
@@ -190,8 +240,21 @@
     line-height: 1.45;
   }
 
+  .run-result p {
+    margin: var(--space-1) 0 0;
+  }
+
+  .result-label {
+    display: block;
+    margin-bottom: var(--space-1);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   .use-settings-btn {
-    align-self: flex-start;
     min-height: 28px;
     padding: 0 var(--space-2);
     border: 1px solid color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
@@ -205,6 +268,32 @@
   .use-settings-btn:hover {
     background: color-mix(in srgb, var(--color-accent) 12%, transparent);
     color: var(--color-fg-primary);
+  }
+
+  .run-technical {
+    min-width: 0;
+  }
+
+  .run-technical summary {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .run-technical summary:hover {
+    color: var(--color-fg-primary);
+    background: var(--color-hover);
+  }
+
+  .run-technical[open] .run-meta {
+    margin-top: var(--space-2);
   }
 
   .error-box {
