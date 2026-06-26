@@ -31,7 +31,11 @@
   import type { ShellContextDescriptor } from '../../store/shell-context'
   import type { Disposable, Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
   import type { AiPreview, AiProposal, AiProposalType } from '@shared/ai'
-  import { documentsAiPromptDefinition, type DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
+  import {
+    documentsAiPromptDefinition,
+    documentsAiPromptWithOutputContract,
+    type DocumentsAiPromptAction
+  } from '@shared/ai-writing-prompts'
   import {
     findDocumentMatches,
     normalizeDocumentSearchState,
@@ -181,6 +185,12 @@
     return 'Summarize active document'
   }
 
+  function promptForAiAction(action: DocumentsAiPromptAction): string {
+    const template = documentsAiTemplateForAction(action)
+    const fallback = documentsAiPromptDefinition(action)
+    return documentsAiPromptWithOutputContract(action, template?.body ?? fallback.body)
+  }
+
   async function previewDocumentAi(action: DocumentsAiPromptAction): Promise<void> {
     if (!$activeDoc || !writingContext) return
     if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
@@ -196,12 +206,11 @@
       refreshWritingContext()
       await Promise.all([refreshAiContext(), loadAiTemplates()])
       const template = documentsAiTemplateForAction(action)
-      const fallback = documentsAiPromptDefinition(action)
       aiPreview = await previewAi({
         moduleId: 'shell.documents',
         originType: 'template',
         originId: template?.id ?? `documents.${action}`,
-        prompt: template?.body ?? fallback.body,
+        prompt: promptForAiAction(action),
         writingVariables: {
           ...writingContext.writingVariables,
           userInput: aiUserInput
@@ -265,7 +274,6 @@
     proposalBusy = true
     try {
       const template = documentsAiTemplateForAction(aiPreviewAction)
-      const fallback = documentsAiPromptDefinition(aiPreviewAction)
       const proposal = await createAiProposal({
         targetDocumentId: $activeDoc.id,
         proposalType: proposalTypeForAiAction(aiPreviewAction),
@@ -275,7 +283,7 @@
           moduleId: 'shell.documents',
           originType: 'template',
           originId: template?.id ?? `documents.${aiPreviewAction}`,
-          prompt: template?.body ?? fallback.body,
+          prompt: promptForAiAction(aiPreviewAction),
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: aiUserInput
@@ -298,7 +306,6 @@
     try {
       refreshWritingContext()
       const template = documentsAiTemplateForAction(aiPreviewAction)
-      const fallback = documentsAiPromptDefinition(aiPreviewAction)
       const proposal = await createAiProposalFromInvocation({
         targetDocumentId: $activeDoc.id,
         proposalType: proposalTypeForAiAction(aiPreviewAction),
@@ -307,7 +314,7 @@
           moduleId: 'shell.documents',
           originType: 'template',
           originId: template?.id ?? `documents.${aiPreviewAction}`,
-          prompt: template?.body ?? fallback.body,
+          prompt: promptForAiAction(aiPreviewAction),
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: aiUserInput
@@ -1034,6 +1041,10 @@
         action === 'summarize-active-document'
       ) {
         void previewDocumentAi(action).then(async () => {
+          requestAnimationFrame(() => {
+            const renderedPrompt = document.querySelector<HTMLElement>('.rendered-prompt')
+            if (renderedPrompt) renderedPrompt.scrollTop = renderedPrompt.scrollHeight
+          })
           if (!detail.saveProposal && !detail.runProposal) return
           const proposal = detail.runProposal
             ? await createProposalFromLiveRun()

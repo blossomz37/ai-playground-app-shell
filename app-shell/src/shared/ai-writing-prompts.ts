@@ -12,6 +12,25 @@ interface DocumentsAiPromptDefinition {
   body: string
 }
 
+const DOCUMENTS_AI_OUTPUT_CONTRACTS: Record<DocumentsAiPromptAction, string[]> = {
+  'rewrite-selection': [
+    'Output contract:',
+    '- Output only the revised replacement passage.',
+    '- Preserve paragraph breaks from the replacement passage where useful.',
+    '- Do not include labels, markdown fences, commentary, explanation, or the quoted source text.'
+  ],
+  'continue-from-cursor': [
+    'Output contract:',
+    '- Output only continuation prose that can be appended after the cursor.',
+    '- Do not include labels, markdown fences, commentary, or explanation.'
+  ],
+  'summarize-active-document': [
+    'Output contract:',
+    '- Output only a concise working summary note for the writer.',
+    '- Do not include labels, markdown fences, commentary, or explanation.'
+  ]
+}
+
 export const DOCUMENTS_AI_PROMPT_DEFINITIONS: DocumentsAiPromptDefinition[] = [
   {
     action: 'rewrite-selection',
@@ -84,6 +103,16 @@ export function documentsAiPromptDefinition(
   const definition = DOCUMENTS_AI_PROMPT_DEFINITIONS.find(item => item.action === action)
   if (!definition) throw new Error(`Unknown Documents AI prompt action: ${action}`)
   return definition
+}
+
+export function documentsAiPromptWithOutputContract(
+  action: DocumentsAiPromptAction,
+  body: string
+): string {
+  return [
+    body.trim(),
+    DOCUMENTS_AI_OUTPUT_CONTRACTS[action].join('\n')
+  ].filter(Boolean).join('\n\n')
 }
 
 export function createDocumentsAiPromptTemplate(params: {
