@@ -241,11 +241,18 @@
       && exactMatchCount($editorContent, proposal.sourceText) === 1
   }
 
+  function canSaveAppendProposal(proposal: AiProposal): boolean {
+    return proposal.status === 'pending'
+      && proposal.proposalType === 'append-note'
+      && proposal.proposedText.trim().length > 0
+  }
+
   function dispatchAiPanelAction(detail: {
     type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply' | 'cancel'
     action?: DocumentsAiPromptAction
     proposal?: AiProposal
     proposalId?: string
+    saveMode?: 'insert' | 'new-document'
   }): void {
     window.dispatchEvent(new CustomEvent('documents:ai-panel-action', { detail }))
   }
@@ -505,6 +512,20 @@
                           disabled={$documentsAiProposalBusy}
                           onclick={() => dispatchAiPanelAction({ type: 'apply', proposal })}
                         >Apply</button>
+                      {/if}
+                      {#if canSaveAppendProposal(proposal)}
+                        <button
+                          type="button"
+                          class="ai-action-btn"
+                          disabled={$documentsAiProposalBusy}
+                          onclick={() => dispatchAiPanelAction({ type: 'apply', proposal, saveMode: 'insert' })}
+                        >Insert</button>
+                        <button
+                          type="button"
+                          class="ai-action-btn"
+                          disabled={$documentsAiProposalBusy}
+                          onclick={() => dispatchAiPanelAction({ type: 'apply', proposal, saveMode: 'new-document' })}
+                        >New doc</button>
                       {/if}
                       <button type="button" class="ai-action-btn" onclick={() => void copyProposalText(proposal.proposedText)}>Copy</button>
                       <button

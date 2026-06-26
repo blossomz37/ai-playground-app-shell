@@ -22,7 +22,7 @@
   import {
     activeDoc, activeDocId, annotations, closeDoc, createAnnotation, createDoc, documents, editorContent, refreshAnnotations,
     saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId,
-    lockDocumentSelection, unlockDocumentSelection, activeWorkspace, documentKindOptions
+    lockDocumentSelection, unlockDocumentSelection, activeWorkspace, documentKindOptions, updateDoc
   } from '../../store'
   import { paletteOpen, registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
@@ -425,6 +425,93 @@
       addToast('info', 'AI proposal applied.')
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Proposal could not be applied.')
+    } finally {
+      documentsAiProposalBusy.set(false)
+    }
+  }
+
+  async function insertAppendProposalAtCursor(proposal: AiProposal): Promise<void> {
+    if (!$activeDoc || !editor) return
+    if (proposal.proposalType !== 'append-note') {
+      addToast('warn', 'Only append proposals can be inserted at the cursor.')
+      return
+    }
+    if (proposal.status !== 'pending') {
+      addToast('warn', 'Only pending proposals can be inserted.')
+      return
+    }
+
+    documentsAiProposalBusy.set(true)
+    try {
+      if (get(isDirty)) {
+        await saveDoc()
+      }
+      const transaction = editor.state.tr.insertText(
+        proposal.proposedText,
+        editor.state.selection.from,
+        editor.state.selection.to
+      )
+      editor.view.dispatch(transaction.scrollIntoView())
+      editor.commands.focus()
+      setEditorContent(editor.storage.markdown.getMarkdown(), { dirty: true })
+      await saveDoc({ versionLabel: 'Before AI proposal insert' })
+      await acceptAiProposal(proposal.id)
+      addToast('info', 'AI proposal inserted.')
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Proposal could not be inserted.')
+    } finally {
+      documentsAiProposalBusy.set(false)
+    }
+  }
+
+  function proposalDocumentTitle(): string {
+    const current = get(activeDoc)
+    const baseTitle = `${current?.title ?? 'Document'} AI Proposal`
+    const siblingTitles = new Set(
+      get(documents)
+        .filter(doc => doc.parentId === (current?.parentId ?? null))
+        .map(doc => doc.title.trim().toLowerCase())
+    )
+    if (!siblingTitles.has(baseTitle.toLowerCase())) return baseTitle
+
+    let suffix = 2
+    while (siblingTitles.has(`${baseTitle} ${suffix}`.toLowerCase())) {
+      suffix += 1
+    }
+    return `${baseTitle} ${suffix}`
+  }
+
+  async function saveAppendProposalAsDocument(proposal: AiProposal): Promise<void> {
+    const current = $activeDoc
+    if (!current) return
+    if (proposal.proposalType !== 'append-note') {
+      addToast('warn', 'Only append proposals can be saved as a new document.')
+      return
+    }
+    if (proposal.status !== 'pending') {
+      addToast('warn', 'Only pending proposals can be saved as a new document.')
+      return
+    }
+
+    documentsAiProposalBusy.set(true)
+    try {
+      if (get(isDirty)) {
+        await saveDoc()
+      }
+      const created = await createDoc({
+        workspaceId: get(workspaceId),
+        nodeType: 'document',
+        kind: current.kind,
+        targetId: current.id
+      })
+      const title = proposalDocumentTitle()
+      await updateDoc(created.id, { title })
+      setEditorContent(proposal.proposedText, { dirty: true })
+      await saveDoc({ versionLabel: 'AI proposal document' })
+      await acceptAiProposal(proposal.id)
+      addToast('info', 'AI proposal saved as a new document.')
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Proposal could not be saved as a document.')
     } finally {
       documentsAiProposalBusy.set(false)
     }
@@ -1087,6 +1174,7 @@
         action: DocumentsAiPromptAction
         proposal: AiProposal
         proposalId: string
+        saveMode: 'insert' | 'new-document'
       }>>).detail ?? {}
 
       if (detail.type === 'preview' && detail.action) {
@@ -1100,7 +1188,13 @@
       } else if (detail.type === 'reject' && detail.proposalId) {
         void rejectProposal(detail.proposalId)
       } else if (detail.type === 'apply' && detail.proposal) {
-        void applyReplacementProposal(detail.proposal)
+        if (detail.saveMode === 'insert') {
+          void insertAppendProposalAtCursor(detail.proposal)
+        } else if (detail.saveMode === 'new-document') {
+          void saveAppendProposalAsDocument(detail.proposal)
+        } else {
+          void applyReplacementProposal(detail.proposal)
+        }
       } else if (detail.type === 'cancel') {
         void cancelDocumentsAiRun()
       }
