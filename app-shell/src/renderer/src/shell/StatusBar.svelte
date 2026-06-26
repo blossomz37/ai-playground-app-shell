@@ -15,7 +15,7 @@
   let visibleJob = $derived($activeJobs[0] ?? $recentJobs.find(job => job.status === 'failed'))
   let jobLabel = $derived.by(() => {
     if ($activeJobs.length > 0) return $activeJobs.length === 1 ? ($activeJobs[0].message || '1 job running') : `${$activeJobs.length} jobs running`
-    if (visibleJob?.status === 'failed') return visibleJob.message || 'Job failed'
+    if (visibleJob?.status === 'failed') return 'Job needs attention'
     return ''
   })
 </script>
@@ -157,17 +157,16 @@
     white-space: nowrap;
     padding: 2px var(--space-2);
     border-radius: var(--radius-sm);
-    color: #f8fafc;
-    background: color-mix(in srgb, black 44%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 16%, transparent);
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.78);
+    color: var(--color-fg-secondary);
+    background: color-mix(in srgb, var(--color-bg-overlay) 66%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 48%, transparent);
     cursor: pointer;
     font-size: var(--font-size-xs);
   }
 
   .jobs-item:hover {
-    background: color-mix(in srgb, black 54%, transparent);
-    color: #ffffff;
+    background: var(--color-hover);
+    color: var(--color-fg-primary);
   }
 
   .jobs-item span {
@@ -184,11 +183,11 @@
   }
 
   .jobs-item.failed {
-    color: var(--color-danger);
+    color: var(--color-warn);
   }
 
   .jobs-item span.failed {
-    background: var(--color-danger);
+    background: var(--color-warn);
   }
 
   @media (max-width: 900px) {

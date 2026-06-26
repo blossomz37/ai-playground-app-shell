@@ -179,8 +179,8 @@
 
   .tab-strip {
     align-items: stretch;
-    min-height: var(--shell-zone-header-h);
-    height: var(--shell-zone-header-h);
+    min-height: 32px;
+    height: 32px;
     padding: 0;
     background: var(--color-bg-base);
   }
@@ -195,8 +195,8 @@
 
   .tab {
     position: relative;
-    width: 184px;
-    min-width: 132px;
+    width: 168px;
+    min-width: 116px;
     max-width: 220px;
     border-right: var(--border-zone);
     color: var(--color-fg-secondary);
@@ -210,7 +210,7 @@
   .tab.active {
     color: var(--color-fg-primary);
     background: var(--color-bg-surface);
-    box-shadow: inset 0 -1px 0 var(--color-accent);
+    box-shadow: inset 0 -2px 0 var(--color-accent);
   }
 
   .tab-open {
@@ -218,7 +218,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    padding: 5px 28px 5px 10px;
+    padding: 4px 26px 4px 9px;
     color: inherit;
     text-align: left;
     cursor: pointer;
@@ -232,7 +232,7 @@
   }
 
   .tab-title {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     font-weight: 500;
   }
 
@@ -258,8 +258,8 @@
   .url-bar {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+    padding: 5px var(--space-2);
     border-bottom: var(--border-zone);
     flex-shrink: 0;
     background: var(--color-bg-surface);
@@ -270,7 +270,7 @@
     align-items: center;
     flex: 1;
     min-width: 80px;
-    height: 30px;
+    height: 28px;
     border: var(--border-subtle);
     border-radius: var(--radius-md);
     background: var(--color-bg-overlay);
@@ -296,14 +296,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
+    width: 28px;
     height: 100%;
     flex-shrink: 0;
   }
 
   .address-status {
     max-width: 76px;
-    padding-right: var(--space-3);
+    padding-right: var(--space-2);
     font-size: var(--font-size-xs);
     font-weight: 700;
     color: var(--color-fg-muted);
@@ -313,8 +313,8 @@
   }
 
   .icon-btn {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -345,7 +345,7 @@
   }
 
   .new-tab {
-    margin: 6px;
+    margin: 3px 5px;
   }
 
   .spinning {
@@ -375,7 +375,7 @@
     flex: 1;
     height: 100%;
     min-height: 0;
-    padding: var(--space-2);
+    padding: 0;
     overflow: hidden;
     background: var(--color-bg-base);
   }

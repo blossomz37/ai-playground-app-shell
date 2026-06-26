@@ -40,6 +40,7 @@
   let failedJob = $derived($recentJobs.find(job => job.status === 'failed') ?? null)
   let jobsCount = $derived($activeJobs.length)
   let jobsLabel = $derived(jobsCount > 0 ? `${jobsCount} active ${jobsCount === 1 ? 'job' : 'jobs'}` : failedJob ? 'Recent job failed' : 'Open jobs')
+  let jobsBadgeLabel = $derived(jobsCount > 0 ? String(jobsCount) : failedJob ? '!' : '')
 </script>
 
 <section class="context-strip" aria-label="View toolbar">
@@ -120,9 +121,8 @@
       onclick={toggleJobsPanel}
     >
       <BriefcaseIcon size={16} weight={jobsCount > 0 ? 'fill' : 'regular'} />
-      <span class="jobs-label">Jobs</span>
-      {#if jobsCount > 0 || failedJob}
-        <span class="jobs-badge">{jobsCount > 0 ? jobsCount : '!'}</span>
+      {#if jobsBadgeLabel}
+        <span class="jobs-badge">{jobsBadgeLabel}</span>
       {/if}
     </button>
 
@@ -177,7 +177,7 @@
     height: 24px;
     padding: 0 var(--space-2);
     border-radius: var(--radius-sm);
-    color: var(--color-fg-muted);
+    color: color-mix(in srgb, var(--color-fg-muted) 78%, transparent);
     background: transparent;
     cursor: pointer;
     overflow: hidden;
@@ -191,11 +191,11 @@
   .icon-button.active,
   .icon-button.failed {
     background: var(--color-hover);
-    color: var(--color-fg-primary);
+    color: var(--color-fg-secondary);
   }
 
   .icon-button[aria-pressed='true'] {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-inspector) 24%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 34%, transparent);
   }
 
   .icon-button:disabled {
@@ -240,14 +240,8 @@
   }
 
   .jobs-button {
-    gap: 5px;
-    max-width: 112px;
-  }
-
-  .jobs-label {
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
+    gap: 4px;
+    max-width: 58px;
   }
 
   .jobs-badge {
@@ -258,16 +252,16 @@
     height: 15px;
     padding: 0 4px;
     border-radius: 999px;
-    background: var(--accent-status);
-    color: #0f172a;
+    background: color-mix(in srgb, var(--accent-status) 72%, var(--color-bg-overlay));
+    color: var(--color-bg-base);
     font-size: 10px;
     font-weight: 800;
     line-height: 1;
   }
 
   .jobs-button.failed .jobs-badge {
-    background: var(--color-danger);
-    color: #ffffff;
+    background: color-mix(in srgb, var(--color-warn) 82%, var(--color-bg-overlay));
+    color: var(--color-bg-base);
   }
 
   @media (max-width: 900px) {
@@ -283,7 +277,6 @@
       padding: 0 6px;
     }
 
-    .jobs-label,
     .text-action {
       display: none;
     }

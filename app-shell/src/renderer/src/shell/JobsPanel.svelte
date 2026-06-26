@@ -46,7 +46,9 @@
           <article class="job-row">
             <div class="job-line">
               <strong>{job.title}</strong>
-              <span class:failed={job.status === 'failed'} class:cancelled={job.status === 'cancelled'}>{job.status}</span>
+              <span class:failed={job.status === 'failed'} class:cancelled={job.status === 'cancelled'}>
+                {job.status === 'failed' ? 'needs attention' : job.status}
+              </span>
             </div>
             <p class="job-message">{job.error ?? job.message}</p>
             <time>{formatTime(job.completedAt ?? job.updatedAt)}</time>
@@ -160,7 +162,7 @@
   }
 
   .failed {
-    color: var(--color-danger);
+    color: var(--color-warn);
   }
 
   .cancelled {

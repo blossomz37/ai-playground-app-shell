@@ -360,7 +360,7 @@
     width: 36px;
     height: 36px;
     border-radius: var(--radius-md);
-    color: color-mix(in srgb, var(--color-fg-secondary) 78%, var(--color-fg-muted));
+    color: color-mix(in srgb, var(--color-fg-muted) 76%, transparent);
     cursor: grab;
     transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
@@ -370,21 +370,19 @@
   }
 
   .rail-btn:hover {
-    color: var(--color-fg-primary);
+    color: var(--color-fg-secondary);
     background: var(--color-hover);
   }
 
   .rail-btn.active {
     color: var(--accent-nav);
-    background: color-mix(in srgb, var(--accent-nav) 8%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 18%, transparent);
+    background: color-mix(in srgb, var(--accent-nav) 7%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 16%, transparent);
   }
 
   .rail-btn.active:hover,
   .rail-btn.active:focus-visible {
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 20%, transparent),
-      0 0 14px color-mix(in srgb, var(--jewel-amethyst) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 22%, transparent);
   }
 
   .rail-btn.dragging {
@@ -400,8 +398,8 @@
     bottom: 5px;
     width: 3px;
     border-radius: 0 2px 2px 0;
-    background: var(--_rail-spectrum);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--jewel-sapphire) 34%, transparent);
+    background: var(--accent-nav);
+    box-shadow: none;
   }
 
   .rail-btn.drop-before::after,

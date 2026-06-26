@@ -733,7 +733,11 @@
       {/if}
     </section>
   {:else}
-    <div class="empty">Select a document to inspect.</div>
+    <div class="empty inspector-empty">
+      <h3>No document selected</h3>
+      <p>Open a chapter or scene to review AI actions, annotations, version history, and metadata here.</p>
+      <p class="empty-hint">On narrow windows, use the inspector button in the toolbar to bring this panel back.</p>
+    </div>
   {/if}
 </div>
 
@@ -1346,5 +1350,26 @@
     padding: var(--space-4);
     font-size: var(--font-size-sm);
     color: var(--color-fg-muted);
+  }
+
+  .inspector-empty {
+    display: grid;
+    gap: var(--space-2);
+    line-height: 1.45;
+  }
+
+  .inspector-empty h3 {
+    margin: 0;
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-sm);
+  }
+
+  .inspector-empty p {
+    margin: 0;
+  }
+
+  .empty-hint {
+    color: color-mix(in srgb, var(--color-fg-muted) 78%, transparent);
+    font-size: var(--font-size-xs);
   }
 </style>

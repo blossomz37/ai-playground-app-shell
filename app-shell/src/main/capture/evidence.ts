@@ -69,6 +69,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
   const hideInspector = process.env['SHELL_CAPTURE_HIDE_INSPECTOR'] === '1'
   const openRunHistory = process.env['SHELL_CAPTURE_OPEN_RUN_HISTORY'] === '1'
+  const openDocumentsArchived = process.env['SHELL_CAPTURE_DOCUMENTS_ARCHIVED_OPEN'] === '1'
   const newPromptTemplate = process.env['SHELL_CAPTURE_NEW_PROMPT_TEMPLATE'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
   const tableSearchMode = process.env['SHELL_CAPTURE_TABLE_SEARCH_MODE']
@@ -195,8 +196,14 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (showSidebar || hideInspector) {
         await win.webContents.executeJavaScript(`
           (() => {
-            if (${JSON.stringify(showSidebar)} && !document.querySelector('.sidebar')) {
-              document.querySelector('button[aria-label="Show sidebar"]')?.click()
+            if (${JSON.stringify(showSidebar)}) {
+              window.dispatchEvent(new CustomEvent('shell:capture-open-sidebar'))
+              const captureViewport = ${JSON.stringify(viewport ?? '')}
+              const captureWidth = Number(captureViewport.split('x')[0])
+              const captureIsNarrow = Number.isFinite(captureWidth) && captureWidth <= 900
+              if (!captureIsNarrow && !document.querySelector('.sidebar')) {
+                document.querySelector('button[aria-label="Show sidebar"]')?.click()
+              }
             }
             if (${JSON.stringify(hideInspector)} && document.querySelector('.inspector')) {
               document.querySelector('button[aria-label="Hide inspector"]')?.click()
@@ -1178,6 +1185,12 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (showSidebar && viewport) {
+        await win.webContents.executeJavaScript(`
+          window.dispatchEvent(new CustomEvent('shell:capture-open-sidebar'))
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (showInspector) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[aria-label="Show inspector"]')?.click()
@@ -1211,6 +1224,19 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               }
             }, 100)
           })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openDocumentsArchived) {
+        await win.webContents.executeJavaScript(`
+          (async () => {
+            window.dispatchEvent(new CustomEvent('shell:capture-select-module', { detail: 'shell.documents' }))
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            const header = document.querySelector('.archived-header')
+            if (header?.getAttribute('aria-expanded') !== 'true') {
+              header?.click()
+            }
+          })()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

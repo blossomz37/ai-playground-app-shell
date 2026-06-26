@@ -29,7 +29,7 @@ export async function loadJobs(workspaceId?: string): Promise<void> {
         return [job, ...without].slice(0, 50)
       })
       if (job.status === 'completed') addToast('info', `${job.title} completed`)
-      if (job.status === 'failed') addToast('error', `${job.title} failed`)
+      if (job.status === 'failed') addToast('warn', `${job.title} needs attention`)
       if (job.status === 'cancelled') addToast('warn', `${job.title} cancelled`)
     })
     listenerInstalled = true

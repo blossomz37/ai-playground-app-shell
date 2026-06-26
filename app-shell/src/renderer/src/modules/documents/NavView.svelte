@@ -53,7 +53,7 @@
   let dragOverPlacement = $state<DocumentDropPlacement>('inside')
   let pointerDrag = $state<DocumentTreePointerDrag | null>(null)
   let suppressClickDocId = $state<string | null>(null)
-  let archivedSectionOpen = $state(true)
+  let archivedSectionOpen = $state(false)
   let archivedExpanded = new SvelteSet<string>()
   let commandDisposables: Disposable[] = []
   let showContextCount = $state(true)
@@ -743,7 +743,7 @@
   }
 
   .nav-title {
-    color: color-mix(in srgb, var(--accent-nav) 58%, var(--color-fg-muted));
+    color: var(--color-fg-secondary);
   }
 
   .nav-actions {
@@ -866,7 +866,7 @@
 
   .archived-section {
     flex: 0 0 auto;
-    border-top: 1px solid color-mix(in srgb, var(--accent-nav) 18%, var(--color-border));
+    border-top: var(--border-subtle);
     padding: var(--space-2);
   }
 
@@ -880,7 +880,7 @@
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    color: color-mix(in srgb, var(--accent-nav) 58%, var(--color-fg-muted));
+    color: var(--color-fg-muted);
     cursor: pointer;
     font-size: var(--font-size-xs);
     font-weight: 700;
@@ -891,7 +891,7 @@
   .archived-header:hover,
   .archived-header:focus-visible {
     background: var(--color-hover);
-    color: var(--color-fg-primary);
+    color: var(--color-fg-secondary);
   }
 
   .archived-header:focus-visible,

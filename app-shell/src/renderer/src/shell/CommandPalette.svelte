@@ -10,6 +10,7 @@
   import { onMount } from 'svelte'
   import { commandCatalog, paletteOpen, executeCommand, setSearchOpener } from '../store/commands'
   import { selectDoc } from '../store'
+  import { moduleList } from '../store/modules'
   import type { CommandCatalogEntry, SearchResult } from '@shared/module-contract'
 
   let query = $state('')
@@ -169,6 +170,17 @@
       .replace(/\+/g, '')
       .toUpperCase()
   }
+
+  function moduleLabel(moduleId: string): string {
+    const module = $moduleList.find((item) => item.id === moduleId)
+    if (module) return module.name
+
+    return moduleId
+      .replace(/^shell\./, '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  }
 </script>
 
 {#if $paletteOpen}
@@ -212,7 +224,10 @@
                 onmouseenter={() => (selected = i)}
                 onclick={() => runCommand(cmd)}
               >
-                <span class="title">{cmd.title}</span>
+                <span class="command-info">
+                  <span class="title">{cmd.title}</span>
+                  <span class="module-label">{moduleLabel(cmd.moduleId)}</span>
+                </span>
                 {#if cmd.keybinding}
                   <span class="key">{prettyKey(cmd.keybinding)}</span>
                 {/if}
@@ -253,35 +268,35 @@
   .palette-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgb(0 0 0 / 0.34);
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding-top: 12vh;
+    padding-top: 9vh;
     z-index: 1000;
   }
 
   .palette {
-    width: min(560px, 90vw);
-    max-height: 60vh;
+    width: min(540px, 92vw);
+    max-height: 68vh;
     display: flex;
     flex-direction: column;
     background: var(--color-bg-surface);
     border: var(--border-subtle);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 46px rgb(0 0 0 / 0.42);
     overflow: hidden;
   }
 
   .palette-input {
     width: 100%;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-3) var(--space-4);
     background: transparent;
     border: none;
     border-bottom: var(--border-subtle);
     color: var(--color-fg-primary);
     font-family: var(--font-sans);
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-md);
     outline: none;
   }
 
@@ -291,13 +306,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-1) var(--space-5);
+    padding: 3px var(--space-4);
     border-bottom: var(--border-subtle);
     font-size: var(--font-size-xs);
   }
 
   .hint-text {
-    color: var(--color-accent);
+    color: var(--color-fg-muted);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -320,7 +335,7 @@
   .palette-list {
     list-style: none;
     margin: 0;
-    padding: var(--space-2);
+    padding: var(--space-1);
     overflow-y: auto;
   }
 
@@ -329,8 +344,9 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
+    min-height: 34px;
+    padding: 5px var(--space-2);
+    border-radius: var(--radius-sm);
     color: var(--color-fg-secondary);
     text-align: left;
     gap: var(--space-3);
@@ -345,6 +361,27 @@
 
   .palette-item .title { font-size: var(--font-size-md); }
 
+  .command-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .command-info .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .module-label {
+    color: var(--color-fg-muted);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
   .palette-item .key {
     font-size: var(--font-size-xs);
     color: var(--color-fg-muted);
@@ -357,7 +394,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-1);
-    padding: var(--space-3);
+    padding: var(--space-2);
   }
 
   .search-info {

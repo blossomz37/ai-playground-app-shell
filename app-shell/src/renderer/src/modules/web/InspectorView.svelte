@@ -22,17 +22,17 @@
     </div>
   </section>
 
-  <section class="section">
-    <h3 class="section-title">Open Work</h3>
+  <details class="section details-section">
+    <summary>Open work</summary>
     <div class="meta-grid">
       <span class="meta-label">Tabs</span><span class="meta-value">{$webTabs.length} open</span>
       <span class="meta-label">Status</span><span class="meta-value">{urlMetadata.securityLabel}</span>
       <span class="meta-label">Saved</span><span class="meta-value">{$currentBookmarked ? 'In bookmarks' : 'Not bookmarked'}</span>
     </div>
-  </section>
+  </details>
 
-  <section class="section">
-    <h3 class="section-title">Recent In This Tab</h3>
+  <details class="section details-section">
+    <summary>Recent in this tab</summary>
     <div class="history-stack">
       {#each $activeTabHistory.slice(0, 6) as item (item.id)}
         <div class="history-row">
@@ -41,16 +41,16 @@
         </div>
       {/each}
     </div>
-  </section>
+  </details>
 </div>
 
 <style>
   .inspector-view {
-    padding: var(--space-4);
+    padding: var(--space-3);
   }
 
   .section {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-3);
   }
 
   .section-title {
@@ -59,7 +59,7 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-fg-muted);
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
   }
 
   .page-card {
@@ -85,7 +85,7 @@
   .page-card h4 {
     margin: 0;
     color: var(--color-fg-primary);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
     line-height: 1.25;
     overflow-wrap: anywhere;
   }
@@ -136,6 +136,24 @@
     grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-1) var(--space-3);
     font-size: var(--font-size-sm);
+  }
+
+  .details-section {
+    border-top: var(--border-subtle);
+    padding-top: var(--space-2);
+  }
+
+  .details-section summary {
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .details-section[open] summary {
+    margin-bottom: var(--space-2);
+    color: var(--color-fg-secondary);
   }
 
   .meta-label {

@@ -46,9 +46,14 @@
   let partyMode = $state(false)
   let layoutLoaded = $state(false)
   let narrowViewport = $state(false)
+  let narrowSidebarOpen = $state(false)
+  let narrowInspectorOpen = $state(false)
+  let webInspectorSuppressed = $state(false)
+  let webInspectorDefaultPending = $state(true)
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
   let captureJobsListener: (() => void) | null = null
+  let captureSidebarListener: (() => void) | null = null
   let viewportMedia: MediaQueryList | null = null
   let viewportMediaListener: ((event: MediaQueryListEvent) => void) | null = null
 
@@ -65,10 +70,11 @@
   // consume these variables so titlebar/context/body/status stay aligned.
   let railColumn = $derived(zenMode ? '0px' : narrowViewport ? '40px' : '46px')
   let sidebarColumn = $derived(zenMode || narrowViewport ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
-  let inspectorColumn = $derived(zenMode || narrowViewport ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
+  let webInspectorDefaultClosed = $derived($activeModuleId === 'shell.web' && webInspectorSuppressed && !narrowViewport && !zenMode)
+  let inspectorColumn = $derived(zenMode || narrowViewport || webInspectorDefaultClosed ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
   let gridColumns = $derived('var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col)')
   let effectiveSidebarVisible = $derived(sidebarVisible && !zenMode && !narrowViewport)
-  let effectiveInspectorVisible = $derived(inspectorVisible && !zenMode && !narrowViewport)
+  let effectiveInspectorVisible = $derived(inspectorVisible && !zenMode && !narrowViewport && !webInspectorDefaultClosed)
 
   function applyLayout(state: LayoutState) {
     sidebarWidth = state.sidebarWidth
@@ -79,11 +85,30 @@
   }
 
   async function toggleSidebar() {
+    if (narrowViewport && !zenMode) {
+      narrowSidebarOpen = !narrowSidebarOpen
+      narrowInspectorOpen = false
+      return
+    }
     const state = await window.shell.layout.toggle('sidebar')
     applyLayout(state)
   }
 
   async function toggleInspector() {
+    if (narrowViewport && !zenMode) {
+      narrowInspectorOpen = !narrowInspectorOpen
+      narrowSidebarOpen = false
+      return
+    }
+    if ($activeModuleId === 'shell.web' && webInspectorSuppressed) {
+      webInspectorSuppressed = false
+      webInspectorDefaultPending = false
+      if (!inspectorVisible) {
+        const state = await window.shell.layout.toggle('inspector')
+        applyLayout(state)
+      }
+      return
+    }
     const state = await window.shell.layout.toggle('inspector')
     applyLayout(state)
   }
@@ -97,6 +122,11 @@
     partyMode = !partyMode
   }
 
+  function closeNarrowPanels() {
+    narrowSidebarOpen = false
+    narrowInspectorOpen = false
+  }
+
   async function selectModule(id: string) {
     await loadModules()
     if (!isModuleReachable(id)) {
@@ -105,7 +135,16 @@
       return
     }
     activeModuleId.set(id)
+    webInspectorSuppressed = id === 'shell.web' && webInspectorDefaultPending
+    closeNarrowPanels()
     await window.shell.modules.activate(id)
+  }
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    handleGlobalKeydown(e)
+    if (e.key === 'Escape' && (narrowSidebarOpen || narrowInspectorOpen)) {
+      closeNarrowPanels()
+    }
   }
 
   // ── Resize handles ────────────────────────────────────────────────────────
@@ -153,6 +192,9 @@
     narrowViewport = viewportMedia.matches
     viewportMediaListener = (event: MediaQueryListEvent) => {
       narrowViewport = event.matches
+      if (!event.matches) {
+        closeNarrowPanels()
+      }
     }
     viewportMedia.addEventListener('change', viewportMediaListener)
 
@@ -163,6 +205,7 @@
     } catch { /* use defaults */ }
     layoutLoaded = true
     ensureActiveModuleAvailable()
+    webInspectorSuppressed = $activeModuleId === 'shell.web' && webInspectorDefaultPending
 
     // Register commands
     commandDisposables.push(
@@ -192,6 +235,12 @@
     captureJobsListener = () => toggleJobsPanel()
     window.addEventListener('shell:capture-open-jobs', captureJobsListener)
 
+    captureSidebarListener = () => {
+      narrowSidebarOpen = true
+      narrowInspectorOpen = false
+    }
+    window.addEventListener('shell:capture-open-sidebar', captureSidebarListener)
+
     if (window.shell.capture?.moduleId) {
       await selectModule(window.shell.capture.moduleId)
     }
@@ -207,6 +256,9 @@
     if (captureJobsListener) {
       window.removeEventListener('shell:capture-open-jobs', captureJobsListener)
     }
+    if (captureSidebarListener) {
+      window.removeEventListener('shell:capture-open-sidebar', captureSidebarListener)
+    }
     if (viewportMedia && viewportMediaListener) {
       viewportMedia.removeEventListener('change', viewportMediaListener)
     }
@@ -214,7 +266,7 @@
   })
 </script>
 
-<svelte:window onkeydown={handleGlobalKeydown} />
+<svelte:window onkeydown={onWindowKeydown} />
 
 <div
   class="app-shell"
@@ -230,8 +282,8 @@
   <div class="topbar" aria-hidden="true"></div>
   <ContextStrip
     moduleId={$activeModuleId}
-    sidebarVisible={effectiveSidebarVisible}
-    inspectorVisible={effectiveInspectorVisible}
+    sidebarVisible={narrowViewport ? narrowSidebarOpen : effectiveSidebarVisible}
+    inspectorVisible={narrowViewport ? narrowInspectorOpen : effectiveInspectorVisible}
     {zenMode}
     onToggleSidebar={toggleSidebar}
     onToggleInspector={toggleInspector}
@@ -285,6 +337,28 @@
     {#key $activeModuleId}
       <Inspector moduleId={$activeModuleId} />
     {/key}
+  {/if}
+  {#if narrowViewport && !zenMode && (narrowSidebarOpen || narrowInspectorOpen)}
+    <button
+      class="narrow-panel-backdrop"
+      type="button"
+      aria-label="Close panel"
+      onclick={closeNarrowPanels}
+    ></button>
+    {#if narrowSidebarOpen}
+      <div class="narrow-panel narrow-sidebar-panel" role="dialog" aria-label="Sidebar">
+        {#key $activeModuleId}
+          <Sidebar moduleId={$activeModuleId} />
+        {/key}
+      </div>
+    {/if}
+    {#if narrowInspectorOpen}
+      <div class="narrow-panel narrow-inspector-panel" role="dialog" aria-label="Inspector">
+        {#key $activeModuleId}
+          <Inspector moduleId={$activeModuleId} />
+        {/key}
+      </div>
+    {/if}
   {/if}
   {#if !zenMode}
     <StatusBar moduleId={$activeModuleId === 'shell.documents' ? 'shell.documents' : null} />
@@ -386,5 +460,42 @@
       --_context-h: 32px;
       --_status-h: 22px;
     }
+  }
+
+  .narrow-panel-backdrop {
+    position: fixed;
+    inset: calc(var(--_topbar-h) + var(--_context-h)) 0 var(--_status-h) var(--_rail-col);
+    z-index: 410;
+    background: color-mix(in srgb, var(--color-bg-base) 36%, transparent);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .narrow-panel {
+    position: fixed;
+    top: calc(var(--_topbar-h) + var(--_context-h));
+    bottom: var(--_status-h);
+    z-index: 420;
+    width: min(340px, calc(100vw - var(--_rail-col) - 24px));
+    overflow: hidden;
+    border: var(--border-zone);
+    box-shadow: 0 18px 44px rgb(0 0 0 / 0.34);
+  }
+
+  .narrow-sidebar-panel {
+    left: var(--_rail-col);
+  }
+
+  .narrow-inspector-panel {
+    right: 0;
+  }
+
+  :global(.narrow-panel .sidebar),
+  :global(.narrow-panel .inspector) {
+    width: 100%;
+    height: 100%;
+    border-left: 0;
+    border-right: 0;
+    grid-area: auto;
   }
 </style>

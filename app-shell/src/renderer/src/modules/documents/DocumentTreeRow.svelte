@@ -268,7 +268,7 @@
   }
 
   .icon-button.is-folder {
-    color: var(--accent-inspector);
+    color: var(--color-fg-muted);
   }
 
   .title {
@@ -280,7 +280,7 @@
 
   .context-count {
     flex: 0 0 58px;
-    color: color-mix(in srgb, var(--accent-nav) 50%, var(--color-fg-muted));
+    color: color-mix(in srgb, var(--color-fg-muted) 72%, transparent);
     font-size: var(--font-size-xs);
     text-align: right;
   }
@@ -293,7 +293,7 @@
     height: 18px;
     border: none;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--accent-nav) 20%, var(--color-bg-overlay));
+    background: color-mix(in srgb, var(--color-fg-muted) 22%, var(--color-bg-overlay));
     cursor: pointer;
     padding: 0;
     transition: background 0.15s ease, opacity 0.15s ease;
@@ -313,7 +313,7 @@
   }
 
   .context-switch.included {
-    background: color-mix(in srgb, var(--color-accent) 62%, var(--accent-nav));
+    background: color-mix(in srgb, var(--color-accent) 56%, var(--color-bg-overlay));
   }
 
   .context-switch.included::after {
@@ -321,7 +321,7 @@
   }
 
   .context-switch.partial {
-    background: color-mix(in srgb, var(--color-accent) 34%, var(--color-bg-overlay));
+    background: color-mix(in srgb, var(--color-accent) 30%, var(--color-bg-overlay));
   }
 
   .context-switch:disabled {

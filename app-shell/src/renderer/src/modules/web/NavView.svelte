@@ -175,7 +175,9 @@
   }
 
   .nav-header {
-    padding: var(--space-2);
+    min-height: 34px;
+    height: 34px;
+    padding: var(--space-1);
   }
 
   .segmented-control {
@@ -189,7 +191,7 @@
 
   .segmented-control button {
     min-width: 0;
-    height: 24px;
+    height: 22px;
     padding: 0 var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--color-fg-muted);
@@ -222,7 +224,7 @@
   .bookmark-list,
   .history-list {
     overflow-y: auto;
-    padding: var(--space-2);
+    padding: var(--space-1);
   }
 
   .empty-state {
@@ -236,7 +238,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-2) 0;
+    padding: var(--space-1) var(--space-1) 0;
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
     font-weight: 700;
@@ -271,7 +273,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 50px;
     align-items: center;
-    border-radius: var(--radius-md);
+    min-height: 34px;
+    border-radius: var(--radius-sm);
     color: var(--color-fg-secondary);
   }
 
@@ -290,7 +293,7 @@
     gap: var(--space-2);
     min-width: 0;
     width: 100%;
-    padding: var(--space-2) var(--space-1) var(--space-2) var(--space-3);
+    padding: 5px var(--space-1) 5px var(--space-2);
     text-align: left;
     color: inherit;
     cursor: pointer;
@@ -364,7 +367,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 1px var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    padding: 6px var(--space-2);
     border-radius: var(--radius-sm);
     background: var(--color-bg-overlay);
     text-align: left;

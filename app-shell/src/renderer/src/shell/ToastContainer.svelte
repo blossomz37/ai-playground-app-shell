@@ -50,15 +50,14 @@
     align-items: flex-start;
     gap: 8px;
     padding: 10px 14px;
-    border-radius: var(--radius-md);
-    background: rgba(36, 36, 62, 0.92);
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.4),
-      0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-bg-surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid color-mix(in srgb, var(--color-border-strong) 70%, transparent);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.28);
     font-size: var(--font-size-sm);
-    color: #f8fafc;
+    color: var(--color-fg-primary);
     pointer-events: auto;
     animation: toast-in 0.25s ease-out;
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -77,18 +76,28 @@
     line-height: 1.4;
   }
 
-  .toast-info  .toast-icon { color: #93c5fd; }
-  .toast-warn  .toast-icon { color: #fbbf24; }
-  .toast-error .toast-icon { color: #fda4af; }
+  .toast-info  .toast-icon { color: var(--color-fg-muted); }
+  .toast-warn  .toast-icon { color: var(--color-warn); }
+  .toast-error .toast-icon { color: var(--color-danger); }
 
-  .toast-info  { border-left: 3px solid var(--color-accent); }
-  .toast-warn  { border-left: 3px solid var(--color-warn); }
-  .toast-error { border-left: 3px solid var(--color-danger); }
+  .toast-info  { border-left: 3px solid var(--color-border-strong); }
+
+  .toast-warn {
+    background: color-mix(in srgb, var(--color-warn) 10%, var(--color-bg-surface) 90%);
+    border-color: color-mix(in srgb, var(--color-warn) 42%, var(--color-border-strong) 58%);
+    border-left: 3px solid var(--color-warn);
+  }
+
+  .toast-error {
+    background: color-mix(in srgb, var(--color-danger) 9%, var(--color-bg-surface) 91%);
+    border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border-strong) 58%);
+    border-left: 3px solid var(--color-danger);
+  }
 
   .toast-message {
     flex: 1;
     line-height: 1.4;
-    color: #f8fafc;
+    color: var(--color-fg-primary);
     word-break: break-word;
   }
 
@@ -100,14 +109,14 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
-    color: rgba(248, 250, 252, 0.72);
+    color: var(--color-fg-muted);
     font-size: 14px;
     cursor: pointer;
     transition: color 0.1s, background 0.1s;
   }
 
   .toast-dismiss:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.14);
+    color: var(--color-fg-primary);
+    background: var(--color-hover);
   }
 </style>
