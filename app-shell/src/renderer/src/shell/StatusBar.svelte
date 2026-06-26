@@ -8,16 +8,8 @@
   ────────────────────────────────────────────── -->
 <script lang="ts">
   import { isDirty, editorContent, activeDoc, countWords } from '../store'
-  import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
 
   let props = $props<{ moduleId: string | null }>()
-
-  let visibleJob = $derived($activeJobs[0] ?? $recentJobs.find(job => job.status === 'failed'))
-  let jobLabel = $derived.by(() => {
-    if ($activeJobs.length > 0) return $activeJobs.length === 1 ? ($activeJobs[0].message || '1 job running') : `${$activeJobs.length} jobs running`
-    if (visibleJob?.status === 'failed') return 'Job needs attention'
-    return ''
-  })
 </script>
 
 <footer class="status-bar">
@@ -40,21 +32,7 @@
   </div>
 
   <!-- Center zone: reserved for notifications / progress bar -->
-  <div class="zone zone-center">
-    {#if visibleJob && jobLabel}
-      <button
-        class="jobs-item"
-        class:failed={visibleJob.status === 'failed'}
-        type="button"
-        aria-label="Open jobs panel"
-        title="Open jobs panel"
-        onclick={toggleJobsPanel}
-      >
-        <span class:active={$activeJobs.length > 0} class:failed={visibleJob.status === 'failed'}></span>
-        {jobLabel}
-      </button>
-    {/if}
-  </div>
+  <div class="zone zone-center"></div>
 </footer>
 
 <style>
@@ -140,55 +118,7 @@
     line-height: 1;
   }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.4; }
-  }
-
   .sep { color: var(--color-fg-muted); opacity: 0.5; flex-shrink: 0; }
-
-  .jobs-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    background: color-mix(in srgb, var(--color-bg-overlay) 66%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 48%, transparent);
-    cursor: pointer;
-    font-size: var(--font-size-xs);
-  }
-
-  .jobs-item:hover {
-    background: var(--color-hover);
-    color: var(--color-fg-primary);
-  }
-
-  .jobs-item span {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--color-fg-muted);
-  }
-
-  .jobs-item span.active {
-    background: var(--color-accent);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 58%, transparent);
-    animation: pulse-dot 1.5s ease-in-out infinite;
-  }
-
-  .jobs-item.failed {
-    color: var(--color-warn);
-  }
-
-  .jobs-item span.failed {
-    background: var(--color-warn);
-  }
 
   @media (max-width: 900px) {
     .status-bar {
@@ -199,10 +129,6 @@
     .zone-left,
     .zone-center {
       grid-column: 2;
-    }
-
-    .jobs-item {
-      max-width: 100%;
     }
   }
 </style>

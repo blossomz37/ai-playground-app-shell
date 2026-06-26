@@ -9,6 +9,17 @@
   import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
+    ChatCircleTextIcon,
+    ParagraphIcon,
+    QuotesIcon,
+    TextBIcon,
+    TextHOneIcon,
+    TextHTwoIcon,
+    TextItalicIcon,
+    TextStrikethroughIcon,
+    XIcon
+  } from 'phosphor-svelte'
+  import {
     activeDoc, activeDocId, annotations, closeDoc, createAnnotation, createDoc, documents, editorContent, refreshAnnotations,
     saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId,
     lockDocumentSelection, unlockDocumentSelection, activeWorkspace, documentKindOptions
@@ -1142,15 +1153,29 @@
   {#if $activeDoc}
     <header class="zone-header doc-toolbar" aria-label="Document editing toolbar">
       <div class="toolbar-group" role="group" aria-label="Text style">
-        <button type="button" class="tool-btn" aria-label="Paragraph" disabled={!editor} onclick={setParagraph}>P</button>
-        <button type="button" class="tool-btn" aria-label="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>H1</button>
-        <button type="button" class="tool-btn" aria-label="Heading 2" disabled={!editor} onclick={() => toggleHeading(2)}>H2</button>
+        <button type="button" class="tool-btn icon-only" aria-label="Paragraph" title="Paragraph" disabled={!editor} onclick={setParagraph}>
+          <ParagraphIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Heading 1" title="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>
+          <TextHOneIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Heading 2" title="Heading 2" disabled={!editor} onclick={() => toggleHeading(2)}>
+          <TextHTwoIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
       </div>
       <div class="toolbar-group" role="group" aria-label="Formatting">
-        <button type="button" class="tool-btn" aria-label="Bold" disabled={!editor} onclick={toggleBold}><strong>B</strong></button>
-        <button type="button" class="tool-btn" aria-label="Italic" disabled={!editor} onclick={toggleItalic}><em>I</em></button>
-        <button type="button" class="tool-btn" aria-label="Strikethrough" disabled={!editor} onclick={toggleStrike}><s>S</s></button>
-        <button type="button" class="tool-btn" aria-label="Blockquote" disabled={!editor} onclick={toggleBlockquote}>&gt;</button>
+        <button type="button" class="tool-btn icon-only" aria-label="Bold" title="Bold" disabled={!editor} onclick={toggleBold}>
+          <TextBIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Italic" title="Italic" disabled={!editor} onclick={toggleItalic}>
+          <TextItalicIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Strikethrough" title="Strikethrough" disabled={!editor} onclick={toggleStrike}>
+          <TextStrikethroughIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Blockquote" title="Blockquote" disabled={!editor} onclick={toggleBlockquote}>
+          <QuotesIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
       </div>
       <div class="toolbar-group ai-context-status" role="group" aria-label="AI writing context">
         <span class="ai-status-label">AI</span>
@@ -1173,8 +1198,12 @@
           title={commentMode ? 'Exit comment mode' : 'Enter comment mode'}
           disabled={!editor}
           onmousedown={(event) => { event.preventDefault(); toggleCommentMode() }}
-        >Comment</button>
-        <button type="button" class="tool-btn" aria-label="Close document" onclick={closePrimaryDocument}>Close</button>
+        >
+          <ChatCircleTextIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
+        <button type="button" class="tool-btn icon-only" aria-label="Close document" title="Close document" onclick={closePrimaryDocument}>
+          <XIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
       </div>
       <div class="toolbar-group split-controls" role="group" aria-label="Split editor">
         <select
@@ -1374,6 +1403,9 @@
   }
 
   .tool-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 30px;
     height: 28px;
     padding: 0 var(--space-2);
@@ -1382,6 +1414,12 @@
     font-family: var(--font-sans);
     font-size: var(--font-size-sm);
     font-weight: 700;
+  }
+
+  .tool-btn.icon-only {
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
   }
 
   .tool-btn:hover:not(:disabled) {

@@ -5,6 +5,7 @@
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import { Markdown } from 'tiptap-markdown'
+  import { ListBulletsIcon, ListNumbersIcon, TextBIcon, TextHOneIcon, TextHTwoIcon, TextItalicIcon } from 'phosphor-svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownBubbleToolbar from '../../shell/MarkdownBubbleToolbar.svelte'
   import { addToast } from '../../store/toasts'
@@ -98,20 +99,34 @@
         {/if}
         <span class="entry-full-date">{entry.fullDate}</span>
       </div>
-      <span class="entry-badge">{entry.date}</span>
-    </header>
-    <header class="zone-header journal-toolbar" aria-label="Journal editing toolbar">
-      <div class="toolbar-group" role="group" aria-label="Text style">
-        <button type="button" class="tool-btn" aria-label="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>H1</button>
-        <button type="button" class="tool-btn" aria-label="Heading 2" disabled={!editor} onclick={() => toggleHeading(2)}>H2</button>
-      </div>
-      <div class="toolbar-group" role="group" aria-label="Formatting">
-        <button type="button" class="tool-btn" aria-label="Bold" disabled={!editor} onclick={toggleBold}><strong>B</strong></button>
-        <button type="button" class="tool-btn" aria-label="Italic" disabled={!editor} onclick={toggleItalic}><em>I</em></button>
-      </div>
-      <div class="toolbar-group" role="group" aria-label="Lists">
-        <button type="button" class="tool-btn" aria-label="Bullet list" disabled={!editor} onclick={toggleBulletList}>UL</button>
-        <button type="button" class="tool-btn" aria-label="Numbered list" disabled={!editor} onclick={toggleOrderedList}>1.</button>
+      <div class="entry-actions">
+        <div class="journal-toolbar" role="toolbar" aria-label="Journal editing toolbar">
+          <div class="toolbar-group" role="group" aria-label="Text style">
+            <button type="button" class="tool-btn" aria-label="Heading 1" title="Heading 1" disabled={!editor} onclick={() => toggleHeading(1)}>
+              <TextHOneIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+            <button type="button" class="tool-btn" aria-label="Heading 2" title="Heading 2" disabled={!editor} onclick={() => toggleHeading(2)}>
+              <TextHTwoIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+          </div>
+          <div class="toolbar-group" role="group" aria-label="Formatting">
+            <button type="button" class="tool-btn" aria-label="Bold" title="Bold" disabled={!editor} onclick={toggleBold}>
+              <TextBIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+            <button type="button" class="tool-btn" aria-label="Italic" title="Italic" disabled={!editor} onclick={toggleItalic}>
+              <TextItalicIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+          </div>
+          <div class="toolbar-group" role="group" aria-label="Lists">
+            <button type="button" class="tool-btn" aria-label="Bullet list" title="Bullet list" disabled={!editor} onclick={toggleBulletList}>
+              <ListBulletsIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+            <button type="button" class="tool-btn" aria-label="Numbered list" title="Numbered list" disabled={!editor} onclick={toggleOrderedList}>
+              <ListNumbersIcon size={16} weight="bold" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <span class="entry-badge">{entry.date}</span>
       </div>
     </header>
     <div class="entry-editor" {@attach editorHost} role="textbox" tabindex="-1"></div>
@@ -123,6 +138,12 @@
   .main-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
   .entry-header { justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-6); }
   .entry-heading { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .entry-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
   .title-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: var(--font-size-md); font-weight: 700; color: var(--color-fg-primary); }
   .entry-full-date { font-size: var(--font-size-xs); color: var(--color-fg-muted); }
   .entry-badge {
@@ -130,12 +151,10 @@
     padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 500;
   }
   .journal-toolbar {
-    min-height: 38px;
-    height: 38px;
+    display: flex;
+    align-items: center;
     gap: var(--space-2);
-    padding: 0 var(--space-6);
-    background: color-mix(in srgb, var(--color-bg-surface) 82%, var(--color-panel-glint));
-    border-bottom: var(--border-subtle);
+    min-width: 0;
   }
   .toolbar-group {
     display: flex;
@@ -146,14 +165,14 @@
   }
   .toolbar-group:last-child { border-right: none; }
   .tool-btn {
-    min-width: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
     height: 28px;
-    padding: 0 var(--space-2);
+    padding: 0;
     border-radius: var(--radius-sm);
     color: var(--color-fg-secondary);
-    font-family: var(--font-sans);
-    font-size: var(--font-size-sm);
-    font-weight: 700;
   }
   .tool-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-fg-primary); }
   .tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }

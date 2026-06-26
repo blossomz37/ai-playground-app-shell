@@ -439,7 +439,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 | 3 AI unification | **done** | explorer + adversarial QA | before/after + runtime proposal proof captured | QA pass after P1/P2/P3 fixes | 3 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
 | 5 Color discipline | **done** | worker + adversarial QA | all-theme before/after + party/proposal proofs captured | QA pass after P3 fixes | 2 |
-| 6 Clutter pass | ready (renderer-only) | — | — | — | 0 |
+| 6 Clutter pass | **done** | worker + adversarial QA | before/after + Documents follow-up captured | QA pass after P2 scope fix | 2 |
 
 Baseline before any edit: `npm run typecheck` ✓ and `npm run build` ✓ (clean).
 
@@ -700,6 +700,45 @@ Intentionally not built: no new theme architecture, no palette redesign, no
 schema/IPC/package changes, and no Slice 4 work. Remaining `--accent-*`
 consumers were left in place because the aliases now enforce the single-accent
 discipline without broad churn.
+
+### Slice 6 — Outcome (2026-06-26)
+
+Clutter pass shipped as renderer-only chrome cleanup. Jobs status now has a
+single interactive surface in the shell context strip; the duplicate StatusBar
+jobs item and its local job-state imports/styles were removed. The StatusBar
+still owns document word count and save state.
+
+Journal's stacked editor toolbar was folded into the entry header and converted
+to fixed icon controls with `aria-label` and `title` labels. Documents' main
+formatting/comment/close controls were similarly converted to icon controls with
+accessible names and tooltips, while contextual split-editor commands remain
+textual to preserve clarity. Assets' repeated utility actions (`Open in Finder`,
+`Copy Path`, `Export`, `Archive`/`Restore`) are now icon buttons with accessible
+names/tooltips; destructive `Remove Record` remains spelled out.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-jobs-single-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-jobs-single-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-editor-chrome-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-editor-chrome-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-documents-chrome-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-documents-chrome-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-assets-icons-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-assets-icons-after-2026-06-26.png`
+
+Validation: Svelte autofixer clean on all touched Svelte components; `npm run
+typecheck`; `npm run build`; `git diff --check`; built Electron screenshot
+captures against seeded workspace `ws-uiux-fc-20260626` for Documents and
+Assets, plus local shell captures for Jobs and Journal; adversarial QA.
+
+Adversarial QA note: first pass found a P2 scope gap because Documents chrome
+had not been covered. Documents toolbar iconification and before/after evidence
+closed it. Follow-up QA passed with no blockers. Minor residual evidence gap:
+secondary split-editor active state was code-reviewed rather than screenshot
+captured.
+
+Intentionally not built: no new icon library, no focus/zen redesign, no
+schema/IPC/package changes, and no Slice 4 organizing-layer work.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 

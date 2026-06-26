@@ -1,6 +1,15 @@
 <!-- Assets MainView — asset preview/detail -->
 <script lang="ts">
-  import { BookOpenIcon, MagnifyingGlassPlusIcon, XIcon } from 'phosphor-svelte'
+  import {
+    ArchiveIcon,
+    ArrowClockwiseIcon,
+    BookOpenIcon,
+    CopyIcon,
+    ExportIcon,
+    FolderOpenIcon,
+    MagnifyingGlassPlusIcon,
+    XIcon
+  } from 'phosphor-svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import { addToast } from '../../store/toasts'
   import PdfReaderModal from './PdfReaderModal.svelte'
@@ -107,20 +116,63 @@
     </div>
     <div class="asset-actions">
       {#if canReadPdf}
-        <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Read this PDF in App Shell' : 'No source file path recorded'} onclick={() => pdfReaderAssetId = asset.id}>
+        <button type="button" class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Read this PDF in App Shell' : 'No source file path recorded'} onclick={() => pdfReaderAssetId = asset.id}>
           <BookOpenIcon size={15} weight="bold" aria-hidden="true" />
           Read PDF
         </button>
       {/if}
-      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'} onclick={() => void revealSelectedAsset()}>Open in Finder</button>
-      <button class="action-btn" disabled={!hasFilePath} title={hasFilePath ? 'Copy source file path' : 'No source file path recorded'} onclick={() => void copySelectedAssetPath()}>Copy Path</button>
-      <button class="action-btn" disabled={!hasFilePath} title="Export this asset and metadata manifest" onclick={() => void exportAsset(asset.id)}>Export</button>
+      <button
+        type="button"
+        class="action-btn icon-only"
+        disabled={!hasFilePath}
+        title={hasFilePath ? 'Open the source file location' : 'No source file path recorded'}
+        aria-label="Open the source file location"
+        onclick={() => void revealSelectedAsset()}
+      >
+        <FolderOpenIcon size={16} weight="bold" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="action-btn icon-only"
+        disabled={!hasFilePath}
+        title={hasFilePath ? 'Copy source file path' : 'No source file path recorded'}
+        aria-label="Copy source file path"
+        onclick={() => void copySelectedAssetPath()}
+      >
+        <CopyIcon size={16} weight="bold" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="action-btn icon-only"
+        disabled={!hasFilePath}
+        title="Export this asset and metadata manifest"
+        aria-label="Export this asset and metadata manifest"
+        onclick={() => void exportAsset(asset.id)}
+      >
+        <ExportIcon size={16} weight="bold" aria-hidden="true" />
+      </button>
       {#if asset.archivedAt}
-        <button class="action-btn" title="Restore this asset record" onclick={() => void restoreAsset(asset.id)}>Restore</button>
+        <button
+          type="button"
+          class="action-btn icon-only"
+          title="Restore this asset record"
+          aria-label="Restore this asset record"
+          onclick={() => void restoreAsset(asset.id)}
+        >
+          <ArrowClockwiseIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
       {:else}
-        <button class="action-btn" title="Archive this asset record" onclick={() => void archiveAsset(asset.id)}>Archive</button>
+        <button
+          type="button"
+          class="action-btn icon-only"
+          title="Archive this asset record"
+          aria-label="Archive this asset record"
+          onclick={() => void archiveAsset(asset.id)}
+        >
+          <ArchiveIcon size={16} weight="bold" aria-hidden="true" />
+        </button>
       {/if}
-      <button class="action-btn danger" title="Remove this database record only; source files are not deleted" onclick={() => void removeSelectedAsset()}>Remove Record</button>
+      <button type="button" class="action-btn danger" title="Remove this database record only; source files are not deleted" onclick={() => void removeSelectedAsset()}>Remove Record</button>
     </div>
 
     {#if showImagePreview && asset.thumbnailDataUrl}
@@ -195,6 +247,12 @@
     display: inline-flex; align-items: center; gap: var(--space-1);
     padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: var(--font-size-sm);
     color: var(--color-fg-secondary); background: var(--color-bg-overlay); cursor: pointer; transition: background 0.1s, color 0.1s;
+  }
+  .action-btn.icon-only {
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
   }
   .action-btn:hover { background: var(--color-bg-active); color: var(--color-fg-primary); }
   .action-btn.danger:hover { color: var(--color-danger); }
