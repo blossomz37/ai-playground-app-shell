@@ -192,7 +192,9 @@
   }
 
   async function previewDocumentAi(action: DocumentsAiPromptAction): Promise<void> {
-    if (!$activeDoc || !writingContext) return
+    if (!$activeDoc) return
+    refreshWritingContext()
+    if (!writingContext) return
     if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
       addToast('warn', 'Select text before previewing a rewrite.')
       return
@@ -203,7 +205,6 @@
     aiPreviewLabel = labelForAiAction(action)
     aiPreviewAction = action
     try {
-      refreshWritingContext()
       await Promise.all([refreshAiContext(), loadAiTemplates()])
       const template = documentsAiTemplateForAction(action)
       aiPreview = await previewAi({
@@ -300,28 +301,39 @@
     }
   }
 
-  async function createProposalFromLiveRun(): Promise<AiProposal | null> {
-    if (!$activeDoc || !writingContext || !aiPreviewAction) return null
+  async function createProposalFromLiveRun(action: DocumentsAiPromptAction | null = aiPreviewAction): Promise<AiProposal | null> {
+    if (!$activeDoc || !action) return null
     proposalBusy = true
     try {
       refreshWritingContext()
-      const template = documentsAiTemplateForAction(aiPreviewAction)
+      if (!writingContext) return null
+      if (action === 'rewrite-selection' && !writingContext.writingVariables.selectedText?.trim()) {
+        addToast('warn', 'Select text before running a rewrite.')
+        return null
+      }
+
+      await Promise.all([refreshAiContext(), loadAiTemplates()])
+      aiPreviewAction = action
+      aiPreviewLabel = labelForAiAction(action)
+      const template = documentsAiTemplateForAction(action)
       const proposal = await createAiProposalFromInvocation({
         targetDocumentId: $activeDoc.id,
-        proposalType: proposalTypeForAiAction(aiPreviewAction),
-        sourceText: sourceTextForAiAction(aiPreviewAction),
+        proposalType: proposalTypeForAiAction(action),
+        sourceText: sourceTextForAiAction(action),
         runParams: {
           moduleId: 'shell.documents',
           originType: 'template',
-          originId: template?.id ?? `documents.${aiPreviewAction}`,
-          prompt: promptForAiAction(aiPreviewAction),
+          originId: template?.id ?? `documents.${action}`,
+          prompt: promptForAiAction(action),
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: aiUserInput
           }
         }
       })
-      addToast('info', 'AI proposal saved.')
+      aiPreview = null
+      aiPreviewAction = null
+      addToast('info', 'AI proposal created.')
       return proposal
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
@@ -1190,7 +1202,7 @@
   {/if}
 
   {#if $activeDoc}
-    <section class="ai-preview-panel" aria-label="AI writing preview">
+    <section class="ai-preview-panel" aria-label="AI writing actions">
       <div class="ai-preview-controls">
         <label class="ai-input-label" for="documents-ai-user-input">Instruction</label>
         <input
@@ -1198,29 +1210,47 @@
           class="ai-user-input"
           type="text"
           bind:value={aiUserInput}
-          placeholder="Optional direction for this preview"
+          placeholder="Optional direction for this AI request"
           data-capture-documents-ai-user-input
         />
         <button
           type="button"
           class="ai-action-btn"
-          disabled={aiPreviewBusy || writingContextWords === 0}
-          onclick={() => void previewDocumentAi('rewrite-selection')}
+          disabled={proposalBusy || aiPreviewBusy || writingContextWords === 0}
+          onclick={() => void createProposalFromLiveRun('rewrite-selection')}
         >Rewrite</button>
         <button
           type="button"
           class="ai-action-btn"
-          disabled={aiPreviewBusy}
-          onclick={() => void previewDocumentAi('continue-from-cursor')}
+          disabled={proposalBusy || aiPreviewBusy}
+          onclick={() => void createProposalFromLiveRun('continue-from-cursor')}
         >Continue</button>
         <button
           type="button"
           class="ai-action-btn"
-          disabled={aiPreviewBusy}
-          onclick={() => void previewDocumentAi('summarize-active-document')}
+          disabled={proposalBusy || aiPreviewBusy}
+          onclick={() => void createProposalFromLiveRun('summarize-active-document')}
         >Summary</button>
+        <button
+          type="button"
+          class="ai-action-btn ghost"
+          disabled={proposalBusy || aiPreviewBusy || writingContextWords === 0}
+          onclick={() => void previewDocumentAi('rewrite-selection')}
+        >Preview rewrite</button>
+        <button
+          type="button"
+          class="ai-action-btn ghost"
+          disabled={proposalBusy || aiPreviewBusy}
+          onclick={() => void previewDocumentAi('continue-from-cursor')}
+        >Preview continue</button>
+        <button
+          type="button"
+          class="ai-action-btn ghost"
+          disabled={proposalBusy || aiPreviewBusy}
+          onclick={() => void previewDocumentAi('summarize-active-document')}
+        >Preview summary</button>
         {#if aiPreview}
-          <button type="button" class="ai-action-btn" disabled={proposalBusy || aiPreviewBusy} onclick={() => void createProposalFromLiveRun()}>Run Proposal</button>
+          <button type="button" class="ai-action-btn" disabled={proposalBusy || aiPreviewBusy} onclick={() => void createProposalFromLiveRun()}>Send preview</button>
           <button type="button" class="ai-action-btn ghost" onclick={() => { aiPreview = null; aiPreviewAction = null }}>Close</button>
         {/if}
       </div>
