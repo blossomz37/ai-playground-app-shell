@@ -12,6 +12,7 @@
   } from 'phosphor-svelte'
   import type { Workspace, WorkspaceStats } from '@shared/module-contract'
   import {
+    activeModuleId,
     archiveWorkspace,
     archivedWorkspaces,
     deleteWorkspace,
@@ -136,24 +137,39 @@
 
   async function openProject(project: Workspace): Promise<void> {
     if (project.archivedAt) return
+    requestInspector()
     await runAction(`open:${project.id}`, () => switchWorkspace(project.id))
     selectProject(project.id)
   }
 
+  async function openProjectDocuments(project: Workspace): Promise<void> {
+    if (project.archivedAt) return
+    await runAction(`open-documents:${project.id}`, async () => {
+      await switchWorkspace(project.id)
+      activeModuleId.set('shell.documents')
+      await window.shell.modules.activate('shell.documents')
+    })
+    selectProject(project.id)
+  }
+
   async function duplicateProject(project: Workspace): Promise<void> {
+    requestInspector()
     await runAction(`duplicate:${project.id}`, () => duplicateWorkspace(project.id))
   }
 
   async function archiveProject(project: Workspace): Promise<void> {
+    requestInspector()
     await runAction(`archive:${project.id}`, () => archiveWorkspace(project.id))
   }
 
   async function restoreProject(project: Workspace): Promise<void> {
+    requestInspector()
     await runAction(`restore:${project.id}`, () => restoreWorkspace(project.id))
     selectProject(project.id)
   }
 
   async function deleteProject(project: Workspace): Promise<void> {
+    requestInspector()
     if (confirmDeleteId !== project.id) {
       confirmDeleteId = project.id
       return
@@ -164,6 +180,15 @@
 
   async function importFolder(): Promise<void> {
     await runAction('import', () => importWorkspaceFolder({ type: 'authoring' }))
+  }
+
+  function editProject(project: Workspace): void {
+    requestInspector()
+    startProjectEdit(project.id)
+  }
+
+  function requestInspector(): void {
+    window.dispatchEvent(new Event('shell:open-inspector'))
   }
 
   function formatDate(value: string | null | undefined): string {
@@ -272,7 +297,17 @@
             <tr class:active={project.id === $workspaceId} class:selected class:archived onclick={() => selectProject(project.id)}>
               <td>
                 <div class="project-name">
-                  <strong>{project.name}</strong>
+                  <button
+                    class="project-name-button"
+                    type="button"
+                    data-capture-projects-open-documents
+                    disabled={archived || busyAction === `open-documents:${project.id}`}
+                    title={archived ? 'Restore project before opening' : `Open ${project.name} in Documents`}
+                    aria-label={archived ? `${project.name} is archived` : `Open ${project.name} in Documents`}
+                    onclick={(event) => { event.stopPropagation(); void openProjectDocuments(project) }}
+                  >
+                    {project.name}
+                  </button>
                   <span>{project.root}</span>
                 </div>
               </td>
@@ -288,7 +323,7 @@
                 <button type="button" title="Open project" aria-label="Open project" disabled={archived || busyAction === `open:${project.id}`} onclick={(event) => { event.stopPropagation(); void openProject(project) }}>
                   <BookOpenIcon size={15} weight="bold" aria-hidden="true" />
                 </button>
-                <button type="button" title="Edit project" aria-label="Edit project" data-capture-projects-edit onclick={(event) => { event.stopPropagation(); startProjectEdit(project.id) }}>
+                <button type="button" title="Edit project" aria-label="Edit project" data-capture-projects-edit onclick={(event) => { event.stopPropagation(); editProject(project) }}>
                   <PencilSimpleIcon size={15} weight="bold" aria-hidden="true" />
                 </button>
                 <button type="button" title="Duplicate project" aria-label="Duplicate project" disabled={busyAction === `duplicate:${project.id}`} onclick={(event) => { event.stopPropagation(); void duplicateProject(project) }}>
@@ -486,7 +521,7 @@
     background: color-mix(in srgb, var(--color-accent) 9%, transparent);
   }
 
-  tr.active .project-name strong {
+  tr.active .project-name-button {
     color: var(--color-accent);
   }
 
@@ -500,11 +535,37 @@
     min-width: 0;
   }
 
-  .project-name strong,
   .project-name span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .project-name-button {
+    justify-content: flex-start;
+    min-height: 20px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font-weight: 700;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .project-name-button:hover:not(:disabled),
+  .project-name-button:focus-visible {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .project-name-button:disabled {
+    opacity: 0.58;
   }
 
   .project-name span {

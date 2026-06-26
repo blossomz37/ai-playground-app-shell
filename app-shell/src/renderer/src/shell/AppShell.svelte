@@ -54,6 +54,7 @@
   let captureSettingsListener: (() => void) | null = null
   let captureJobsListener: (() => void) | null = null
   let captureSidebarListener: (() => void) | null = null
+  let openInspectorListener: (() => void) | null = null
   let viewportMedia: MediaQueryList | null = null
   let viewportMediaListener: ((event: MediaQueryListEvent) => void) | null = null
 
@@ -125,6 +126,18 @@
   function closeNarrowPanels() {
     narrowSidebarOpen = false
     narrowInspectorOpen = false
+  }
+
+  async function openInspector() {
+    if (narrowViewport && !zenMode) {
+      narrowInspectorOpen = true
+      narrowSidebarOpen = false
+      return
+    }
+    if (!inspectorVisible) {
+      const state = await window.shell.layout.toggle('inspector')
+      applyLayout(state)
+    }
   }
 
   async function selectModule(id: string) {
@@ -251,6 +264,9 @@
     }
     window.addEventListener('shell:capture-open-sidebar', captureSidebarListener)
 
+    openInspectorListener = () => void openInspector()
+    window.addEventListener('shell:open-inspector', openInspectorListener)
+
     if (window.shell.capture?.moduleId) {
       await selectModule(window.shell.capture.moduleId)
     }
@@ -268,6 +284,9 @@
     }
     if (captureSidebarListener) {
       window.removeEventListener('shell:capture-open-sidebar', captureSidebarListener)
+    }
+    if (openInspectorListener) {
+      window.removeEventListener('shell:open-inspector', openInspectorListener)
     }
     if (viewportMedia && viewportMediaListener) {
       viewportMedia.removeEventListener('change', viewportMediaListener)

@@ -8,7 +8,7 @@ import { addToast, initToasts } from './toasts'
 import { loadJobs } from './jobs'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 import { activeModuleId } from './active-module'
-import { loadModules } from './modules'
+import { PROJECTS_MODULE_ID, loadModules } from './modules'
 
 export type { ThemeMode }
 
@@ -269,7 +269,7 @@ async function applyWorkspaceResult(workspace: Workspace): Promise<void> {
   await loadJobs(workspace.id)
 
   const moduleId = get(activeModuleId)
-  if (moduleId) await window.shell.modules.activate(moduleId)
+  if (moduleId && moduleId !== PROJECTS_MODULE_ID) await window.shell.modules.activate(moduleId)
 }
 
 export async function switchWorkspace(id: string): Promise<void> {

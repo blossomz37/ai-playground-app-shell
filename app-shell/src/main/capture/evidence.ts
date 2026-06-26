@@ -64,6 +64,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const projectsSearch = process.env['SHELL_CAPTURE_PROJECTS_SEARCH']
   const projectsEdit = process.env['SHELL_CAPTURE_PROJECTS_EDIT'] === '1'
   const projectsCreate = process.env['SHELL_CAPTURE_PROJECTS_CREATE'] === '1'
+  const projectsOpenDocuments = process.env['SHELL_CAPTURE_PROJECTS_OPEN_DOCUMENTS'] === '1'
   const projectsFormDescription = process.env['SHELL_CAPTURE_PROJECTS_FORM_DESCRIPTION']
   const projectsFormStatus = process.env['SHELL_CAPTURE_PROJECTS_FORM_STATUS']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
@@ -346,6 +347,28 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (projectsOpenDocuments) {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            let attempts = 0
+            const timer = setInterval(() => {
+              attempts += 1
+              const button = document.querySelector('[data-capture-projects-open-documents]')
+              if (!(button instanceof HTMLButtonElement)) {
+                if (attempts >= 40) {
+                  clearInterval(timer)
+                  reject(new Error('Projects open-documents control is not available for capture.'))
+                }
+                return
+              }
+              clearInterval(timer)
+              button.click()
+              resolve(true)
+            }, 100)
+          })
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay * 2))
       }
       if (projectsFormDescription !== undefined || projectsFormStatus !== undefined) {
         await win.webContents.executeJavaScript(`
