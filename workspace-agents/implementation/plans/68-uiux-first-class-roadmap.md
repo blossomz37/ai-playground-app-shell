@@ -436,7 +436,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 | 0 Discovery | **done** | 4 explorers (search, stores, AI, tokens) | n/a | n/a | 1 |
 | 1 Go-to-anything | **done** | worker + local runtime verifier + adversarial QA | before/after + edge proofs captured | QA pass after 2 fix rounds | 2 |
 | 2 NavView search | **done** | worker + adversarial QA | before/after + archive/history proofs captured | QA pass after evidence-gap fix | 2 |
-| 3 AI unification | ready (renderer-only path) | — | — | — | 0 |
+| 3 AI unification | **done** | explorer + adversarial QA | before/after + runtime proposal proof captured | QA pass after P1/P2/P3 fixes | 3 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
 | 5 Color discipline | ready (renderer-only) | — | — | — | 0 |
 | 6 Clutter pass | ready (renderer-only) | — | — | — | 0 |
@@ -605,6 +605,59 @@ Adversarial QA note: first pass found an evidence gap for Prompt Studio Archive
 and Web History. `SHELL_CAPTURE_NAV_TAB` plus two extra screenshots closed it;
 follow-up QA passed with no blockers. Residual risk: current list rendering is
 still non-virtualized, matching the pre-existing Slice 2 risk register.
+
+### Slice 3 — Outcome (2026-06-26)
+
+AI mental-model unification shipped without SQLite schema changes, shared type
+contract changes, new IPC channels, or package changes. The renderer now keeps
+provider/model/temperature as per-surface run settings for AI Chat, Prompt
+Studio, Documents AI, and Workflow. Existing global AI settings remain as
+fallback/default settings, but touched run paths pass explicit per-surface
+overrides into the existing AI invocation/proposal APIs.
+
+The shared `AiContextPicker` is now the visible context tray for Prompt Studio
+and Documents AI, alongside AI Chat and Workflow. Prompt Studio no longer keeps
+context as a separate Nav tab; the nav is back to Templates/Archive while the
+inspector owns model, context, and run history. Run history now loads unified
+cross-module runs and `RunHistoryList` adds source filters and source badges
+for Chat, Prompts, Workflow, and Documents.
+
+Prompt Studio can save any runnable prompt/template as an `append-note` document
+proposal when an active document is selected. Workflow's "Create proposal"
+option now creates an `append-note` proposal when checked with an active
+document; otherwise Workflow keeps the existing queued job path. Workflow queued
+runs now forward provider/model/temperature into the main runner, so the visible
+workflow settings match the actual invocation.
+
+Runtime proof exposed a real stale-provider/model pairing bug: a template could
+hydrate `mock-durable-context-v1` while the current provider was
+`openai-responses`. The fix loads providers before Prompt Studio template
+hydration and makes surface model selection switch to a compatible provider when
+the selected model belongs elsewhere. The capture proof now logs a pending
+Prompt Studio proposal created by clicking `Save as Proposal`.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-context-tray-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-context-tray-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-run-history-unified-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-run-history-unified-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-proposal-any-prompt-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-ai-proposal-any-prompt-after-2026-06-26.png`
+
+Validation: Svelte autofixer clean on all touched Svelte components; `npm run
+typecheck`; `npm run build`; `git diff --check`; built Electron screenshot
+captures against seeded workspace `ws-uiux-fc-20260626`; Prompt Studio proposal
+capture logged pending append-note proposal
+`f73e3054-e370-4fdd-8ac2-a46a0c6938f8`; adversarial QA.
+
+Adversarial QA note: first pass found two P1s (unified run history collapsed
+after new runs; Workflow queued job ignored visible provider/model/temp), two
+P2s (surface-local custom preset save and evidence gaps), and one P3
+focus-ring issue. All were fixed and rechecked by QA with no remaining findings.
+
+Intentionally not built: true multi-step chain execution remains deferred behind
+the existing Slice 4/data-model gate; arbitrary prompt proposals are limited to
+safe `append-note` output until stronger source/apply semantics are defined.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 

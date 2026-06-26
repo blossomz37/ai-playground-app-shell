@@ -48,8 +48,16 @@ export interface AiModelPreset {
   temperature: number
 }
 
+export interface AiRunSettings {
+  providerId: AiProviderId
+  model: string
+  temperature: number
+}
+
 export const aiModelPresets = writable<AiModelPreset[]>([])
 export const selectedAiPresetId = writable<AiModelPresetId>('custom')
+export const aiSurfaceRunSettings = writable<Record<string, AiRunSettings>>({})
+export const selectedAiPresetIdBySurface = writable<Record<string, AiModelPresetId>>({})
 
 // User-controlled context additions, shared by the AI context picker.
 export const manualContextNote = writable('')
@@ -145,6 +153,51 @@ function currentSettingsPreset(): AiModelPreset {
     model: get(selectedAiModel),
     temperature: get(selectedAiTemperature)
   }
+}
+
+function currentRunSettings(): AiRunSettings {
+  return {
+    providerId: get(selectedAiProviderId),
+    model: get(selectedAiModel),
+    temperature: get(selectedAiTemperature)
+  }
+}
+
+function fallbackRunSettings(settings: AiRunSettings | undefined): AiRunSettings {
+  return settings ?? currentRunSettings()
+}
+
+function updateSurfaceRunSettings(surfaceId: string, settings: AiRunSettings): void {
+  aiSurfaceRunSettings.update(all => ({
+    ...all,
+    [surfaceId]: settings
+  }))
+}
+
+function markSurfacePreset(surfaceId: string, presetId: AiModelPresetId): void {
+  selectedAiPresetIdBySurface.update(all => ({
+    ...all,
+    [surfaceId]: presetId
+  }))
+}
+
+export function aiRunSettingsForSurface(surfaceId: string) {
+  return derived(
+    [aiSurfaceRunSettings, selectedAiProviderId, selectedAiModel, selectedAiTemperature],
+    ([$surfaceSettings, $providerId, $model, $temperature]) =>
+      $surfaceSettings[surfaceId] ?? {
+        providerId: $providerId,
+        model: $model,
+        temperature: $temperature
+      }
+  )
+}
+
+export function selectedAiPresetIdForSurface(surfaceId: string) {
+  return derived(
+    selectedAiPresetIdBySurface,
+    ($selectedBySurface) => $selectedBySurface[surfaceId] ?? 'custom'
+  )
 }
 
 function markCurrentSettingsAsCustomPreset(): void {
@@ -298,7 +351,7 @@ export async function loadAiRuns(moduleId?: string): Promise<void> {
   const runs = await window.shell.ai.runs({
     workspaceId: await resolveWorkspaceId(),
     moduleId,
-    limit: 12
+    limit: 50
   })
   aiRuns.set(runs)
 }
@@ -586,7 +639,7 @@ export async function createAiProposalFromInvocation(params: {
       runParams: buildAiPayload(params.runParams)
     })
     aiProposals.update(proposals => [created, ...proposals.filter(item => item.id !== created.id)])
-    await loadAiRuns(params.runParams.moduleId)
+    await loadAiRuns()
     return created
   } finally {
     aiBusy.set(false)
@@ -636,14 +689,11 @@ export async function loadAiProviders(): Promise<void> {
 
   const provider = providers.find(item => item.providerId === providerId) ?? providers[0]
   const savedModel = await window.shell.settings.get(`ai.model.${providerId}`)
-  const fallbackModel = provider?.providerId === 'openai-responses'
-    ? 'gpt-4.1-mini'
-    : get(demoModeEnabled)
-      ? 'mock-durable-context-v1'
-      : 'gpt-4.1-mini'
-  selectedAiModel.set(typeof savedModel === 'string' && savedModel.trim()
-    ? savedModel
-    : provider?.defaultModel ?? fallbackModel)
+  const fallbackModel = defaultModelForProvider(provider)
+  const validModels = providerModelOptions(provider)
+  selectedAiModel.set(typeof savedModel === 'string' && validModels.includes(savedModel.trim())
+    ? savedModel.trim()
+    : fallbackModel)
 
   const savedTemperature = await window.shell.settings.get('ai.temperature')
   selectedAiTemperature.set(typeof savedTemperature === 'number' ? savedTemperature : 0.7)
@@ -676,6 +726,24 @@ export async function applyAiModelPreset(id: AiModelPresetId): Promise<void> {
   }
 }
 
+export async function applyAiModelPresetToSurface(surfaceId: string, id: AiModelPresetId): Promise<void> {
+  if (get(aiProviders).length === 0) {
+    await loadAiProviders()
+  }
+  if (get(aiModelPresets).length === 0) {
+    await loadAiModelPresets()
+  }
+  const preset = get(aiModelPresets).find(item => item.id === id)
+  if (!preset) return
+
+  updateSurfaceRunSettings(surfaceId, {
+    providerId: preset.providerId,
+    model: preset.model,
+    temperature: preset.temperature
+  })
+  markSurfacePreset(surfaceId, id)
+}
+
 export async function saveCurrentAiSettingsAsCustomPreset(): Promise<void> {
   const preset = currentSettingsPreset()
   await window.shell.settings.set(CUSTOM_AI_MODEL_PRESET_KEY, preset)
@@ -683,17 +751,82 @@ export async function saveCurrentAiSettingsAsCustomPreset(): Promise<void> {
   selectedAiPresetId.set('custom')
 }
 
-export function modelOptionsForProvider(provider: AiProvider | undefined): string[] {
-  const selected = get(selectedAiModel)
-  const options = provider?.availableModels?.length
+export async function saveSurfaceAiSettingsAsCustomPreset(surfaceId: string): Promise<void> {
+  const settings = fallbackRunSettings(get(aiSurfaceRunSettings)[surfaceId])
+  const preset: AiModelPreset = {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Saved custom AI settings.',
+    providerId: settings.providerId,
+    model: settings.model,
+    temperature: settings.temperature
+  }
+  await window.shell.settings.set(CUSTOM_AI_MODEL_PRESET_KEY, preset)
+  aiModelPresets.set([...DEFAULT_AI_MODEL_PRESETS, preset])
+  markSurfacePreset(surfaceId, 'custom')
+}
+
+function defaultModelForProvider(provider: AiProvider | undefined): string {
+  return provider?.defaultModel
+    ?? (provider?.providerId === 'openai-responses'
+      ? 'gpt-4.1-mini'
+      : get(demoModeEnabled)
+        ? 'mock-durable-context-v1'
+        : 'gpt-4.1-mini')
+}
+
+function providerModelOptions(provider: AiProvider | undefined): string[] {
+  return provider?.availableModels?.length
     ? provider.availableModels
     : provider?.providerId === 'openai-responses'
       ? FALLBACK_OPENAI_MODELS
       : get(demoModeEnabled)
         ? ['mock-durable-context-v1']
         : FALLBACK_OPENAI_MODELS
+}
+
+export function modelOptionsForProvider(provider: AiProvider | undefined, selectedModel = get(selectedAiModel)): string[] {
+  const selected = selectedModel
+  const options = providerModelOptions(provider)
 
   return options.includes(selected) ? options : [selected, ...options]
+}
+
+export async function selectAiSurfaceProvider(surfaceId: string, providerId: AiProviderId): Promise<void> {
+  if (get(aiProviders).length === 0) {
+    await loadAiProviders()
+  }
+  const provider = get(aiProviders).find(item => item.providerId === providerId)
+  if (!provider) return
+  updateSurfaceRunSettings(surfaceId, {
+    providerId: provider.providerId,
+    model: provider.defaultModel,
+    temperature: fallbackRunSettings(get(aiSurfaceRunSettings)[surfaceId]).temperature
+  })
+  markSurfacePreset(surfaceId, 'custom')
+}
+
+export function selectAiSurfaceModel(surfaceId: string, model: string): void {
+  const value = model.trim()
+  if (!value) return
+  const current = fallbackRunSettings(get(aiSurfaceRunSettings)[surfaceId])
+  const compatibleProvider = get(aiProviders)
+    .find(provider => providerModelOptions(provider).includes(value))
+  updateSurfaceRunSettings(surfaceId, {
+    ...current,
+    providerId: compatibleProvider?.providerId ?? current.providerId,
+    model: value
+  })
+  markSurfacePreset(surfaceId, 'custom')
+}
+
+export function selectAiSurfaceTemperature(surfaceId: string, temperature: number): void {
+  const current = fallbackRunSettings(get(aiSurfaceRunSettings)[surfaceId])
+  updateSurfaceRunSettings(surfaceId, {
+    ...current,
+    temperature: Math.max(0, Math.min(2, temperature))
+  })
+  markSurfacePreset(surfaceId, 'custom')
 }
 
 export async function selectAiProvider(providerId: AiProviderId): Promise<void> {
@@ -849,7 +982,7 @@ export async function invokeAi(params: AiRequestParams): Promise<AiInvokeResult>
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'AI output could not be saved to the project tree.')
     }
-    await loadAiRuns(params.moduleId)
+    await loadAiRuns()
     return result
   } finally {
     aiBusy.set(false)

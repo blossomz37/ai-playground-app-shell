@@ -10,6 +10,11 @@
 
   let { runs, emptyLabel, onUseSettings }: Props = $props()
   let expandedRunId = $state<string | null>(null)
+  let sourceFilter = $state('all')
+  let sourceOptions = $derived(runSourceOptions(runs))
+  let visibleRuns = $derived(
+    sourceFilter === 'all' ? runs : runs.filter(run => run.moduleId === sourceFilter)
+  )
 
   function fmt(iso: string | null): string {
     if (!iso) return 'Not completed'
@@ -40,10 +45,41 @@
     }
     return labels[run.originType]
   }
+
+  function sourceLabel(moduleId: string): string {
+    if (moduleId === 'shell.aichat') return 'Chat'
+    if (moduleId === 'shell.promptstudio') return 'Prompts'
+    if (moduleId === 'shell.workflow') return 'Workflow'
+    if (moduleId === 'shell.documents') return 'Documents'
+    return moduleId
+  }
+
+  function runSourceOptions(rows: AiRun[]): Array<{ id: string; label: string; count: number }> {
+    const counts: Record<string, number> = {}
+    for (const run of rows) {
+      counts[run.moduleId] = (counts[run.moduleId] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .map(([id, count]) => ({ id, label: sourceLabel(id), count }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }
 </script>
 
 <div class="run-list">
-  {#each runs as run (run.id)}
+  {#if sourceOptions.length > 1}
+    <div class="source-filter" aria-label="Filter run history by source">
+      <button type="button" class:active={sourceFilter === 'all'} onclick={() => sourceFilter = 'all'}>
+        All <span>{runs.length}</span>
+      </button>
+      {#each sourceOptions as option (option.id)}
+        <button type="button" class:active={sourceFilter === option.id} onclick={() => sourceFilter = option.id}>
+          {option.label} <span>{option.count}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#each visibleRuns as run (run.id)}
     <article class="run-item" class:expanded={expandedRunId === run.id}>
       <button
         type="button"
@@ -54,6 +90,7 @@
       >
         <span class="run-status" class:success={run.status === 'completed'} class:error={run.status === 'failed'}>{run.status}</span>
         <span class="run-summary">{run.inputSummary || run.originType}</span>
+        <span class="run-source">{sourceLabel(run.moduleId)}</span>
         <span class="run-toggle-hint">{expandedRunId === run.id ? 'Hide' : 'Result'}</span>
         <span class="run-time">{fmt(run.createdAt)}</span>
       </button>
@@ -117,7 +154,7 @@
       {/if}
     </article>
   {:else}
-    <p class="empty-text">{emptyLabel}</p>
+    <p class="empty-text">{sourceFilter === 'all' ? emptyLabel : 'No runs for this source yet.'}</p>
   {/each}
 </div>
 
@@ -126,6 +163,32 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  .source-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .source-filter button {
+    min-height: 26px;
+    padding: 0 var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+  }
+
+  .source-filter button.active {
+    background: var(--color-accent-dim);
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  }
+
+  .source-filter span {
+    color: var(--color-fg-muted);
   }
 
   .run-item {
@@ -142,7 +205,7 @@
   .run-summary-button {
     width: 100%;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 2px var(--space-2);
     padding: var(--space-2);
     text-align: left;
@@ -167,6 +230,12 @@
     color: var(--color-danger);
   }
 
+  .run-source {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
   .run-summary {
     min-width: 0;
     color: var(--color-fg-secondary);
@@ -177,14 +246,14 @@
   }
 
   .run-time {
-    grid-column: 1 / 3;
+    grid-column: 1 / 4;
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
   }
 
   .run-toggle-hint {
     grid-row: 1 / 3;
-    grid-column: 3;
+    grid-column: 4;
     align-self: center;
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);

@@ -18,6 +18,7 @@
   import {
     acceptAiProposal,
     aiProposals,
+    aiRunSettingsForSurface,
     cancelAiInvocation,
     createAiProposal,
     createAiProposalFromInvocation,
@@ -72,6 +73,8 @@
     count: number
     matches: DocumentSearchMatch[]
   }
+
+  const documentsRunSettings = aiRunSettingsForSurface('shell.documents')
 
   let element: HTMLDivElement | null = null
   let secondaryElement: HTMLDivElement | null = null
@@ -222,6 +225,9 @@
         originType: 'template',
         originId: template?.id ?? `documents.${action}`,
         prompt: promptForAiAction(action),
+        providerId: $documentsRunSettings.providerId,
+        model: $documentsRunSettings.model,
+        temperature: $documentsRunSettings.temperature,
         writingVariables: {
           ...writingContext.writingVariables,
           userInput: get(documentsAiUserInput)
@@ -273,6 +279,9 @@
           originType: 'template',
           originId: template?.id ?? `documents.${aiPreviewAction}`,
           prompt: promptForAiAction(aiPreviewAction),
+          providerId: $documentsRunSettings.providerId,
+          model: $documentsRunSettings.model,
+          temperature: $documentsRunSettings.temperature,
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: get(documentsAiUserInput)
@@ -322,6 +331,9 @@
           originType: 'template',
           originId: template?.id ?? `documents.${action}`,
           prompt: structuredPromptForAiAction(action),
+          providerId: $documentsRunSettings.providerId,
+          model: $documentsRunSettings.model,
+          temperature: $documentsRunSettings.temperature,
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: get(documentsAiUserInput)

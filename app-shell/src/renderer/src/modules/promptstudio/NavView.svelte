@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
   import {
     aiTemplates,
@@ -12,7 +11,6 @@
     exportAiTemplatesJson,
     importAiTemplatesFromJson,
     loadAiTemplates,
-    refreshAiContext,
     renameAiTemplate,
     restoreAiTemplate,
     selectAiTemplate,
@@ -22,7 +20,7 @@
   import type { AiPromptTemplate } from '@shared/ai'
 
   let renamingTemplateId = $state<string | null>(null)
-  let activeTab = $state<'templates' | 'archive' | 'context'>('templates')
+  let activeTab = $state<'templates' | 'archive'>('templates')
   let tagFilter = $state('all')
   let filterQuery = $state('')
   let normalizedFilter = $derived(filterQuery.trim().toLowerCase())
@@ -40,7 +38,7 @@
   )
 
   onMount(async () => {
-    await Promise.all([loadAiTemplates(), refreshAiContext()])
+    await loadAiTemplates()
   })
 
   async function createTemplate(): Promise<void> {
@@ -151,7 +149,6 @@
   <div class="nav-tabs" role="tablist" aria-label="Prompt Studio navigation">
     <button type="button" role="tab" class:active={activeTab === 'templates'} onclick={() => activeTab = 'templates'}>Templates</button>
     <button type="button" role="tab" class:active={activeTab === 'archive'} onclick={() => activeTab = 'archive'}>Archive</button>
-    <button type="button" role="tab" class:active={activeTab === 'context'} onclick={() => activeTab = 'context'}>Context</button>
   </div>
 
   {#if activeTab === 'templates'}
@@ -304,10 +301,6 @@
         <div class="template-empty">No archived templates match.</div>
       {/each}
     </div>
-  {:else}
-    <div class="context-panel">
-      <AiContextPicker />
-    </div>
   {/if}
 </div>
 
@@ -342,7 +335,7 @@
 
   .nav-tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-1);
     padding: var(--space-2);
     border-bottom: 1px solid var(--color-border);
@@ -535,12 +528,5 @@
     padding: var(--space-3);
     color: var(--color-fg-muted);
     font-size: var(--font-size-sm);
-  }
-
-  .context-panel {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: var(--space-3);
   }
 </style>

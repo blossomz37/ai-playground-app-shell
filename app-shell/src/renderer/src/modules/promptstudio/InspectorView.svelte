@@ -1,43 +1,43 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { AiRun } from '@shared/ai'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import AiModelPresetPicker from '../../shell/AiModelPresetPicker.svelte'
   import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
     aiContextCandidates,
     aiProviders,
     aiRuns,
+    aiRunSettingsForSurface,
     aiSecretNames,
     loadAiProviders,
     loadAiRuns,
     modelOptionsForProvider,
     refreshAiContext,
-    selectAiModel,
-    selectAiProvider,
-    selectAiTemperature,
-    selectedAiModel,
-    selectedAiProviderId,
-    selectedAiTemperature
+    selectAiSurfaceModel,
+    selectAiSurfaceProvider,
+    selectAiSurfaceTemperature
   } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
-  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
-  let modelOptions = $derived(modelOptionsForProvider(activeProvider))
+  const runSettings = aiRunSettingsForSurface('shell.promptstudio')
+  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $runSettings.providerId) ?? $aiProviders[0])
+  let modelOptions = $derived(modelOptionsForProvider(activeProvider, $runSettings.model))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
   let includedContextCount = $derived($aiContextCandidates.filter(candidate => candidate.included).length)
   let runCount = $derived($aiRuns.length)
-  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$selectedAiModel} / temp ${$selectedAiTemperature.toFixed(1)}`)
+  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$runSettings.model} / temp ${$runSettings.temperature.toFixed(1)}`)
 
   onMount(() => {
     void loadAiProviders()
     void refreshAiContext()
-    void loadAiRuns('shell.promptstudio')
+    void loadAiRuns()
   })
 
   async function useRunSettings(run: AiRun): Promise<void> {
-    await selectAiProvider(run.providerId)
-    await selectAiModel(run.model)
-    await selectAiTemperature(run.temperature)
+    await selectAiSurfaceProvider('shell.promptstudio', run.providerId)
+    selectAiSurfaceModel('shell.promptstudio', run.model)
+    selectAiSurfaceTemperature('shell.promptstudio', run.temperature)
     addToast('info', 'Run settings applied.')
   }
 </script>
@@ -48,7 +48,7 @@
     <div class="history-item">
       <div class="time">Provider status</div>
       <div class:success={requiredSecretReady} class:error={!requiredSecretReady} class="status">
-        {$selectedAiProviderId === 'mock-local' ? 'Mock' : requiredSecretReady ? 'Ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
+        {$runSettings.providerId === 'mock-local' ? 'Mock' : requiredSecretReady ? 'Ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
       </div>
     </div>
     <div class="history-item">
@@ -62,15 +62,15 @@
       <span class="section-title">Model Settings</span>
       <span class="summary-copy">Preset, provider, model, and temperature.</span>
     </summary>
-    <AiModelPresetPicker fieldId="promptstudio-model-preset" />
+    <AiModelPresetPicker fieldId="promptstudio-model-preset" surfaceId="shell.promptstudio" />
 
     <div class="field">
       <label for="provider">Provider</label>
       <select
         id="provider"
         class="select-input"
-        value={$selectedAiProviderId}
-        onchange={(event) => selectAiProvider(event.currentTarget.value)}
+        value={$runSettings.providerId}
+        onchange={(event) => void selectAiSurfaceProvider('shell.promptstudio', event.currentTarget.value)}
       >
         {#each $aiProviders as provider (provider.providerId)}
           <option value={provider.providerId}>{provider.providerName}</option>
@@ -83,8 +83,8 @@
       <select
         id="model"
         class="select-input"
-        value={$selectedAiModel}
-        onchange={(event) => selectAiModel(event.currentTarget.value)}
+        value={$runSettings.model}
+        onchange={(event) => selectAiSurfaceModel('shell.promptstudio', event.currentTarget.value)}
       >
         {#each modelOptions as model (model)}
           <option value={model}>{model}</option>
@@ -93,15 +93,15 @@
     </div>
 
     <div class="field">
-      <label for="temp">Temperature: <span class="val">{$selectedAiTemperature.toFixed(1)}</span></label>
+      <label for="temp">Temperature: <span class="val">{$runSettings.temperature.toFixed(1)}</span></label>
       <input
         id="temp"
         type="range"
         min="0"
         max="2"
         step="0.1"
-        value={$selectedAiTemperature}
-        oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
+        value={$runSettings.temperature}
+        oninput={(event) => selectAiSurfaceTemperature('shell.promptstudio', Number(event.currentTarget.value))}
       />
     </div>
   </details>
@@ -111,19 +111,7 @@
       <span class="section-title">Context</span>
       <span class="summary-copy">{includedContextCount === 0 ? 'No selected context' : `${includedContextCount} selected`}</span>
     </summary>
-    <div class="history-list">
-      {#each $aiContextCandidates.filter(candidate => candidate.included) as candidate (candidate.id)}
-        <div class="history-item">
-          <div class="time">{candidate.title}</div>
-          <div class="status success">~{candidate.estimatedTokens}</div>
-        </div>
-      {:else}
-        <div class="history-item">
-          <div class="time">No context selected</div>
-          <div class="status">Idle</div>
-        </div>
-      {/each}
-    </div>
+    <AiContextPicker />
   </details>
 
   <details class="section disclosure">
@@ -131,7 +119,7 @@
       <span class="section-title">Run History</span>
       <span class="summary-copy">{runCount === 0 ? 'No prompt runs yet' : `${runCount} recorded`}</span>
     </summary>
-    <RunHistoryList runs={$aiRuns} emptyLabel="No prompt runs yet." onUseSettings={useRunSettings} />
+    <RunHistoryList runs={$aiRuns} emptyLabel="No AI runs yet." onUseSettings={useRunSettings} />
   </details>
 </div>
 
@@ -234,8 +222,9 @@
     line-height: 1.4;
   }
 
-  .select-input:focus {
-    outline: none;
+  .select-input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
     border-color: var(--color-accent);
   }
 
@@ -243,12 +232,6 @@
     width: 100%;
     margin-top: var(--space-2);
     accent-color: var(--color-accent);
-  }
-
-  .history-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
 
   .history-item {

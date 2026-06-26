@@ -75,6 +75,8 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
   const hideInspector = process.env['SHELL_CAPTURE_HIDE_INSPECTOR'] === '1'
   const openRunHistory = process.env['SHELL_CAPTURE_OPEN_RUN_HISTORY'] === '1'
+  const openContextDisclosure = process.env['SHELL_CAPTURE_OPEN_CONTEXT_DISCLOSURE'] === '1'
+  const promptStudioSaveProposal = process.env['SHELL_CAPTURE_PROMPTSTUDIO_SAVE_PROPOSAL'] === '1'
   const openDocumentsArchived = process.env['SHELL_CAPTURE_DOCUMENTS_ARCHIVED_OPEN'] === '1'
   const newPromptTemplate = process.env['SHELL_CAPTURE_NEW_PROMPT_TEMPLATE'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
@@ -1367,6 +1369,52 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (openContextDisclosure) {
+        await win.webContents.executeJavaScript(`
+          (() => {
+            for (const details of Array.from(document.querySelectorAll('.inspector details'))) {
+              const title = details.querySelector('.section-title')?.textContent?.trim().toLowerCase() ?? ''
+              if (title === 'context') details.open = true
+            }
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (promptStudioSaveProposal) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const before = await window.shell.ai.proposals({ workspaceId: workspace.id })
+            const beforeIds = new Set(before.map((proposal) => proposal.id))
+            const buttons = Array.from(document.querySelectorAll('button'))
+            const button = buttons.find((item) => item.textContent?.trim() === 'Save as Proposal')
+            if (!(button instanceof HTMLButtonElement)) {
+              throw new Error('Save as Proposal button is not available for capture.')
+            }
+            if (button.disabled) {
+              throw new Error('Save as Proposal button is disabled for capture.')
+            }
+            button.click()
+            for (let attempt = 0; attempt < 30; attempt += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 200))
+              const after = await window.shell.ai.proposals({ workspaceId: workspace.id })
+              const created = after.find((proposal) => !beforeIds.has(proposal.id))
+              if (created) {
+                return {
+                  workspaceId: workspace.id,
+                  proposalId: created.id,
+                  targetDocumentId: created.targetDocumentId,
+                  proposalType: created.proposalType,
+                  status: created.status
+                }
+              }
+            }
+            throw new Error('Prompt Studio proposal was not created during capture.')
+          })()
+        `)
+        console.log('[SHELL_CAPTURE_PROMPTSTUDIO_PROPOSAL]', JSON.stringify(result))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (openRunHistory) {
         await win.webContents.executeJavaScript(`
           new Promise((resolve) => {
@@ -1382,6 +1430,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
               }
               const trigger = document.querySelector('[data-capture-run-history-toggle]')
               if (trigger) {
+                trigger.closest('details')?.setAttribute('open', '')
                 trigger.click()
                 setTimeout(() => {
                   trigger.closest('.run-item')?.scrollIntoView({ block: 'start' })

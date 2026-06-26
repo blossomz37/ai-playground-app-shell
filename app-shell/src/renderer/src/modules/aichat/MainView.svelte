@@ -4,7 +4,7 @@
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import { executeCommand } from '../../store/commands'
   import { clearShellContextDescriptor, setShellContextDescriptor } from '../../store/shell-context'
-  import { aiBusy, aiContextCandidates, invokeAi, refreshAiContext } from '../../store/ai'
+  import { aiBusy, aiContextCandidates, aiRunSettingsForSurface, invokeAi, refreshAiContext } from '../../store/ai'
   import { addToast } from '../../store/toasts'
   import {
     activeConversationId,
@@ -17,6 +17,7 @@
 
   let input = $state('')
   let inputElement = $state<HTMLTextAreaElement | null>(null)
+  const runSettings = aiRunSettingsForSurface('shell.aichat')
   let chat = $derived($selectedAiConversation)
   let hasMessages = $derived(!!chat?.messages.length)
   let includedContextCount = $derived($aiContextCandidates.filter(candidate => candidate.included).length)
@@ -87,7 +88,10 @@
         moduleId: 'shell.aichat',
         originType: 'chat',
         originId: conversationId,
-        prompt: text
+        prompt: text,
+        providerId: $runSettings.providerId,
+        model: $runSettings.model,
+        temperature: $runSettings.temperature
       })
 
       await appendAiChatMessage(conversationId, {

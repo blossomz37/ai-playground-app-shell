@@ -2,8 +2,9 @@
 <script lang="ts">
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
+  import { activeDoc } from '../../store'
   import { addToast } from '../../store/toasts'
-  import { refreshAiContext, includedAiContextCandidates } from '../../store/ai'
+  import { aiRunSettingsForSurface, createAiProposalFromInvocation, refreshAiContext, includedAiContextCandidates } from '../../store/ai'
   import { submitJob } from '../../store/jobs'
   import {
     renameWorkflowProfile,
@@ -16,6 +17,7 @@
   let running = $state(false)
   let log = $state<string[]>([])
   let renamingProfile = $state(false)
+  const runSettings = aiRunSettingsForSurface('shell.workflow')
   let promptSummary = $derived($selectedWorkflowProfile.prompt.length > 170
     ? `${$selectedWorkflowProfile.prompt.slice(0, 170).trim()}...`
     : $selectedWorkflowProfile.prompt
@@ -28,25 +30,56 @@
 
   async function runWorkflow() {
     running = true
-    log = [`[${new Date().toLocaleTimeString()}] Starting prompt chain run...`]
+    log = [`[${new Date().toLocaleTimeString()}] Starting workflow prompt...`]
     addToast('info', `Workflow started: ${$selectedWorkflowProfile.name}`)
 
-    await refreshAiContext()
-    log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
+    try {
+      await refreshAiContext()
+      log = [...log, `[${new Date().toLocaleTimeString()}] Packed selected workspace context.`]
 
-    const job = await submitJob('ai.chain.run', {
-      originId: $selectedWorkflowProfile.id,
-      prompt: $selectedWorkflowProfile.prompt,
-      contextCandidates: includedAiContextCandidates()
-    })
+      if ($workflowCreateProposal && $activeDoc) {
+        const proposal = await createAiProposalFromInvocation({
+          targetDocumentId: $activeDoc.id,
+          proposalType: 'append-note',
+          sourceText: '',
+          runParams: {
+            moduleId: 'shell.workflow',
+            originType: 'workflow',
+            originId: $selectedWorkflowProfile.id,
+            prompt: $selectedWorkflowProfile.prompt,
+            providerId: $runSettings.providerId,
+            model: $runSettings.model,
+            temperature: $runSettings.temperature
+          }
+        })
+        log = [
+          ...log,
+          `[${new Date().toLocaleTimeString()}] Proposal created: ${proposal.id}`
+        ]
+        addToast('info', 'Workflow proposal created.')
+        return
+      }
 
-    log = [
-      ...log,
-      `[${new Date().toLocaleTimeString()}] Job queued: ${job?.title ?? 'Workflow chain'}`
-    ]
+      const job = await submitJob('ai.chain.run', {
+        originId: $selectedWorkflowProfile.id,
+        prompt: $selectedWorkflowProfile.prompt,
+        providerId: $runSettings.providerId,
+        model: $runSettings.model,
+        temperature: $runSettings.temperature,
+        contextCandidates: includedAiContextCandidates()
+      })
 
-    running = false
-    addToast('info', 'Workflow job queued')
+      log = [
+        ...log,
+        `[${new Date().toLocaleTimeString()}] Job queued: ${job?.title ?? 'Workflow prompt'}`
+      ]
+
+      addToast('info', 'Workflow job queued')
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Workflow could not run.')
+    } finally {
+      running = false
+    }
   }
 
   function commitRename(id: string, name: string): void {

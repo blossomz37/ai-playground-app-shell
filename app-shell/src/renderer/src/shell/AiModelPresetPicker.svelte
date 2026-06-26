@@ -3,26 +3,38 @@
   import {
     aiModelPresets,
     applyAiModelPreset,
+    applyAiModelPresetToSurface,
     loadAiModelPresets,
     saveCurrentAiSettingsAsCustomPreset,
+    saveSurfaceAiSettingsAsCustomPreset,
+    selectedAiPresetIdBySurface,
     selectedAiPresetId
   } from '../store/ai'
   import type { AiModelPresetId } from '../store/ai'
   import { addToast } from '../store/toasts'
 
-  let { fieldId = 'ai-model-preset' }: { fieldId?: string } = $props()
-  let activePreset = $derived($aiModelPresets.find(preset => preset.id === $selectedAiPresetId) ?? $aiModelPresets[0])
+  let { fieldId = 'ai-model-preset', surfaceId }: { fieldId?: string; surfaceId?: string } = $props()
+  let currentPresetId = $derived(surfaceId ? $selectedAiPresetIdBySurface[surfaceId] ?? 'custom' : $selectedAiPresetId)
+  let activePreset = $derived($aiModelPresets.find(preset => preset.id === currentPresetId) ?? $aiModelPresets[0])
 
   onMount(() => {
     void loadAiModelPresets()
   })
 
   async function choosePreset(id: string): Promise<void> {
+    if (surfaceId) {
+      await applyAiModelPresetToSurface(surfaceId, id as AiModelPresetId)
+      return
+    }
     await applyAiModelPreset(id as AiModelPresetId)
   }
 
   async function saveCustom(): Promise<void> {
-    await saveCurrentAiSettingsAsCustomPreset()
+    if (surfaceId) {
+      await saveSurfaceAiSettingsAsCustomPreset(surfaceId)
+    } else {
+      await saveCurrentAiSettingsAsCustomPreset()
+    }
     addToast('info', 'Custom AI preset saved.')
   }
 </script>
@@ -33,7 +45,7 @@
     <select
       id={fieldId}
       class="select-input"
-      value={$selectedAiPresetId}
+      value={currentPresetId}
       onchange={(event) => void choosePreset(event.currentTarget.value)}
     >
       {#each $aiModelPresets as preset (preset.id)}
@@ -83,8 +95,9 @@
     font-size: var(--font-size-sm);
   }
 
-  .select-input:focus {
-    outline: none;
+  .select-input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
     border-color: var(--color-accent);
   }
 

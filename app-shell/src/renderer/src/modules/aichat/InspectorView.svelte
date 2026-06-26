@@ -7,36 +7,35 @@
   import {
     aiProviders,
     aiRuns,
+    aiRunSettingsForSurface,
     aiSecretNames,
     loadAiRuns,
     loadAiProviders,
     modelOptionsForProvider,
     refreshAiContext,
-    selectAiModel,
-    selectAiProvider,
-    selectAiTemperature,
-    selectedAiModel,
-    selectedAiProviderId,
-    selectedAiTemperature
+    selectAiSurfaceModel,
+    selectAiSurfaceProvider,
+    selectAiSurfaceTemperature
   } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
-  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
-  let modelOptions = $derived(modelOptionsForProvider(activeProvider))
+  const runSettings = aiRunSettingsForSurface('shell.aichat')
+  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $runSettings.providerId) ?? $aiProviders[0])
+  let modelOptions = $derived(modelOptionsForProvider(activeProvider, $runSettings.model))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
   let includedRunCount = $derived($aiRuns.length)
-  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$selectedAiModel} / temp ${$selectedAiTemperature.toFixed(1)}`)
+  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$runSettings.model} / temp ${$runSettings.temperature.toFixed(1)}`)
 
   onMount(() => {
     void loadAiProviders()
     void refreshAiContext()
-    void loadAiRuns('shell.aichat')
+    void loadAiRuns()
   })
 
   async function useRunSettings(run: AiRun): Promise<void> {
-    await selectAiProvider(run.providerId)
-    await selectAiModel(run.model)
-    await selectAiTemperature(run.temperature)
+    await selectAiSurfaceProvider('shell.aichat', run.providerId)
+    selectAiSurfaceModel('shell.aichat', run.model)
+    selectAiSurfaceTemperature('shell.aichat', run.temperature)
     addToast('info', 'Run settings applied.')
   }
 </script>
@@ -59,8 +58,8 @@
       <select
         id="chat-provider"
         class="select-input"
-        value={$selectedAiProviderId}
-        onchange={(event) => selectAiProvider(event.currentTarget.value)}
+        value={$runSettings.providerId}
+        onchange={(event) => void selectAiSurfaceProvider('shell.aichat', event.currentTarget.value)}
       >
         {#each $aiProviders as provider (provider.providerId)}
           <option value={provider.providerId}>{provider.providerName}</option>
@@ -72,8 +71,8 @@
       <select
         id="chat-model"
         class="select-input"
-        value={$selectedAiModel}
-        onchange={(event) => selectAiModel(event.currentTarget.value)}
+        value={$runSettings.model}
+        onchange={(event) => selectAiSurfaceModel('shell.aichat', event.currentTarget.value)}
       >
         {#each modelOptions as model (model)}
           <option value={model}>{model}</option>
@@ -81,21 +80,21 @@
       </select>
     </div>
     <div class="field">
-      <label for="chat-temperature">Temperature: <span>{$selectedAiTemperature.toFixed(1)}</span></label>
+      <label for="chat-temperature">Temperature: <span>{$runSettings.temperature.toFixed(1)}</span></label>
       <input
         id="chat-temperature"
         type="range"
         min="0"
         max="2"
         step="0.1"
-        value={$selectedAiTemperature}
-        oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
+        value={$runSettings.temperature}
+        oninput={(event) => selectAiSurfaceTemperature('shell.aichat', Number(event.currentTarget.value))}
       />
     </div>
     <div class="meta-grid">
       <span class="meta-label">Status</span>
-      <span class="meta-value" class:status-mock={$selectedAiProviderId === 'mock-local'} class:status-live={requiredSecretReady && $selectedAiProviderId !== 'mock-local'} class:status-error={!requiredSecretReady}>
-        {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
+      <span class="meta-value" class:status-mock={$runSettings.providerId === 'mock-local'} class:status-live={requiredSecretReady && $runSettings.providerId !== 'mock-local'} class:status-error={!requiredSecretReady}>
+        {$runSettings.providerId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
       </span>
     </div>
   </details>
@@ -104,7 +103,7 @@
       <span class="section-title">Runs</span>
       <span class="summary-copy">{includedRunCount === 0 ? 'No chat runs yet' : `${includedRunCount} recorded`}</span>
     </summary>
-    <RunHistoryList runs={$aiRuns} emptyLabel="No chat runs yet." onUseSettings={useRunSettings} />
+    <RunHistoryList runs={$aiRuns} emptyLabel="No AI runs yet." onUseSettings={useRunSettings} />
   </details>
 </div>
 
@@ -152,7 +151,11 @@
     color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
   }
-  .select-input:focus { outline: none; border-color: var(--color-accent); }
+  .select-input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-color: var(--color-accent);
+  }
   input[type="range"] { width: 100%; margin-top: var(--space-1); accent-color: var(--color-accent); }
   .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-size-sm); }
   .meta-label { color: var(--color-fg-muted); }

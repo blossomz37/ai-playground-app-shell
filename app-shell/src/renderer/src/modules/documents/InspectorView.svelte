@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import type { DocumentAnnotation, DocumentAnnotationStatus, DocumentAnnotationTarget, DocumentSourceMetadata, DocVersion } from '@shared/module-contract'
   import type { AiProposal, AiProposalType } from '@shared/ai'
   import type { DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
@@ -7,7 +8,18 @@
     activeDoc, annotations, versions, editorContent, countWords, updateDoc, documents, documentKindOptions,
     updateDocMetadata, restoreDocVersion, updateAnnotation, resolveAnnotation, reopenAnnotation, deleteAnnotation
   } from '../../store'
-  import { aiProposals } from '../../store/ai'
+  import AiContextPicker from '../../shell/AiContextPicker.svelte'
+  import {
+    aiProposals,
+    aiProviders,
+    aiRunSettingsForSurface,
+    aiSecretNames,
+    loadAiProviders,
+    modelOptionsForProvider,
+    selectAiSurfaceModel,
+    selectAiSurfaceProvider,
+    selectAiSurfaceTemperature
+  } from '../../store/ai'
   import { addToast } from '../../store/toasts'
   import {
     documentsAiCancelAvailable,
@@ -36,6 +48,14 @@
   let editingAnnotationId = $state<string | null>(null)
   let editingAnnotationNote = $state('')
   let selectedVersionDiffId = $state<string | null>(null)
+  const documentsRunSettings = aiRunSettingsForSurface('shell.documents')
+  let activeAiProvider = $derived($aiProviders.find(provider => provider.providerId === $documentsRunSettings.providerId) ?? $aiProviders[0])
+  let aiModelOptions = $derived(modelOptionsForProvider(activeAiProvider, $documentsRunSettings.model))
+  let aiProviderReady = $derived(!activeAiProvider?.secretName || $aiSecretNames.includes(activeAiProvider.secretName))
+
+  onMount(() => {
+    void loadAiProviders()
+  })
 
   function sectionOpen(id: InspectorSectionId): boolean {
     return !collapsedSections[id]
@@ -351,6 +371,53 @@
 
           <details class="ai-disclosure">
             <summary>
+              <span>Model for document AI</span>
+              <span>{activeAiProvider?.providerName ?? 'AI'} / {$documentsRunSettings.model}</span>
+            </summary>
+            <div class="ai-model-grid">
+              <label>
+                <span>Provider</span>
+                <select
+                  class="ai-select"
+                  value={$documentsRunSettings.providerId}
+                  onchange={(event) => void selectAiSurfaceProvider('shell.documents', event.currentTarget.value)}
+                >
+                  {#each $aiProviders as provider (provider.providerId)}
+                    <option value={provider.providerId}>{provider.providerName}</option>
+                  {/each}
+                </select>
+              </label>
+              <label>
+                <span>Model</span>
+                <select
+                  class="ai-select"
+                  value={$documentsRunSettings.model}
+                  onchange={(event) => selectAiSurfaceModel('shell.documents', event.currentTarget.value)}
+                >
+                  {#each aiModelOptions as model (model)}
+                    <option value={model}>{model}</option>
+                  {/each}
+                </select>
+              </label>
+              <label>
+                <span>Temperature {$documentsRunSettings.temperature.toFixed(1)}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={$documentsRunSettings.temperature}
+                  oninput={(event) => selectAiSurfaceTemperature('shell.documents', Number(event.currentTarget.value))}
+                />
+              </label>
+              <div class="ai-provider-status" class:ready={aiProviderReady} class:error={!aiProviderReady}>
+                {$documentsRunSettings.providerId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
+              </div>
+            </div>
+          </details>
+
+          <details class="ai-disclosure">
+            <summary>
               <span>Preview prompt before sending</span>
               <span>Advanced</span>
             </summary>
@@ -374,6 +441,14 @@
                 onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'summarize-active-document' })}
               >Preview summary</button>
             </div>
+          </details>
+
+          <details class="ai-disclosure">
+            <summary>
+              <span>Review shared context</span>
+              <span>Context</span>
+            </summary>
+            <AiContextPicker />
           </details>
 
           {#if $documentsAiCancelAvailable}
@@ -975,6 +1050,50 @@
   .ai-disclosure summary span:last-child {
     color: color-mix(in srgb, var(--accent-inspector) 58%, var(--color-fg-muted));
     text-transform: uppercase;
+  }
+
+  .ai-model-grid {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .ai-model-grid label {
+    display: grid;
+    gap: var(--space-1);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .ai-select {
+    width: 100%;
+    min-width: 0;
+    height: 28px;
+    padding: 0 var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xs);
+  }
+
+  .ai-select:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .ai-provider-status {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .ai-provider-status.ready {
+    color: var(--color-success);
+  }
+
+  .ai-provider-status.error {
+    color: var(--color-danger);
   }
 
   .ai-action-btn {

@@ -51,6 +51,9 @@ export const workflowModule: Module = {
         originId: params.originId ?? 'command-chain-run',
         prompt: params.prompt ?? 'Run the active workflow chain against the selected context.',
         variables: params.variables,
+        providerId: params.providerId,
+        model: params.model,
+        temperature: params.temperature,
         contextCandidates: params.contextCandidates
       })
       if (result.run.status === 'failed') {

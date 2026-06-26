@@ -3,21 +3,23 @@
   import InlineRename from '../../shell/InlineRename.svelte'
   import MarkdownContent from '../../shell/MarkdownContent.svelte'
   import type { AiPreview } from '@shared/ai'
+  import { activeDoc } from '../../store'
   import {
+    aiRunSettingsForSurface,
     aiBusy,
+    createAiProposalFromInvocation,
     extractPromptVariables,
     invokeAi,
+    loadAiProviders,
     previewAi,
     loadAiTemplates,
     PROMPT_VARIABLE_REFERENCE,
     refreshAiContext,
     renameAiTemplate,
     saveAiTemplateDetails,
-    selectAiModel,
-    selectAiTemperature,
-    selectedAiModel,
-    selectedAiTemplate,
-    selectedAiTemperature
+    selectAiSurfaceModel,
+    selectAiSurfaceTemperature,
+    selectedAiTemplate
   } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
@@ -33,6 +35,7 @@
   let outputText = $state('')
   let preview = $state<AiPreview | null>(null)
   let renamingTemplate = $state(false)
+  const runSettings = aiRunSettingsForSurface('shell.promptstudio')
   let activeTemplate = $derived($selectedAiTemplate)
   let templateName = $derived(activeTemplate?.name ?? 'No template selected')
   let variableNames = $derived(extractPromptVariables(promptText))
@@ -41,20 +44,21 @@
   let promptDirty = $derived(Boolean(activeTemplate && (
     promptText !== activeTemplate.body
     || normalizedTags.join(',') !== activeTemplate.tags.join(',')
-    || $selectedAiModel !== activeTemplate.defaultModel
-    || $selectedAiTemperature !== activeTemplate.defaultTemperature
+    || $runSettings.model !== activeTemplate.defaultModel
+    || $runSettings.temperature !== activeTemplate.defaultTemperature
   )))
   let hydratedTemplateId: string | null = null
   let templateUnsubscribe: (() => void) | null = null
 
   onMount(async () => {
+    await loadAiProviders()
     templateUnsubscribe = selectedAiTemplate.subscribe((template) => {
       if (template && template.id !== hydratedTemplateId) {
         promptText = template.body
         tagText = template.tags.join(', ')
         variableValues = valuesForVariables(editableVariablesFromBody(template.body), variableValues)
-        if (template.defaultModel) void selectAiModel(template.defaultModel)
-        void selectAiTemperature(template.defaultTemperature)
+        if (template.defaultModel) selectAiSurfaceModel('shell.promptstudio', template.defaultModel)
+        selectAiSurfaceTemperature('shell.promptstudio', template.defaultTemperature)
         hydratedTemplateId = template.id
       }
     })
@@ -74,7 +78,10 @@
       originType: 'template' as const,
       originId: activeTemplate?.id ?? templateName,
       prompt: promptText,
-      variables
+      variables,
+      providerId: $runSettings.providerId,
+      model: $runSettings.model,
+      temperature: $runSettings.temperature
     }
   }
 
@@ -115,8 +122,8 @@
     await saveAiTemplateDetails(activeTemplate, {
       body: promptText,
       tags: normalizedTags,
-      defaultModel: $selectedAiModel,
-      defaultTemperature: $selectedAiTemperature
+      defaultModel: $runSettings.model,
+      defaultTemperature: $runSettings.temperature
     })
   }
 
@@ -137,6 +144,27 @@
       preview = await previewAi(requestParams())
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Prompt preview could not be created.')
+    }
+  }
+
+  async function createDocumentProposal(): Promise<void> {
+    if (!$activeDoc) {
+      addToast('warn', 'Select a document before creating a proposal.')
+      return
+    }
+    try {
+      preview = null
+      await rememberTemplateSettings()
+      const proposal = await createAiProposalFromInvocation({
+        targetDocumentId: $activeDoc.id,
+        proposalType: 'append-note',
+        sourceText: '',
+        runParams: requestParams()
+      })
+      addToast('info', `Proposal saved for ${$activeDoc.title}.`)
+      outputText = proposal.proposedText
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Document proposal could not be created.')
     }
   }
 
@@ -186,6 +214,9 @@
       </button>
       <button class="btn primary" onclick={runTemplate} disabled={$aiBusy}>
         {$aiBusy ? 'Running...' : 'Run Template'}
+      </button>
+      <button class="btn" onclick={createDocumentProposal} disabled={$aiBusy || !$activeDoc}>
+        Save as Proposal
       </button>
     </div>
   </header>

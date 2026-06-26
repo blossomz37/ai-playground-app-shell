@@ -4,14 +4,14 @@
   import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import {
     aiProviders,
+    aiRunSettingsForSurface,
     aiSecretNames,
     loadAiProviders,
     modelOptionsForProvider,
     refreshAiContext,
-    selectAiModel,
-    selectAiProvider,
-    selectedAiModel,
-    selectedAiProviderId
+    selectAiSurfaceModel,
+    selectAiSurfaceProvider,
+    selectAiSurfaceTemperature
   } from '../../store/ai'
   import {
     selectedWorkflowProfile,
@@ -20,8 +20,9 @@
     workflowIncludeDescendants
   } from './state'
 
-  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
-  let modelOptions = $derived(modelOptionsForProvider(activeProvider))
+  const runSettings = aiRunSettingsForSurface('shell.workflow')
+  let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $runSettings.providerId) ?? $aiProviders[0])
+  let modelOptions = $derived(modelOptionsForProvider(activeProvider, $runSettings.model))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
 
   onMount(() => {
@@ -32,14 +33,14 @@
 
 <div class="inspector-view">
   <section class="section">
-    <h3 class="section-title">Chain Config</h3>
+    <h3 class="section-title">Workflow Prompt</h3>
     <div class="field">
       <label for="workflow-provider">Provider</label>
       <select
         id="workflow-provider"
         class="select-input"
-        value={$selectedAiProviderId}
-        onchange={(event) => selectAiProvider(event.currentTarget.value)}
+        value={$runSettings.providerId}
+        onchange={(event) => void selectAiSurfaceProvider('shell.workflow', event.currentTarget.value)}
       >
         {#each $aiProviders as provider (provider.providerId)}
           <option value={provider.providerId}>{provider.providerName}</option>
@@ -51,18 +52,30 @@
       <select
         id="workflow-model"
         class="select-input"
-        value={$selectedAiModel}
-        onchange={(event) => selectAiModel(event.currentTarget.value)}
+        value={$runSettings.model}
+        onchange={(event) => selectAiSurfaceModel('shell.workflow', event.currentTarget.value)}
       >
         {#each modelOptions as model (model)}
           <option value={model}>{model}</option>
         {/each}
       </select>
     </div>
+    <div class="field">
+      <label for="workflow-temp">Temperature: <span>{$runSettings.temperature.toFixed(1)}</span></label>
+      <input
+        id="workflow-temp"
+        type="range"
+        min="0"
+        max="2"
+        step="0.1"
+        value={$runSettings.temperature}
+        oninput={(event) => selectAiSurfaceTemperature('shell.workflow', Number(event.currentTarget.value))}
+      />
+    </div>
     <div class="meta-grid">
-      <span class="meta-label">Status</span><span class="meta-value" class:status-live={requiredSecretReady && $selectedAiProviderId !== 'mock-local'} class:status-mock={$selectedAiProviderId === 'mock-local'} class:status-error={!requiredSecretReady}>{$selectedAiProviderId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}</span>
+      <span class="meta-label">Status</span><span class="meta-value" class:status-live={requiredSecretReady && $runSettings.providerId !== 'mock-local'} class:status-mock={$runSettings.providerId === 'mock-local'} class:status-error={!requiredSecretReady}>{$runSettings.providerId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}</span>
       <span class="meta-label">Context</span><span class="meta-value">Selected candidates</span>
-      <span class="meta-label">Chain</span><span class="meta-value">{$selectedWorkflowProfile.status}</span>
+      <span class="meta-label">Workflow</span><span class="meta-value">{$selectedWorkflowProfile.status}</span>
     </div>
   </section>
   <section class="section">
@@ -92,7 +105,11 @@
     color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
   }
-  .select-input:focus { outline: none; border-color: var(--color-accent); }
+  .select-input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-color: var(--color-accent);
+  }
   .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-size-sm); }
   .meta-label { color: var(--color-fg-muted); }
   .meta-value { color: var(--color-fg-secondary); }
