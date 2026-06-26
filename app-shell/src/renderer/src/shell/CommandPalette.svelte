@@ -33,6 +33,7 @@
   let searchPending = $state(false)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
   let capturePaletteListener: ((event: Event) => void) | null = null
+  let captureSearchPaletteListener: ((event: Event) => void) | null = null
 
   // The active result set in search mode: recents when the query is empty.
   const activeSearchResults = $derived(
@@ -109,6 +110,7 @@
 
   // Keep the selection in range as the result set shrinks.
   $effect(() => {
+    if (selected < 0) selected = 0
     if (selected >= resultCount) selected = Math.max(0, resultCount - 1)
   })
 
@@ -138,10 +140,25 @@
       })
     }
     window.addEventListener('shell:capture-open-command-palette', capturePaletteListener)
+    captureSearchPaletteListener = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      paletteOpen.set(true)
+      queueMicrotask(() => {
+        query = detail ?? ''
+        mode = 'search'
+        selected = 0
+        if (!detail) void loadRecents()
+        inputEl?.focus()
+      })
+    }
+    window.addEventListener('shell:capture-open-search-palette', captureSearchPaletteListener)
 
     return () => {
       if (capturePaletteListener) {
         window.removeEventListener('shell:capture-open-command-palette', capturePaletteListener)
+      }
+      if (captureSearchPaletteListener) {
+        window.removeEventListener('shell:capture-open-search-palette', captureSearchPaletteListener)
       }
     }
   })
@@ -171,10 +188,10 @@
       close()
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      selected = Math.min(selected + 1, resultCount - 1)
+      if (resultCount > 0) selected = Math.min(selected + 1, resultCount - 1)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      selected = Math.max(selected - 1, 0)
+      if (resultCount > 0) selected = Math.max(selected - 1, 0)
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (mode === 'commands') {
@@ -208,16 +225,26 @@
   }
 
   // The search service marks matches with STX/ETX sentinels rather than literal
-  // tags (see search.ts). Escape the raw fragment so document/asset content can't
-  // inject markup or break the palette layout, then swap the sentinels for <mark>.
-  function renderSnippet(snippet: string): string {
-    const escaped = snippet
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    return escaped
-      .replaceAll(String.fromCharCode(2), '<mark>')
-      .replaceAll(String.fromCharCode(3), '</mark>')
+  // tags (see search.ts). Render text nodes plus real <mark> nodes so Svelte
+  // escapes raw document/asset content without needing {@html}.
+  function snippetParts(snippet: string): Array<{ text: string; marked: boolean }> {
+    const parts: Array<{ text: string; marked: boolean }> = []
+    let rest = snippet
+    let marked = false
+    while (rest.length > 0) {
+      const marker = marked ? String.fromCharCode(3) : String.fromCharCode(2)
+      const index = rest.indexOf(marker)
+      if (index === -1) {
+        parts.push({ text: rest, marked })
+        break
+      }
+      if (index > 0) {
+        parts.push({ text: rest.slice(0, index), marked })
+      }
+      marked = !marked
+      rest = rest.slice(index + 1)
+    }
+    return parts
   }
 </script>
 
@@ -303,7 +330,11 @@
                     <span class="title">{result.title}</span>
                   </span>
                   {#if result.snippet}
-                    <span class="snippet">{@html renderSnippet(result.snippet)}</span>
+                    <span class="snippet">
+                      {#each snippetParts(result.snippet) as part, partIndex (`${partIndex}-${part.marked}`)}
+                        {#if part.marked}<mark>{part.text}</mark>{:else}{part.text}{/if}
+                      {/each}
+                    </span>
                   {/if}
                 </div>
               </button>

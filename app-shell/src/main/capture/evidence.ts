@@ -55,6 +55,10 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const settingsSearch = process.env['SHELL_CAPTURE_SETTINGS_SEARCH']
   const viewport = process.env['SHELL_CAPTURE_VIEWPORT']
   const commandPaletteQuery = process.env['SHELL_CAPTURE_COMMAND_PALETTE_QUERY']
+  const searchPaletteQuery = process.env['SHELL_CAPTURE_SEARCH_PALETTE_QUERY']
+  const searchSmoke = process.env['SHELL_CAPTURE_SEARCH_SMOKE'] === '1'
+  const searchSmokeQuery = process.env['SHELL_CAPTURE_SEARCH_SMOKE_QUERY'] ?? searchPaletteQuery ?? ''
+  const searchNavSmoke = process.env['SHELL_CAPTURE_SEARCH_NAV_SMOKE'] === '1'
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
   const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
   const exitZen = process.env['SHELL_CAPTURE_EXIT_ZEN'] === '1'
@@ -1169,6 +1173,122 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           `window.dispatchEvent(new CustomEvent('shell:capture-open-command-palette', { detail: ${JSON.stringify(commandPaletteQuery)} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (searchSmoke) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const query = ${JSON.stringify(searchSmokeQuery)}
+            const workspace = await window.shell.workspace.get()
+            const results = query.trim()
+              ? await window.shell.search.query(query, 50)
+              : []
+            const recents = await window.shell.search.recents(50)
+            const byType = (rows) => rows.reduce((acc, row) => {
+              acc[row.entityType] = (acc[row.entityType] ?? 0) + 1
+              return acc
+            }, {})
+            return {
+              workspaceId: workspace.id,
+              query,
+              resultCount: results.length,
+              resultTypes: byType(results),
+              firstResults: results.slice(0, 8).map((row) => ({
+                entityType: row.entityType,
+                entityId: row.entityId,
+                moduleId: row.moduleId,
+                title: row.title,
+                snippet: row.snippet
+              })),
+              recentsCount: recents.length,
+              recentsTypes: byType(recents),
+              firstRecents: recents.slice(0, 8).map((row) => ({
+                entityType: row.entityType,
+                entityId: row.entityId,
+                moduleId: row.moduleId,
+                title: row.title
+              }))
+            }
+          })()
+        `)
+        console.log('[SHELL_CAPTURE_SEARCH_SMOKE]', JSON.stringify(result))
+      }
+      if (searchNavSmoke) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const query = ${JSON.stringify(searchSmokeQuery)}
+            const expected = {
+              Document: 'shell.documents',
+              Chat: 'shell.aichat',
+              Prompt: 'shell.promptstudio',
+              Asset: 'shell.assets'
+            }
+            const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+            const openSearch = async () => {
+              window.dispatchEvent(new CustomEvent('shell:capture-open-search-palette', { detail: query }))
+              for (let attempt = 0; attempt < 30; attempt += 1) {
+                const rows = Array.from(document.querySelectorAll('.palette-item.search-item'))
+                if (rows.length >= 4) return rows
+                await wait(100)
+              }
+              return Array.from(document.querySelectorAll('.palette-item.search-item'))
+            }
+            const outcomes = []
+            for (const [label, moduleId] of Object.entries(expected)) {
+              const rows = await openSearch()
+              const row = rows.find((item) => item.querySelector('.entity-badge')?.textContent?.trim() === label)
+              const title = row?.querySelector('.title')?.textContent?.trim() ?? null
+              if (!row || !title) throw new Error('Search navigation smoke could not find ' + label + ' result.')
+              row?.click()
+              await wait(900)
+              const activeModuleId = (
+                document.querySelector('.rail-btn[aria-current="page"]')
+                  ?? document.querySelector('.rail-btn.active')
+              )?.getAttribute('data-rail-id') ?? null
+              const titleVisible = title ? document.body.innerText.includes(title) : false
+              if (activeModuleId !== moduleId && !titleVisible) {
+                throw new Error('Search navigation smoke failed for ' + label + '. Active module: ' + activeModuleId + ', title visible: ' + String(titleVisible))
+              }
+              outcomes.push({
+                label,
+                title,
+                expectedModuleId: moduleId,
+                activeModuleId,
+                titleVisible
+              })
+            }
+            window.dispatchEvent(new CustomEvent('shell:capture-open-command-palette', { detail: 'theme' }))
+            await wait(250)
+            const commandInput = document.querySelector('.palette-input')?.value ?? ''
+            const commandDialogLabel = document.querySelector('.palette')?.getAttribute('aria-label') ?? ''
+            window.dispatchEvent(new CustomEvent('shell:capture-open-search-palette', { detail: query }))
+            await wait(500)
+            const firstSelected = document.querySelector('.palette-item.search-item.selected .title')?.textContent?.trim() ?? null
+            document.querySelector('.palette')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+            await wait(100)
+            const secondSelected = document.querySelector('.palette-item.search-item.selected .title')?.textContent?.trim() ?? null
+            if (!commandInput.startsWith('>') || commandDialogLabel !== 'Command palette') {
+              throw new Error('Command mode was not preserved during search navigation smoke.')
+            }
+            if (!firstSelected || !secondSelected || firstSelected === secondSelected) {
+              throw new Error('Keyboard selection did not move during search navigation smoke.')
+            }
+            return {
+              query,
+              outcomes,
+              commandModePreserved: commandInput.startsWith('>') && commandDialogLabel === 'Command palette',
+              keyboardMovedSelection: Boolean(firstSelected && secondSelected && firstSelected !== secondSelected),
+              firstSelected,
+              secondSelected
+            }
+          })()
+        `)
+        console.log('[SHELL_CAPTURE_SEARCH_NAV_SMOKE]', JSON.stringify(result))
+      }
+      if (searchPaletteQuery !== undefined) {
+        await win.webContents.executeJavaScript(
+          `window.dispatchEvent(new CustomEvent('shell:capture-open-search-palette', { detail: ${JSON.stringify(searchPaletteQuery)} }))`
+        )
+        await new Promise(resolve => setTimeout(resolve, Math.max(interactionDelay, 1300)))
       }
       if (isThemeMode(captureTheme) && captureTheme !== 'system') {
         await win.webContents.executeJavaScript(

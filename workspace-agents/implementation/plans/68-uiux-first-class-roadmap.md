@@ -159,9 +159,12 @@ contract-change gate.
 
 ### Slice 1 - Universal "Go to Anything" (P0)
 
-Goal: one fast palette that finds and jumps to **any** entity — document, chat,
-prompt, prompt chain, asset, bookmark, journal entry — with recents on empty
-query and no silent result cap.
+Goal: one fast palette that finds and jumps to the SQLite-backed entity types
+cleared by the Slice 0 contract gate — document, chat, prompt template, and
+asset — with recents on empty query and no silent result cap. Prompt chains,
+bookmarks, and journal entries remain explicit deferrals until the Slice 4
+organizing/data-model contract decision because their current sources are
+settings-backed or otherwise not part of the searchable SQLite entity contract.
 
 Anchor: assessment §2, item 1; `CommandPalette.svelte:61` (current 20-cap,
 document-only).
@@ -189,8 +192,9 @@ Required screenshots (heavy seeded state): `uiux-fc-goto-empty-recents-after-<da
 Validation: autofixer, typecheck, build, `git diff --check`; demonstrated with
 500+ mixed entities.
 
-Acceptance criteria: can jump to every entity type; recents on empty query; no
-undisclosed cap; keyboard-only operable; selected row obvious.
+Acceptance criteria: can jump to every Slice 1 indexed entity type; recents on
+empty query; no undisclosed cap; keyboard-only operable; selected row obvious.
+Deferred entity types are listed in the Outcome Log with the contract reason.
 
 Out of scope: fuzzy-ranking algorithm research, saved searches.
 
@@ -430,7 +434,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 | Slice | State | Subagent(s) | Screenshots | QA verdict | Iterations |
 |---|---|---|---|---|---|
 | 0 Discovery | **done** | 4 explorers (search, stores, AI, tokens) | n/a | n/a | 1 |
-| 1 Go-to-anything | code complete; **screenshots blocked by env** | worker + adversarial QA | pending (app can't launch here) | QA pass after 1 fix round | 1 |
+| 1 Go-to-anything | **done** | worker + local runtime verifier + adversarial QA | before/after + edge proofs captured | QA pass after 2 fix rounds | 2 |
 | 2 NavView search | ready (no gate) | — | — | — | 0 |
 | 3 AI unification | ready (renderer-only path) | — | — | — | 0 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
@@ -507,16 +511,55 @@ row duplication → `EXISTS` subquery) and hardened snippet rendering (STX/ETX
 sentinels + HTML-escape before `<mark>`). Static gates: `npm run typecheck` and
 `npm run build` clean. Commits: `ad7a8b4` (impl), `5f51659` (QA fixes).
 
-**Blocked on environment for screenshot/runtime proof.** The First-Class Bar
-requires screenshot evidence, but the Electron app cannot launch in this remote
-sandbox: the native `better-sqlite3` module cannot be built (network policy
-blocks `nodejs.org` headers and GitHub release-asset prebuilds, both 403), so no
-`SHELL_CAPTURE` run and no runtime SQL execution are possible here. Prior
-screenshots were macOS captures, i.e. produced on a machine that can build the
-app. Verification achieved here is limited to static gates + adversarial code
-review. Awaiting a decision on how to satisfy the screenshot requirement (capture
-locally, loosen the env network policy, or accept code-review-only for this
-environment). Same constraint applies to every UI-visible slice that follows.
+Local runtime proof completed after resuming on macOS. `npm install` rebuilt the
+native `better-sqlite3` module, then `npm run typecheck` and `npm run build`
+passed. Launching the built Electron app against the existing
+`~/Library/Application Support/App Shell/shell.db` executed the migration:
+`ai_conversations_fts`, `ai_prompt_templates_fts`, and `assets_fts` were created
+and backfilled. A second launch left FTS/source counts stable, proving the
+backfill no-op guard. Final DB integrity check: `ok`.
+
+Runtime verifier seeded workspace `ws-uiux-fc-20260626` with 210 documents,
+120 conversations, 100 prompt templates, and 90 assets. Query `orionseed`
+returned exactly one document, one chat, one prompt, and one asset; the asset had
+two workspace roles and appeared once. Empty query showed mixed Recents.
+Selecting each result type navigated/focused the target entity. Query
+`htmlneedle` showed literal `<img src=x onerror=alert(1)>` as text with a working
+mark highlight and no layout/script break. Query `commonspine` showed the visible
+`Showing first 50` count, so truncation is disclosed. Query `mixspine` returned
+50 results across 15 documents, 15 prompt templates, 15 conversations, and 5
+assets, proving mixed-type density at the visible limit. `>` command mode and
+keyboard movement were smoke-verified.
+
+Runtime QA fixes landed during local proof:
+- `CommandPalette.svelte` no longer uses `{@html}` for snippets; it renders
+  escaped text nodes plus real `<mark>` nodes from STX/ETX sentinel parts.
+- Arrow-key handling no longer lets `selected` become `-1` while search is
+  pending or empty.
+- `assets/state.ts` now loads assets for any real workspace id, including
+  `ws-default`, so asset search results can focus in default seeded databases.
+- `capture/evidence.ts` gained search-mode palette capture and hard-failing
+  search smoke controls for future UI evidence runs.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-empty-recents-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-mixed-results-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-html-escape-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-heavy-count-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-goto-mixed-heavy-after-2026-06-26.png`
+
+Validation: `npm install`; `npm run typecheck`; `npm run build`; Svelte
+autofixer on `CommandPalette.svelte` (no issues; pre-existing advisory
+suggestions only); `git diff --check`; SQLite migration/no-op counts; seeded
+runtime search/navigation smoke; adversarial QA.
+
+Adversarial QA note: QA correctly flagged that the original Slice 1 goal text
+still said prompt chains, bookmarks, and journal entries. That text is superseded
+by the Slice 0 contract gate and `HANDOFF_75` deferral: chains/journal/bookmarks
+are not silently dropped, but deferred until the Slice 4 data-model contract
+decision because they are settings-backed or otherwise not currently part of the
+SQLite FTS entity contract.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 

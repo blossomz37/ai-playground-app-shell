@@ -34,7 +34,7 @@ export const selectedAsset = fromAssetsState(state => state.selectedAsset)
 
 let loadedWorkspaceId = ''
 workspaceId.subscribe((id) => {
-  if (!id || id === 'ws-default' || id === loadedWorkspaceId) return
+  if (!id || id === loadedWorkspaceId) return
   loadedWorkspaceId = id
   void assetsState.loadWorkspace(id)
 })
@@ -46,7 +46,7 @@ export function selectAsset(id: string): void {
 /** Ensure the current workspace's assets are loaded (e.g. before navigating to one). */
 export async function loadAssetsWorkspace(): Promise<void> {
   const id = get(workspaceId)
-  if (!id || id === 'ws-default') return
+  if (!id) return
   await assetsState.loadWorkspace(id)
 }
 
