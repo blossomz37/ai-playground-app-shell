@@ -5,27 +5,45 @@
   import type { AiPreview } from '@shared/ai'
   import {
     aiBusy,
+    extractPromptVariables,
     invokeAi,
     previewAi,
     loadAiTemplates,
+    PROMPT_VARIABLE_REFERENCE,
     refreshAiContext,
     renameAiTemplate,
-    saveAiTemplateBody,
-    selectedAiTemplate
+    saveAiTemplateDetails,
+    selectAiModel,
+    selectAiTemperature,
+    selectedAiModel,
+    selectedAiTemplate,
+    selectedAiTemperature
   } from '../../store/ai'
   import { addToast } from '../../store/toasts'
 
   const templatePlaceholder = 'Enter prompt template... Use {{variable}} for slots.'
-  const textPlaceholder = 'Value for {{text}}...'
+  const managedVariableKeys = new Set(PROMPT_VARIABLE_REFERENCE
+    .map(variable => variable.key)
+    .filter(key => key !== 'text')
+  )
 
   let promptText = $state('Please summarize the included context in 3 useful bullet points.\n\n{{text}}')
-  let variableText = $state('')
+  let variableValues = $state<Record<string, string>>({ text: '' })
+  let tagText = $state('')
   let outputText = $state('')
   let preview = $state<AiPreview | null>(null)
   let renamingTemplate = $state(false)
   let activeTemplate = $derived($selectedAiTemplate)
   let templateName = $derived(activeTemplate?.name ?? 'No template selected')
-  let promptDirty = $derived(Boolean(activeTemplate && promptText !== activeTemplate.body))
+  let variableNames = $derived(extractPromptVariables(promptText))
+  let editableVariableNames = $derived(variableNames.filter(name => !managedVariableKeys.has(name)))
+  let normalizedTags = $derived(tagsFromText(tagText))
+  let promptDirty = $derived(Boolean(activeTemplate && (
+    promptText !== activeTemplate.body
+    || normalizedTags.join(',') !== activeTemplate.tags.join(',')
+    || $selectedAiModel !== activeTemplate.defaultModel
+    || $selectedAiTemperature !== activeTemplate.defaultTemperature
+  )))
   let hydratedTemplateId: string | null = null
   let templateUnsubscribe: (() => void) | null = null
 
@@ -33,6 +51,10 @@
     templateUnsubscribe = selectedAiTemplate.subscribe((template) => {
       if (template && template.id !== hydratedTemplateId) {
         promptText = template.body
+        tagText = template.tags.join(', ')
+        variableValues = valuesForVariables(editableVariablesFromBody(template.body), variableValues)
+        if (template.defaultModel) void selectAiModel(template.defaultModel)
+        void selectAiTemperature(template.defaultTemperature)
         hydratedTemplateId = template.id
       }
     })
@@ -44,18 +66,64 @@
   })
 
   function requestParams() {
+    const variables = Object.fromEntries(
+      editableVariableNames.map(name => [name, variableValues[name] ?? ''])
+    )
     return {
       moduleId: 'shell.promptstudio',
       originType: 'template' as const,
       originId: activeTemplate?.id ?? templateName,
       prompt: promptText,
-      variables: { text: variableText }
+      variables
     }
+  }
+
+  function tagsFromText(value: string): string[] {
+    return Array.from(new Set(value
+      .split(',')
+      .map(tag => tag.trim().toLowerCase())
+      .filter(Boolean)
+    ))
+  }
+
+  function valuesForVariables(names: string[], current: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(names.map(name => [name, current[name] ?? '']))
+  }
+
+  function editableVariablesFromBody(body: string): string[] {
+    return extractPromptVariables(body).filter(name => !managedVariableKeys.has(name))
+  }
+
+  function setVariable(name: string, value: string): void {
+    variableValues = { ...variableValues, [name]: value }
+  }
+
+  function insertVariable(key: string): void {
+    const token = `{{${key}}}`
+    promptText = promptText.trimEnd()
+      ? `${promptText.trimEnd()}\n\n${token}`
+      : token
+    variableValues = valuesForVariables(editableVariablesFromBody(promptText), variableValues)
+  }
+
+  function variableToken(key: string): string {
+    return `{{${key}}}`
+  }
+
+  async function rememberTemplateSettings(): Promise<void> {
+    if (!activeTemplate) return
+    await saveAiTemplateDetails(activeTemplate, {
+      body: promptText,
+      tags: normalizedTags,
+      defaultModel: $selectedAiModel,
+      defaultTemperature: $selectedAiTemperature
+    })
   }
 
   async function runTemplate() {
     try {
       preview = null
+      await rememberTemplateSettings()
       const result = await invokeAi(requestParams())
       outputText = result.run.error ?? result.run.outputText
     } catch (error) {
@@ -65,6 +133,7 @@
 
   async function previewTemplate() {
     try {
+      await rememberTemplateSettings()
       preview = await previewAi(requestParams())
     } catch (error) {
       addToast('warn', error instanceof Error ? error.message : 'Prompt preview could not be created.')
@@ -73,7 +142,7 @@
 
   async function saveTemplate(): Promise<void> {
     if (!activeTemplate) return
-    await saveAiTemplateBody(activeTemplate, promptText)
+    await rememberTemplateSettings()
     addToast('info', 'Prompt template saved.')
   }
 
@@ -123,16 +192,50 @@
 
   <div class="template-workspace">
     <section class="template-section prompt-section">
-      <div class="section-title">Prompt Template</div>
+      <div class="section-heading">
+        <div class="section-title">Prompt Template</div>
+        <label class="tag-field">
+          <span>Tags</span>
+          <input
+            value={tagText}
+            oninput={(event) => tagText = event.currentTarget.value}
+            placeholder="draft, revision"
+          />
+        </label>
+      </div>
       <textarea class="prompt-editor" bind:value={promptText} placeholder={templatePlaceholder}></textarea>
     </section>
 
     <section class="template-section variables-section">
-      <div class="section-title">Variables</div>
-      <div class="variable-row">
-        <label for="var-text" class="var-name">text</label>
-        <textarea id="var-text" class="var-input" bind:value={variableText} placeholder={textPlaceholder}></textarea>
+      <div class="section-heading">
+        <div class="section-title">Variables</div>
+        <div class="reference-row" aria-label="Prompt variable reference">
+          {#each PROMPT_VARIABLE_REFERENCE as variable (variable.key)}
+            <button
+              type="button"
+              class="reference-chip"
+              title={variable.label}
+              onclick={() => insertVariable(variable.key)}
+            >
+              {variableToken(variable.key)}
+            </button>
+          {/each}
+        </div>
       </div>
+      {#each editableVariableNames as variableName (variableName)}
+        <div class="variable-row">
+          <label for={`var-${variableName}`} class="var-name">{variableName}</label>
+          <textarea
+            id={`var-${variableName}`}
+            class="var-input"
+            value={variableValues[variableName] ?? ''}
+            oninput={(event) => setVariable(variableName, event.currentTarget.value)}
+            placeholder={`Value for {{${variableName}}}...`}
+          ></textarea>
+        </div>
+      {:else}
+        <div class="variable-empty">No editable variables detected. Context reference chips are filled automatically.</div>
+      {/each}
     </section>
 
     {#if preview}
@@ -238,6 +341,43 @@
     letter-spacing: 0.05em;
   }
 
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .tag-field {
+    min-width: 220px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tag-field input {
+    width: 180px;
+    min-width: 0;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .tag-field input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
   .actions {
     display: flex;
     gap: var(--space-2);
@@ -335,6 +475,29 @@
     gap: var(--space-4);
   }
 
+  .reference-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-1);
+  }
+
+  .reference-chip {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+  }
+
+  .reference-chip:hover {
+    border-color: var(--color-accent);
+    color: var(--color-fg-primary);
+  }
+
   .var-name {
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
@@ -363,6 +526,14 @@
   .var-input:focus {
     outline: none;
     border-color: var(--color-accent);
+  }
+
+  .variable-empty {
+    padding: var(--space-2) var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-sm);
   }
 
   .output-box {

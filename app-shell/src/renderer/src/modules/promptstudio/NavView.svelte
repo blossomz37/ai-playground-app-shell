@@ -9,6 +9,8 @@
     createAiTemplate,
     deleteAiTemplate,
     duplicateAiTemplate,
+    exportAiTemplatesJson,
+    importAiTemplatesFromJson,
     loadAiTemplates,
     refreshAiContext,
     renameAiTemplate,
@@ -20,6 +22,13 @@
 
   let renamingTemplateId = $state<string | null>(null)
   let activeTab = $state<'templates' | 'archive' | 'context'>('templates')
+  let tagFilter = $state('all')
+  let templateTags = $derived(Array.from(new Set($aiTemplates.flatMap(template => template.tags))).sort())
+  let visibleTemplates = $derived(
+    tagFilter === 'all'
+      ? $aiTemplates
+      : $aiTemplates.filter(template => template.tags.includes(tagFilter))
+  )
 
   onMount(async () => {
     await Promise.all([loadAiTemplates(), refreshAiContext()])
@@ -79,6 +88,37 @@
     await deleteAiTemplate(id)
     addToast('info', 'Prompt template deleted.')
   }
+
+  function exportTemplates(): void {
+    const blob = new Blob([exportAiTemplatesJson()], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `app-shell-prompt-templates-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    addToast('info', 'Prompt templates exported.')
+  }
+
+  function openImportPicker(): void {
+    document.getElementById('prompt-template-import')?.click()
+  }
+
+  async function importTemplates(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+
+    try {
+      const count = await importAiTemplatesFromJson(await file.text())
+      activeTab = 'templates'
+      tagFilter = 'all'
+      addToast('info', `${count} prompt template${count === 1 ? '' : 's'} imported.`)
+    } catch (error) {
+      addToast('warn', error instanceof Error ? error.message : 'Prompt templates could not be imported.')
+    }
+  }
 </script>
 
 <div class="nav-view">
@@ -96,8 +136,29 @@
   </div>
 
   {#if activeTab === 'templates'}
+    <div class="library-tools">
+      <select
+        aria-label="Filter prompt templates by tag"
+        value={tagFilter}
+        onchange={(event) => tagFilter = event.currentTarget.value}
+      >
+        <option value="all">All tags</option>
+        {#each templateTags as tag (tag)}
+          <option value={tag}>{tag}</option>
+        {/each}
+      </select>
+      <button type="button" class="tool-btn" onclick={exportTemplates}>Export</button>
+      <button type="button" class="tool-btn" onclick={openImportPicker}>Import</button>
+      <input
+        id="prompt-template-import"
+        type="file"
+        accept="application/json,.json"
+        class="file-input"
+        onchange={(event) => void importTemplates(event)}
+      />
+    </div>
     <div class="template-list">
-      {#each $aiTemplates as template (template.id)}
+      {#each visibleTemplates as template (template.id)}
         <div
           class="template-item"
           class:active={$selectedAiTemplateId === template.id}
@@ -157,7 +218,7 @@
           {/if}
         </div>
       {:else}
-        <div class="template-empty">No templates</div>
+        <div class="template-empty">No templates match this tag</div>
       {/each}
     </div>
   {:else if activeTab === 'archive'}
@@ -256,6 +317,45 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--space-2);
+  }
+
+  .library-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .library-tools select,
+  .tool-btn {
+    min-width: 0;
+    height: 28px;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-base);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+  }
+
+  .tool-btn {
+    cursor: pointer;
+  }
+
+  .library-tools select:focus,
+  .tool-btn:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .tool-btn:hover {
+    color: var(--color-fg-primary);
+    border-color: var(--color-accent);
+  }
+
+  .file-input {
+    display: none;
   }
 
   .template-item {

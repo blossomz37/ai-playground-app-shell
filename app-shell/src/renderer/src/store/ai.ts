@@ -51,6 +51,14 @@ interface PersistedContextSelection {
 }
 
 const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
+export const PROMPT_VARIABLE_REFERENCE = [
+  { key: 'text', label: 'Custom input' },
+  { key: 'selected_documents', label: 'Selected context' },
+  { key: 'selected_text', label: 'Selected editor text' },
+  { key: 'active_document_title', label: 'Active document title' },
+  { key: 'document_kind', label: 'Document kind' },
+  { key: 'workspace_name', label: 'Workspace name' }
+] as const
 
 let lastContextDocId: string | null = null
 let loadedContextWorkspaceId: string | null = null
@@ -233,12 +241,75 @@ export async function loadAiTemplates(): Promise<void> {
   }
 }
 
-function promptVariables(body: string): string[] {
+export function extractPromptVariables(body: string): string[] {
   return Array.from(new Set(
     Array.from(body.matchAll(/{{\s*([a-zA-Z0-9_]+)\s*}}/g))
       .map(match => match[1])
       .filter((value): value is string => Boolean(value))
   ))
+}
+
+function cleanTagList(tags: unknown): string[] {
+  const values = Array.isArray(tags)
+    ? tags
+    : typeof tags === 'string'
+      ? tags.split(',')
+      : []
+  return Array.from(new Set(values
+    .map(tag => typeof tag === 'string' ? tag.trim().toLowerCase() : '')
+    .filter(Boolean)
+  ))
+}
+
+function parseTemplateList(json: string): unknown[] {
+  const parsed = JSON.parse(json) as unknown
+  if (Array.isArray(parsed)) return parsed
+  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { templates?: unknown }).templates)) {
+    return (parsed as { templates: unknown[] }).templates
+  }
+  throw new Error('Prompt template JSON must contain a templates array.')
+}
+
+function importedString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback
+}
+
+function importedNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function importedObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function importedTemplate(value: unknown): AiPromptTemplate | null {
+  if (!value || typeof value !== 'object') return null
+  const row = value as Partial<AiPromptTemplate>
+  const body = importedString(row.body).trim()
+  if (!body) return null
+
+  const now = new Date().toISOString()
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `template-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return {
+    id,
+    workspaceId: get(workspaceId),
+    name: importedString(row.name, 'Imported Prompt').trim() || 'Imported Prompt',
+    description: importedString(row.description),
+    body,
+    variables: extractPromptVariables(body),
+    defaultModel: importedString(row.defaultModel, get(selectedAiModel)),
+    defaultTemperature: Math.max(0, Math.min(2, importedNumber(row.defaultTemperature, get(selectedAiTemperature)))),
+    contextPolicy: importedObject(row.contextPolicy),
+    tags: cleanTagList(row.tags),
+    isProtected: false,
+    createdAt: now,
+    updatedAt: now,
+    archivedAt: null
+  }
 }
 
 export function selectAiTemplate(id: string): void {
@@ -285,15 +356,60 @@ export async function renameAiTemplate(id: string, name: string): Promise<void> 
   selectedAiTemplateId.set(id)
 }
 
-export async function saveAiTemplateBody(template: AiPromptTemplate, body: string): Promise<AiPromptTemplate> {
+export async function saveAiTemplateDetails(
+  template: AiPromptTemplate,
+  patch: Partial<Pick<AiPromptTemplate, 'body' | 'tags' | 'defaultModel' | 'defaultTemperature'>>
+): Promise<AiPromptTemplate> {
+  const body = patch.body ?? template.body
   const saved = await window.shell.ai.saveTemplate({
     ...template,
+    ...patch,
     body,
-    variables: promptVariables(body)
+    variables: extractPromptVariables(body),
+    tags: patch.tags ? cleanTagList(patch.tags) : template.tags
   })
   aiTemplates.update(templates => templates.map(item => item.id === saved.id ? saved : item))
   selectedAiTemplateId.set(saved.id)
   return saved
+}
+
+export function exportAiTemplatesJson(): string {
+  const templates = get(aiTemplates)
+    .filter(template => !template.isProtected)
+    .map(template => ({
+      name: template.name,
+      description: template.description,
+      body: template.body,
+      variables: template.variables,
+      defaultModel: template.defaultModel,
+      defaultTemperature: template.defaultTemperature,
+      contextPolicy: template.contextPolicy,
+      tags: template.tags
+    }))
+  return JSON.stringify({
+    version: 1,
+    source: 'app-shell-prompt-library',
+    exportedAt: new Date().toISOString(),
+    templates
+  }, null, 2)
+}
+
+export async function importAiTemplatesFromJson(json: string): Promise<number> {
+  const incoming = parseTemplateList(json)
+    .map(importedTemplate)
+    .filter((template): template is AiPromptTemplate => Boolean(template))
+  if (incoming.length === 0) throw new Error('No usable prompt templates were found in the JSON file.')
+
+  const saved: AiPromptTemplate[] = []
+  for (const template of incoming) {
+    saved.push(await window.shell.ai.saveTemplate(template))
+  }
+  aiTemplates.update(templates => [
+    ...saved,
+    ...templates.filter(template => !saved.some(item => item.id === template.id))
+  ])
+  selectedAiTemplateId.set(saved[0]?.id ?? get(selectedAiTemplateId))
+  return saved.length
 }
 
 export async function duplicateAiTemplate(id: string): Promise<AiPromptTemplate> {

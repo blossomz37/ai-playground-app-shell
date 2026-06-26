@@ -65,8 +65,11 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const pdfReaderPage = Number(process.env['SHELL_CAPTURE_PDF_READER_PAGE'] ?? 1)
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
+  const showSidebar = process.env['SHELL_CAPTURE_SHOW_SIDEBAR'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
+  const hideInspector = process.env['SHELL_CAPTURE_HIDE_INSPECTOR'] === '1'
   const openRunHistory = process.env['SHELL_CAPTURE_OPEN_RUN_HISTORY'] === '1'
+  const newPromptTemplate = process.env['SHELL_CAPTURE_NEW_PROMPT_TEMPLATE'] === '1'
   const tableSearch = process.env['SHELL_CAPTURE_TABLE_SEARCH']
   const tableSearchMode = process.env['SHELL_CAPTURE_TABLE_SEARCH_MODE']
   const tableFolder = process.env['SHELL_CAPTURE_TABLE_FOLDER']
@@ -120,6 +123,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let assetLinksTempPaths: string[] = []
   let tableFilterCleanup = false
   let documentKindSmokeCleanupIds: string[] = []
+  let promptTemplateCleanupIds: string[] = []
 
   if (viewport) {
     const match = viewport.match(/^(\d+)x(\d+)$/i)
@@ -188,6 +192,35 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   // Delay so async IPC-loaded data (document tree, active doc) has rendered.
   setTimeout(async () => {
     try {
+      if (showSidebar || hideInspector) {
+        await win.webContents.executeJavaScript(`
+          (() => {
+            if (${JSON.stringify(showSidebar)} && !document.querySelector('.sidebar')) {
+              document.querySelector('button[aria-label="Show sidebar"]')?.click()
+            }
+            if (${JSON.stringify(hideInspector)} && document.querySelector('.inspector')) {
+              document.querySelector('button[aria-label="Hide inspector"]')?.click()
+            }
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (newPromptTemplate) {
+        promptTemplateCleanupIds = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const before = await window.shell.ai.templates(workspace.id)
+            const beforeIds = new Set(before.map((template) => template.id))
+            document.querySelector('button[title="New Template"]')?.click()
+            await new Promise((resolve) => setTimeout(resolve, 600))
+            const after = await window.shell.ai.templates(workspace.id)
+            return after
+              .filter((template) => !beforeIds.has(template.id))
+              .map((template) => template.id)
+          })()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (documentId) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: ${JSON.stringify(documentId)} }))`
@@ -1539,6 +1572,24 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_DOCUMENT_KIND_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (promptTemplateCleanupIds.length > 0) {
+        try {
+          await win.webContents.executeJavaScript(`
+            (async () => {
+              const workspace = await window.shell.workspace.get()
+              const ids = ${JSON.stringify(promptTemplateCleanupIds)}
+              for (const id of ids) {
+                await window.shell.ai.deleteTemplate({ workspaceId: workspace.id, id })
+              }
+              return { deletedTemplateIds: ids }
+            })()
+          `).then((cleanupResult) => {
+            console.log('[SHELL_CAPTURE_PROMPT_TEMPLATE_CLEANUP]', JSON.stringify(cleanupResult))
+          })
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_PROMPT_TEMPLATE_CLEANUP] failed:', cleanupErr)
         }
       }
       if (restoreWorkspaceId) {
