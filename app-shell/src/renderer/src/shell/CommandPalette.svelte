@@ -206,6 +206,19 @@
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase())
   }
+
+  // The search service marks matches with STX/ETX sentinels rather than literal
+  // tags (see search.ts). Escape the raw fragment so document/asset content can't
+  // inject markup or break the palette layout, then swap the sentinels for <mark>.
+  function renderSnippet(snippet: string): string {
+    const escaped = snippet
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    return escaped
+      .replaceAll(String.fromCharCode(2), '<mark>')
+      .replaceAll(String.fromCharCode(3), '</mark>')
+  }
 </script>
 
 {#if $paletteOpen}
@@ -290,7 +303,7 @@
                     <span class="title">{result.title}</span>
                   </span>
                   {#if result.snippet}
-                    <span class="snippet">{@html result.snippet}</span>
+                    <span class="snippet">{@html renderSnippet(result.snippet)}</span>
                   {/if}
                 </div>
               </button>

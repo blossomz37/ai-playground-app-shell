@@ -13,6 +13,13 @@ import { getDb } from './db'
 const DEFAULT_LIMIT = 50
 const DEFAULT_RECENTS_LIMIT = 30
 
+// Snippet highlight sentinels. snippet() wraps matches in these control chars
+// (STX/ETX) rather than literal <mark> tags; the renderer HTML-escapes the
+// surrounding fragment and only then swaps the sentinels for real <mark> tags.
+// This keeps raw document/asset content from injecting markup into the palette.
+const MARK_START = String.fromCharCode(2) // STX
+const MARK_END = String.fromCharCode(3)   // ETX
+
 /**
  * Universal "go to anything" search.
  *
@@ -54,7 +61,7 @@ export const searchService = {
             d.id           AS documentId,
             'shell.documents' AS moduleId,
             d.title        AS title,
-            snippet(documents_fts, 1, '<mark>', '</mark>', '…', 32) AS snippet,
+            snippet(documents_fts, 1, '${MARK_START}', '${MARK_END}', '…', 32) AS snippet,
             documents_fts.rank AS rank
           FROM documents_fts
           JOIN documents d ON d.rowid = documents_fts.rowid
@@ -70,7 +77,7 @@ export const searchService = {
             NULL           AS documentId,
             'shell.aichat' AS moduleId,
             c.title        AS title,
-            snippet(ai_conversations_fts, 2, '<mark>', '</mark>', '…', 32) AS snippet,
+            snippet(ai_conversations_fts, 2, '${MARK_START}', '${MARK_END}', '…', 32) AS snippet,
             ai_conversations_fts.rank AS rank
           FROM ai_conversations_fts
           JOIN ai_conversations c ON c.id = ai_conversations_fts.entityId
@@ -86,7 +93,7 @@ export const searchService = {
             NULL                 AS documentId,
             'shell.promptstudio' AS moduleId,
             t.name               AS title,
-            snippet(ai_prompt_templates_fts, 2, '<mark>', '</mark>', '…', 32) AS snippet,
+            snippet(ai_prompt_templates_fts, 2, '${MARK_START}', '${MARK_END}', '…', 32) AS snippet,
             ai_prompt_templates_fts.rank AS rank
           FROM ai_prompt_templates_fts
           JOIN ai_prompt_templates t ON t.id = ai_prompt_templates_fts.entityId
@@ -102,14 +109,16 @@ export const searchService = {
             NULL           AS documentId,
             'shell.assets' AS moduleId,
             a.label        AS title,
-            snippet(assets_fts, 2, '<mark>', '</mark>', '…', 32) AS snippet,
+            snippet(assets_fts, 2, '${MARK_START}', '${MARK_END}', '…', 32) AS snippet,
             assets_fts.rank AS rank
           FROM assets_fts
           JOIN assets a ON a.id = assets_fts.entityId
-          JOIN asset_workspace_links awl ON awl.assetId = a.id
           WHERE assets_fts MATCH :q
-            AND awl.workspaceId = :ws
             AND a.archivedAt IS NULL
+            AND EXISTS (
+              SELECT 1 FROM asset_workspace_links awl
+              WHERE awl.assetId = a.id AND awl.workspaceId = :ws
+            )
         )
         ORDER BY rank
         LIMIT :limit
@@ -179,8 +188,11 @@ export const searchService = {
             ''             AS snippet,
             a.updatedAt    AS updatedAt
           FROM assets a
-          JOIN asset_workspace_links awl ON awl.assetId = a.id
-          WHERE awl.workspaceId = :ws AND a.archivedAt IS NULL
+          WHERE a.archivedAt IS NULL
+            AND EXISTS (
+              SELECT 1 FROM asset_workspace_links awl
+              WHERE awl.assetId = a.id AND awl.workspaceId = :ws
+            )
         )
         ORDER BY updatedAt DESC
         LIMIT :limit
