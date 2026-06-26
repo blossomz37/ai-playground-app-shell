@@ -36,6 +36,7 @@ Resolve the targeted issues in `workspace-agents/implementation/ui-ux-audit-2026
 | P2 shell chrome gives utilities equal priority | Deferred. This pass focuses on module work surfaces; shell chrome needs a separate layout/priority pass because it affects all modules. |
 | P2 Settings language is user-hostile | Covered by Slice 5. |
 | P2 Run history is too technical by default | Covered by Slice 6. |
+| P2 module-specific default inspector behavior | Deferred after Slice 7 reassessment. The shell currently has one persisted global inspector visibility state, and Slices 2 and 6 reduced inspector density without overriding user layout preferences. |
 | P2 narrow layout collapses panels without replacing function | Partially covered by Slice 1 copy/action guidance. Drawer/sidebar behavior is deferred unless deliberately scoped because `AppShell.svelte` currently collapses those zones to `0px` below 900px. |
 | P3 Assets hierarchy reference | Reference-only. Assets is not changed except as a heuristic. The empty library affordance is deferred because the requested priority list does not include Assets implementation work. |
 | Command palette density | Deferred. It is noted in the audit but not in the requested priority list. |
@@ -110,7 +111,7 @@ Reduce default AI inspector density so the next action and current result are pr
 - Screenshot evidence:
   - `workspace-agents/implementation/screenshots/uiux-ai-chat-inspector-after-2026-06-26.png`
   - `workspace-agents/implementation/screenshots/uiux-promptstudio-inspector-after-2026-06-26.png`
-  - Documents AI screenshot only if edited in this slice.
+  - `workspace-agents/implementation/screenshots/uiux-documents-ai-inspector-after-2026-06-26.png`
 
 ## Slice 3 - Prompt Studio Navigation Density
 
@@ -304,7 +305,7 @@ At final closeout:
 
 ### 2026-06-26 - Slice 1 Empty States And Narrow-State Guidance
 
-Status: implemented, pending commit.
+Status: completed in `f59c276`.
 
 Changed:
 
@@ -339,7 +340,7 @@ Notes:
 
 ### 2026-06-26 - Slice 2 AI Inspector Progressive Disclosure
 
-Status: completed in commit pending.
+Status: completed in `a5fd26f`.
 
 Changed:
 
@@ -376,7 +377,7 @@ Notes:
 
 ### 2026-06-26 - Slice 3 Prompt Studio Navigation Density
 
-Status: completed in commit pending.
+Status: completed in `9bbfb1a`.
 
 Changed:
 
@@ -407,7 +408,7 @@ Notes:
 
 ### 2026-06-26 - Slice 4 Table View Filter Disclosure
 
-Status: completed in commit pending.
+Status: completed in `f0929f0`.
 
 Changed:
 
@@ -438,7 +439,7 @@ Notes:
 
 ### 2026-06-26 - Slice 5 Settings Wording and Grouping
 
-Status: completed in commit pending.
+Status: completed in `9981f9b`.
 
 Changed:
 
@@ -474,7 +475,7 @@ Notes:
 
 ### 2026-06-26 - Slice 6 Run History Summary and Detail Split
 
-Status: implemented, pending QA and commit.
+Status: completed in `eed7909`.
 
 Changed:
 
@@ -503,3 +504,27 @@ Evidence:
 Notes:
 
 - No new run fields, AI repository changes, or rendered-prompt storage were added. The slice uses the existing `AiRun` contract only.
+
+### 2026-06-26 - Slice 7 Module-Specific Default Inspector Behavior
+
+Status: deferred after reassessment.
+
+Reassessed:
+
+- `app-shell/src/renderer/src/shell/AppShell.svelte`
+- `app-shell/src/main/core/layout.ts`
+- Screenshots from Slices 1-6
+
+Outcome:
+
+- No code change was made.
+- The shell layout service currently persists one global `inspectorVisible` value. Adding module-specific defaults would require new layout semantics or a special-case module switch behavior.
+- Slices 2 and 6 already moved metadata-heavy inspector content behind disclosure, so the remaining issue is not severe enough to justify overriding a user's persisted inspector preference.
+
+Validation:
+
+- Reassessment used current code inspection and the accepted screenshots from Slices 1-6.
+
+Notes:
+
+- A future module-aware layout pass should be handled separately if the product wants Web metadata inspectors closed by default while AI/task inspectors remain available.
