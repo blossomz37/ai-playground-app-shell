@@ -16,12 +16,12 @@
 </script>
 
 <section class="section">
-  <h3 class="section-title">Demo Mode</h3>
+  <h3 class="section-title">Sample Workspace</h3>
 
   <div class="field field-row">
     <div class="field-copy">
-      <span class="field-label">Enable sample content and mock AI</span>
-      <span class="field-hint">Use for training, screenshots, and offline testing. Existing user content is never deleted.</span>
+      <span class="field-label">Show sample projects and practice AI</span>
+      <span class="field-hint">Useful when exploring the app without changing your real writing projects.</span>
     </div>
     <button
       class="toggle-btn"
@@ -29,7 +29,7 @@
       type="button"
       role="switch"
       aria-checked={$demoModeEnabled}
-      aria-label="Toggle demo mode"
+      aria-label="Toggle sample workspace"
       disabled={saving}
       onclick={toggleDemoMode}
     >
@@ -37,7 +37,7 @@
     </button>
   </div>
 
-  <p class="reload-note">Browser preview demo content updates after reload.</p>
+  <p class="reload-note">Sample content refreshes after reload.</p>
 </section>
 
 <style>

@@ -7,9 +7,9 @@
   let savingId = $state<string | null>(null)
   const categoryOrder: ModuleCategory[] = ['required', 'core', 'custom']
   const categoryLabels: Record<ModuleCategory, string> = {
-    required: 'Required',
-    core: 'Core Plugins',
-    custom: 'Custom Plugins'
+    required: 'Always On',
+    core: 'Built-In Tools',
+    custom: 'Added Tools'
   }
 
   const filteredModules = $derived(filterModules($moduleList, query))
@@ -37,9 +37,9 @@
   }
 
   function statusText(module: ModuleListItem): string {
-    if (module.required) return 'Required. Always available.'
+    if (module.required) return 'Always available.'
     if (module.category === 'core') return module.visible ? 'Shown in navigation.' : 'Hidden from navigation.'
-    return module.enabled ? 'Enabled.' : 'Disabled.'
+    return module.enabled ? 'Available.' : 'Turned off.'
   }
 
   async function toggleModule(module: ModuleListItem): Promise<void> {
@@ -58,15 +58,15 @@
 </script>
 
 <section class="section">
-  <h3 class="section-title">Core & Custom Plugins</h3>
+  <h3 class="section-title">Tools & Features</h3>
 
-  <label class="search-label" for="settings-module-search">Search plugins</label>
+  <label class="search-label" for="settings-module-search">Search tools</label>
   <input
     id="settings-module-search"
     class="search-input"
     type="search"
     bind:value={query}
-    placeholder="Search modules"
+    placeholder="Search tools"
   />
 
   <div class="plugin-groups">

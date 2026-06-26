@@ -67,12 +67,15 @@
       </header>
 
       <div class="settings-body">
+        <h3 class="settings-group-title">Everyday Settings</h3>
         <AppearanceSettings />
-        <ModulePluginSettings />
-        <DemoModeSettings />
         <EditorSettings />
         <DocumentKindSettings />
         <AiProviderSettings {secretNames} {markSecretStored} {loadSecrets} />
+
+        <h3 class="settings-group-title">Advanced</h3>
+        <ModulePluginSettings />
+        <DemoModeSettings />
         <SecretsSettings {secretNames} {secretsLoading} {loadSecrets} />
       </div>
     </div>
@@ -144,6 +147,20 @@
   .settings-body {
     padding: var(--space-4) var(--space-5);
     overflow-y: auto;
+  }
+
+  .settings-group-title {
+    margin: 0 0 var(--space-3);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .settings-group-title:not(:first-child) {
+    padding-top: var(--space-2);
+    border-top: var(--border-subtle);
   }
 
 </style>

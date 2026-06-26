@@ -58,9 +58,9 @@
 </script>
 
 <section class="section">
-  <h3 class="section-title">AI Provider</h3>
+  <h3 class="section-title">AI Tools</h3>
 
-  <div class="provider-toggle" role="radiogroup" aria-label="AI provider mode">
+  <div class="provider-toggle" role="radiogroup" aria-label="AI mode">
     {#each $aiProviders as provider (provider.providerId)}
       <button
         type="button"
@@ -70,20 +70,20 @@
         role="radio"
         aria-checked={$selectedAiProviderId === provider.providerId}
       >
-        {provider.providerId === 'mock-local' ? 'Mock Local' : 'OpenAI'}
+        {provider.providerId === 'mock-local' ? 'Practice' : 'OpenAI'}
       </button>
     {/each}
   </div>
 
   <div class="provider-status">
-    <span class="field-label">Active mode</span>
+    <span class="field-label">Current AI mode</span>
     <span
       class="status-pill"
       class:mock={$selectedAiProviderId === 'mock-local'}
       class:ready={aiProviderReady && $selectedAiProviderId !== 'mock-local'}
       class:missing={!aiProviderReady}
     >
-      {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
+      {$selectedAiProviderId === 'mock-local' ? 'Practice mode' : aiProviderReady ? 'Ready' : 'Needs API key'}
     </span>
   </div>
 
@@ -91,7 +91,7 @@
 
   <div class="openai-key-box">
     <div class="provider-status compact">
-      <span class="field-label">OpenAI key</span>
+      <span class="field-label">OpenAI API key</span>
       <span class="status-pill" class:ready={openAiKeyStored} class:missing={!openAiKeyStored}>
         {openAiKeyStored ? 'Stored' : 'Missing'}
       </span>
@@ -101,7 +101,7 @@
         type="password"
         class="field-input"
         bind:value={openAiKeyValue}
-        placeholder="Paste OpenAI API key"
+        placeholder="Paste API key"
         onkeydown={(e) => e.key === 'Enter' && saveOpenAiKey()}
       />
       <button
@@ -138,7 +138,7 @@
       class="field-input"
       value={$selectedAiModel}
       oninput={(event) => selectAiModel(event.currentTarget.value)}
-      placeholder="Enter model id"
+      placeholder="Enter model ID"
     />
   </div>
 

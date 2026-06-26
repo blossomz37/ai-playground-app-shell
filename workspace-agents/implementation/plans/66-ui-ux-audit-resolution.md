@@ -376,7 +376,7 @@ Notes:
 
 ### 2026-06-26 - Slice 3 Prompt Studio Navigation Density
 
-Status: implemented, pending QA and commit.
+Status: completed in commit pending.
 
 Changed:
 
@@ -435,3 +435,39 @@ Evidence:
 Notes:
 
 - No persistence was added for the disclosure state; it remains local UI state to avoid broadening the slice.
+
+### 2026-06-26 - Slice 5 Settings Wording and Grouping
+
+Status: implemented, pending QA and commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/shell/SettingsPanel.svelte`
+- `app-shell/src/renderer/src/shell/ModulePluginSettings.svelte`
+- `app-shell/src/renderer/src/shell/AiProviderSettings.svelte`
+- `app-shell/src/renderer/src/shell/DemoModeSettings.svelte`
+
+Outcome:
+
+- Settings now separates everyday controls from advanced controls.
+- Tools/modules settings use "Tools & Features," "Built-In Tools," "Added Tools," "Always available," and "Search tools" instead of plugin/module language.
+- AI setup reads as "AI Tools," "Current AI mode," "Practice," "Ready," and "Needs API key" instead of provider/secret plumbing.
+- Demo mode now reads as "Sample Workspace" and "practice AI" instead of training/screenshots/offline testing.
+
+Validation:
+
+- `svelte_autofixer` clean on all four touched Settings components.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-settings-wording-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-settings-lower-after-2026-06-26.png`
+
+Notes:
+
+- No storage keys, module registry semantics, or settings behavior changed; this was intentionally copy and grouping only.
+- QA subagent passed the slice and found no scope creep. It noted the top screenshot did not prove the Advanced grouping; the existing lower capture hook scrolls to Document Kinds rather than Advanced, so the lower wording changes remain verified through diff review rather than a perfect screenshot.
+- AI Tools stays in Everyday Settings intentionally because API key/model setup is a normal user setup path for this shell, while tool toggles, sample workspace mode, and secrets are grouped under Advanced.
