@@ -631,6 +631,24 @@ export interface ModuleListItem {
   activated: boolean
 }
 
+export interface WebCredentialAccount {
+  origin: string
+  account: string
+}
+
+export interface WebCredentialFillResult {
+  filledAccount: boolean
+  filledSecret: boolean
+}
+
+export interface WebCredentialStoreInfo {
+  supported: boolean
+  platform: string
+  servicePrefix: string
+  appIdentity: string
+  promptBehavior: string
+}
+
 export interface ShellApi {
   documents: {
     list(workspaceId: string): Promise<Doc[]>
@@ -752,6 +770,13 @@ export interface ShellApi {
     set(name: string, value: string): Promise<void>
     delete(name: string): Promise<void>
   }
+  webCredentials: {
+    info(): Promise<WebCredentialStoreInfo>
+    list(origin: string): Promise<WebCredentialAccount[]>
+    save(params: { origin: string; account: string; secret: string }): Promise<void>
+    delete(params: { origin: string; account: string }): Promise<boolean>
+    fill(params: { origin: string; account: string; webContentsId: number }): Promise<WebCredentialFillResult>
+  }
   notifications: {
     onNotify(cb: (toast: { level: 'info' | 'warn' | 'error'; message: string }) => void): void
   }
@@ -763,6 +788,9 @@ export interface ShellApi {
   }
   theme: {
     set(mode: ThemeMode): Promise<void>
+  }
+  shell: {
+    openExternalUrl(url: string): Promise<void>
   }
   capture?: {
     moduleId?: string

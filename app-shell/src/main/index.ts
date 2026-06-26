@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell, nativeTheme } from 'electron'
+import { app, BrowserWindow, Menu, shell, nativeTheme, session } from 'electron'
+import type { WebContents } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
@@ -22,9 +23,43 @@ import { DEMO_MODE_SETTING_KEY } from '@shared/demo-mode'
 import type { ThemeMode } from '@shared/module-contract'
 
 const APP_NAME = 'App Shell'
+const WEB_SESSION_PARTITION = 'persist:app-shell-web'
 app.setName(APP_NAME)
 
 let initialBgColor = '#1e1e2e' // Updated below once DB is ready
+
+function appUserAgentToken(): string {
+  return app.getName().replace(/[^A-Za-z0-9]/g, '')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function browserCompatibleUserAgent(): string {
+  const tokensToRemove = ['Electron', appUserAgentToken()].filter(Boolean)
+  return tokensToRemove
+    .reduce((userAgent, token) => {
+      return userAgent.replace(new RegExp(`\\s${escapeRegExp(token)}\\/\\S+`, 'g'), '')
+    }, app.userAgentFallback)
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function configureWebSession(): void {
+  session.fromPartition(WEB_SESSION_PARTITION).setUserAgent(browserCompatibleUserAgent())
+}
+
+function configureNativeEditableContextMenu(contents: WebContents): void {
+  contents.on('context-menu', (_event, params) => {
+    if (!params.isEditable || !params.frame) return
+    Menu.buildFromTemplate([{ role: 'editMenu' }]).popup({
+      frame: params.frame,
+      x: params.x,
+      y: params.y
+    })
+  })
+}
 
 function appIconPath(): string {
   const devIconPath = join(__dirname, '../../resources/icon.png')
@@ -114,6 +149,10 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin' && existsSync(icon)) {
     app.dock?.setIcon(icon)
   }
+  configureWebSession()
+  app.on('web-contents-created', (_event, contents) => {
+    configureNativeEditableContextMenu(contents)
+  })
 
   // 1. Register all modules — reads manifests only, no code runs.
   const allModules = [

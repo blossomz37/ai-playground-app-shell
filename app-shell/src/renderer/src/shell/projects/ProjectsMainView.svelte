@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { get } from 'svelte/store'
   import {
     ArchiveIcon,
     ArrowClockwiseIcon,
+    ArrowLeftIcon,
     BookOpenIcon,
     CopyIcon,
     FolderOpenIcon,
@@ -33,6 +35,7 @@
     projectsSortMode,
     projectsStatusFilter,
     projectsTypeFilter,
+    projectsReturnModuleId,
     selectProject,
     selectedProjectId,
     startProjectCreate,
@@ -47,27 +50,28 @@
   const projects = $derived([...$workspaces, ...$archivedWorkspaces])
   const visibleProjects = $derived(sortProjects(filterProjects(projects)))
 
-  $effect(() => {
-    if (projects.length === 0) return
-    if (!$selectedProjectId || !projects.some(project => project.id === $selectedProjectId)) {
-      selectProject(projects[0].id)
-    }
-  })
-
-  $effect(() => {
-    const missing = visibleProjects
-      .map(project => project.id)
-      .filter(id => !statsByWorkspace[id])
-    if (missing.length > 0) void loadStats(missing)
-  })
-
   onMount(() => {
     void refreshWorkspaceLists()
+    const syncProjects = (): void => {
+      const rows = [...get(workspaces), ...get(archivedWorkspaces)]
+      if (rows.length === 0) return
+      const selectedId = get(selectedProjectId)
+      if (!selectedId || !rows.some(project => project.id === selectedId)) {
+        selectProject(rows[0].id)
+      }
+      void loadMissingStats(rows)
+    }
+    const unsubscribeWorkspaces = workspaces.subscribe(syncProjects)
+    const unsubscribeArchived = archivedWorkspaces.subscribe(syncProjects)
+    const unsubscribeSelected = selectedProjectId.subscribe(syncProjects)
     const createListener = () => createProject()
     const importListener = () => void importFolder()
     window.addEventListener('projects:create', createListener)
     window.addEventListener('projects:import', importListener)
     return () => {
+      unsubscribeWorkspaces()
+      unsubscribeArchived()
+      unsubscribeSelected()
       window.removeEventListener('projects:create', createListener)
       window.removeEventListener('projects:import', importListener)
     }
@@ -85,6 +89,13 @@
       if (row) next[row.workspaceId] = row
     }
     statsByWorkspace = next
+  }
+
+  async function loadMissingStats(rows: Workspace[]): Promise<void> {
+    const missing = rows
+      .map(project => project.id)
+      .filter(id => !statsByWorkspace[id])
+    if (missing.length > 0) await loadStats(missing)
   }
 
   function filterProjects(rows: Workspace[]): Workspace[] {
@@ -196,6 +207,12 @@
     startProjectCreate()
   }
 
+  async function backToPreviousView(): Promise<void> {
+    const moduleId = $projectsReturnModuleId ?? 'shell.documents'
+    activeModuleId.set(moduleId)
+    await window.shell.modules.activate(moduleId)
+  }
+
   function formatDate(value: string | null | undefined): string {
     if (!value) return 'Never'
     const date = new Date(value)
@@ -221,6 +238,10 @@
       <p>Search, review, and manage local App Shell projects.</p>
     </div>
     <div class="header-actions">
+      <button class="secondary" type="button" onclick={backToPreviousView}>
+        <ArrowLeftIcon size={16} weight="bold" aria-hidden="true" />
+        Back to Previous View
+      </button>
       <button class="secondary" type="button" onclick={importFolder} disabled={busyAction === 'import'}>
         <FolderOpenIcon size={16} weight="bold" aria-hidden="true" />
         Import Folder

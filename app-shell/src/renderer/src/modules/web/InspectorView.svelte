@@ -1,9 +1,129 @@
 <!-- Web InspectorView — active tab and session info -->
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import type { WebCredentialAccount, WebCredentialStoreInfo } from '@shared/module-contract'
   import { activeTabHistory, currentBookmarked, currentTitle, currentUrl, toggleCurrentBookmark, webLoading, webTabs } from './state'
   import { formatUrlSecondary, getWebUrlMetadata } from './url-display'
+  import { addToast } from '../../store/toasts'
 
   let urlMetadata = $derived(getWebUrlMetadata($currentUrl))
+  let credentialOrigin = $derived(originFromUrl($currentUrl))
+  let credentialInfo = $state<WebCredentialStoreInfo | null>(null)
+  let credentialAccounts = $state<WebCredentialAccount[]>([])
+  let selectedCredentialAccount = $state('')
+  let credentialAccount = $state('')
+  let credentialSecret = $state('')
+  let credentialLoading = $state(false)
+  let credentialBusy = $state(false)
+  let loadedCredentialOrigin = $state<string | null>(null)
+
+  onMount(() => {
+    const unsubscribe = currentUrl.subscribe((url) => {
+      const origin = originFromUrl(url)
+      if (!credentialInfo || !origin || origin === loadedCredentialOrigin) return
+      void loadCredentialAccounts(origin)
+    })
+
+    void (async () => {
+      credentialInfo = await window.shell.webCredentials.info()
+      await loadCredentialAccounts()
+    })()
+
+    return unsubscribe
+  })
+
+  function originFromUrl(value: string): string | null {
+    try {
+      const origin = new URL(value).origin
+      return origin.startsWith('http://') || origin.startsWith('https://') ? origin : null
+    } catch {
+      return null
+    }
+  }
+
+  function activeWebContentsId(): number | null {
+    const surface = document.querySelector('webview.web-surface') as { getWebContentsId?: () => number } | null
+    return surface?.getWebContentsId?.() ?? null
+  }
+
+  async function loadCredentialAccounts(origin = credentialOrigin): Promise<void> {
+    loadedCredentialOrigin = origin
+    if (!origin || credentialInfo?.supported === false) {
+      credentialAccounts = []
+      selectedCredentialAccount = ''
+      return
+    }
+
+    credentialLoading = true
+    try {
+      credentialAccounts = await window.shell.webCredentials.list(origin)
+      selectedCredentialAccount = credentialAccounts[0]?.account ?? ''
+    } catch (error) {
+      credentialAccounts = []
+      selectedCredentialAccount = ''
+      addToast('error', error instanceof Error ? error.message : 'Could not load credentials')
+    } finally {
+      credentialLoading = false
+    }
+  }
+
+  async function saveCredential(): Promise<void> {
+    const origin = credentialOrigin
+    const account = credentialAccount.trim()
+    if (!origin || !account || !credentialSecret) return
+
+    credentialBusy = true
+    try {
+      await window.shell.webCredentials.save({ origin, account, secret: credentialSecret })
+      selectedCredentialAccount = account
+      credentialAccount = ''
+      credentialSecret = ''
+      await loadCredentialAccounts(origin)
+      selectedCredentialAccount = account
+      addToast('info', 'Credential saved to Keychain')
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Could not save credential')
+    } finally {
+      credentialBusy = false
+    }
+  }
+
+  async function fillCredential(): Promise<void> {
+    const origin = credentialOrigin
+    const webContentsId = activeWebContentsId()
+    if (!origin || !selectedCredentialAccount || webContentsId === null) return
+
+    credentialBusy = true
+    try {
+      const result = await window.shell.webCredentials.fill({
+        origin,
+        account: selectedCredentialAccount,
+        webContentsId
+      })
+      addToast(result.filledSecret ? 'info' : 'warn', result.filledSecret ? 'Credential filled' : 'No password field found')
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Could not fill credential')
+    } finally {
+      credentialBusy = false
+    }
+  }
+
+  async function deleteCredential(): Promise<void> {
+    const origin = credentialOrigin
+    const account = selectedCredentialAccount
+    if (!origin || !account) return
+
+    credentialBusy = true
+    try {
+      await window.shell.webCredentials.delete({ origin, account })
+      await loadCredentialAccounts(origin)
+      addToast('info', 'Credential deleted')
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Could not delete credential')
+    } finally {
+      credentialBusy = false
+    }
+  }
 </script>
 
 <div class="inspector-view">
@@ -28,6 +148,61 @@
       <span class="meta-label">Tabs</span><span class="meta-value">{$webTabs.length} open</span>
       <span class="meta-label">Status</span><span class="meta-value">{urlMetadata.securityLabel}</span>
       <span class="meta-label">Saved</span><span class="meta-value">{$currentBookmarked ? 'In bookmarks' : 'Not bookmarked'}</span>
+    </div>
+  </details>
+
+  <details class="section details-section" open>
+    <summary>Credentials</summary>
+    <div class="credential-stack">
+      <div class="credential-meta">
+        <span>{credentialInfo?.appIdentity ?? 'Keychain'}</span>
+        <span>{credentialOrigin ?? 'No web origin'}</span>
+      </div>
+      {#if credentialInfo?.promptBehavior}
+        <p class="credential-note">{credentialInfo.promptBehavior}</p>
+      {/if}
+
+      {#if credentialInfo?.supported === false}
+        <p class="credential-note">macOS Keychain is unavailable in this runtime.</p>
+      {:else if credentialOrigin}
+        {#if credentialAccounts.length > 0}
+          <div class="credential-row">
+            <select class="field-input" bind:value={selectedCredentialAccount} disabled={credentialBusy || credentialLoading}>
+              {#each credentialAccounts as credential (credential.account)}
+                <option value={credential.account}>{credential.account}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="credential-actions">
+            <button type="button" onclick={fillCredential} disabled={!selectedCredentialAccount || credentialBusy}>Fill</button>
+            <button type="button" class="danger" onclick={deleteCredential} disabled={!selectedCredentialAccount || credentialBusy}>Delete</button>
+          </div>
+        {/if}
+
+        <input
+          class="field-input"
+          type="text"
+          placeholder="Account"
+          bind:value={credentialAccount}
+          autocomplete="username"
+          disabled={credentialBusy}
+        />
+        <input
+          class="field-input"
+          type="password"
+          placeholder="Password/token"
+          bind:value={credentialSecret}
+          autocomplete="current-password"
+          disabled={credentialBusy}
+          onkeydown={(event) => event.key === 'Enter' && saveCredential()}
+        />
+        <button
+          type="button"
+          class="save-credential"
+          onclick={saveCredential}
+          disabled={!credentialAccount.trim() || !credentialSecret || credentialBusy}
+        >Save</button>
+      {/if}
     </div>
   </details>
 
@@ -163,6 +338,84 @@
   .meta-value {
     color: var(--color-fg-secondary);
     min-width: 0;
+  }
+
+  .credential-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .credential-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .credential-note {
+    margin: 0;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+  }
+
+  .credential-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .field-input {
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-2);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-primary);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    outline: none;
+  }
+
+  .field-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .credential-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+
+  .credential-actions button,
+  .save-credential {
+    min-width: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-secondary);
+    background: var(--color-bg-surface);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .credential-actions button:hover,
+  .save-credential:hover {
+    color: var(--color-fg-primary);
+    background: var(--color-bg-overlay);
+  }
+
+  .credential-actions button:disabled,
+  .save-credential:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .credential-actions button.danger:hover {
+    color: var(--color-danger);
   }
 
   .history-stack {

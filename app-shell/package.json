@@ -10,8 +10,8 @@
     "package:mac": "npm run build && node scripts/package-mac.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
     "audit:contrast": "node scripts/audit-contrast.mjs",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "rebuild": "electron-rebuild -f -w better-sqlite3,keytar",
+    "postinstall": "electron-rebuild -f -w better-sqlite3,keytar"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0",
@@ -22,7 +22,8 @@
     "@tiptap/extension-table-row": "^3.23.6",
     "@tiptap/pm": "^3.23.6",
     "@tiptap/starter-kit": "^3.23.6",
-    "better-sqlite3": "^11.0.0",
+    "better-sqlite3": "^12.11.1",
+    "keytar": "^7.9.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.0.227",
     "phosphor-svelte": "^3.1.0",
@@ -36,7 +37,7 @@
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
-    "electron": "^32.0.0",
+    "electron": "^42.5.0",
     "electron-rebuild": "^3.2.9",
     "electron-vite": "^2.3.0",
     "playwright": "^1.61.1",

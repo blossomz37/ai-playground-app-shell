@@ -14,6 +14,13 @@ export const projectsStatusFilter = writable<ProjectsStatusFilter>('all')
 export const projectsSortMode = writable<ProjectsSortMode>('recent')
 export const projectsEditMode = writable(false)
 export const projectsCreateMode = writable(false)
+export const projectsReturnModuleId = writable<string | null>(null)
+
+export function setProjectsReturnModule(id: string | null): void {
+  if (id && id !== 'shell.projects') {
+    projectsReturnModuleId.set(id)
+  }
+}
 
 export function startProjectCreate(): void {
   projectsCreateMode.set(true)

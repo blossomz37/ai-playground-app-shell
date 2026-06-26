@@ -135,6 +135,14 @@ const api: ShellApi = {
     delete: (name)          => ipcRenderer.invoke('secrets:delete', { name })
   },
 
+  webCredentials: {
+    info: () => ipcRenderer.invoke('webCredentials:info'),
+    list: (origin) => ipcRenderer.invoke('webCredentials:list', { origin }),
+    save: (params) => ipcRenderer.invoke('webCredentials:save', params),
+    delete: (params) => ipcRenderer.invoke('webCredentials:delete', params),
+    fill: (params) => ipcRenderer.invoke('webCredentials:fill', params)
+  },
+
   notifications: {
     onNotify: (cb) => {
       ipcRenderer.on('shell:notify', (_event, toast) => cb(toast))
@@ -152,6 +160,10 @@ const api: ShellApi = {
 
   theme: {
     set: (mode) => ipcRenderer.invoke('theme:set', { mode })
+  },
+
+  shell: {
+    openExternalUrl: (url) => ipcRenderer.invoke('shell:openExternalUrl', { url })
   },
 
   capture: {

@@ -35,6 +35,7 @@ import { createSettingsStore } from './core/settings'
 import { searchService } from './core/search'
 import { layoutService } from './core/layout'
 import { secretsService } from './core/secrets'
+import { webCredentialsService } from './core/web-credentials'
 import { workspaceService } from './core/workspaces'
 import { jobs } from './core/jobs'
 import { aiOrchestrator } from './ai/orchestrator'
@@ -63,6 +64,32 @@ import type {
 const shellSettings = createSettingsStore('shell')
 
 export function registerIpcHandlers(): void {
+  ipcMain.handle('shell:openExternalUrl', async (_event, { url }: { url: string }) => {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('Only HTTP and HTTPS URLs can be opened externally.')
+    }
+    await shell.openExternal(parsed.toString())
+  })
+
+  ipcMain.handle('webCredentials:info', () => webCredentialsService.info())
+
+  ipcMain.handle('webCredentials:list', (_event, { origin }: { origin: string }) => {
+    return webCredentialsService.list(origin)
+  })
+
+  ipcMain.handle('webCredentials:save', (_event, params: { origin: string; account: string; secret: string }) => {
+    return webCredentialsService.save(params)
+  })
+
+  ipcMain.handle('webCredentials:delete', (_event, params: { origin: string; account: string }) => {
+    return webCredentialsService.delete(params)
+  })
+
+  ipcMain.handle('webCredentials:fill', (_event, params: { origin: string; account: string; webContentsId: number }) => {
+    return webCredentialsService.fill(params)
+  })
+
   ipcMain.handle('documents:list', (_e, { workspaceId }: { workspaceId: string }) =>
     documents.list(workspaceId)
   )

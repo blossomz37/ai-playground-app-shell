@@ -1129,6 +1129,21 @@ function createBrowserShell(): ShellApi {
       set: async () => {},
       delete: async () => {}
     },
+    webCredentials: {
+      info: async () => ({
+        supported: false,
+        platform: 'browser',
+        servicePrefix: 'com.carlosantiago.appshell.web-credentials',
+        appIdentity: 'Browser preview',
+        promptBehavior: 'macOS Keychain credentials are only available in the Electron app.'
+      }),
+      list: async () => [],
+      save: async () => {
+        throw new Error('macOS Keychain credentials are only available in the Electron app.')
+      },
+      delete: async () => false,
+      fill: async () => ({ filledAccount: false, filledSecret: false })
+    },
     notifications: {
       onNotify: () => {}
     },
@@ -1160,6 +1175,11 @@ function createBrowserShell(): ShellApi {
     theme: {
       set: async (mode: ThemeMode) => {
         settings.set('theme', mode)
+      }
+    },
+    shell: {
+      openExternalUrl: async (url) => {
+        window.open(url, '_blank', 'noopener,noreferrer')
       }
     }
   }

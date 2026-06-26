@@ -4,6 +4,7 @@
   import {
     ArrowClockwiseIcon,
     ArrowLeftIcon,
+    ArrowSquareOutIcon,
     ArrowRightIcon,
     GlobeIcon,
     LockIcon,
@@ -43,6 +44,10 @@
     reloadPage()
     const surface = document.querySelector('webview.web-surface') as { reload?: () => void } | null
     surface?.reload?.()
+  }
+
+  async function openCurrentUrlExternally(): Promise<void> {
+    await window.shell.shell.openExternalUrl($currentUrl)
   }
 
   function onDidNavigate(event: Event): void {
@@ -150,6 +155,14 @@
       onclick={toggleCurrentBookmark}
     >
       <StarIcon size={17} weight={$currentBookmarked ? 'fill' : 'bold'} />
+    </button>
+    <button
+      class="icon-btn"
+      title="Open in default browser"
+      aria-label="Open in default browser"
+      onclick={openCurrentUrlExternally}
+    >
+      <ArrowSquareOutIcon size={17} weight="bold" />
     </button>
   </header>
 

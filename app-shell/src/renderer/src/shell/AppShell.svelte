@@ -25,6 +25,7 @@
   import { FALLBACK_MODULE_ID } from '@shared/module-policy'
   import { toggleJobsPanel } from '../store/jobs'
   import { importAssets } from '../modules/assets/state'
+  import { setProjectsReturnModule } from './projects/state'
   import {
     closeActiveTab,
     goBack as webGoBack,
@@ -146,6 +147,9 @@
       activeModuleId.set(FALLBACK_MODULE_ID)
       await window.shell.modules.activate(FALLBACK_MODULE_ID)
       return
+    }
+    if (id === PROJECTS_MODULE_ID) {
+      setProjectsReturnModule($activeModuleId)
     }
     activeModuleId.set(id)
     webInspectorSuppressed = id === 'shell.web' && webInspectorDefaultPending
