@@ -177,8 +177,8 @@
   }
 
   .jobs-item span.active {
-    background: var(--accent-status);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-status) 58%, transparent);
+    background: var(--color-accent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 58%, transparent);
     animation: pulse-dot 1.5s ease-in-out infinite;
   }
 

@@ -438,7 +438,7 @@ Capture before/after pairs for every UI-altering slice and store them under
 | 2 NavView search | **done** | worker + adversarial QA | before/after + archive/history proofs captured | QA pass after evidence-gap fix | 2 |
 | 3 AI unification | **done** | explorer + adversarial QA | before/after + runtime proposal proof captured | QA pass after P1/P2/P3 fixes | 3 |
 | 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
-| 5 Color discipline | ready (renderer-only) | — | — | — | 0 |
+| 5 Color discipline | **done** | worker + adversarial QA | all-theme before/after + party/proposal proofs captured | QA pass after P3 fixes | 2 |
 | 6 Clutter pass | ready (renderer-only) | — | — | — | 0 |
 
 Baseline before any edit: `npm run typecheck` ✓ and `npm run build` ✓ (clean).
@@ -658,6 +658,48 @@ focus-ring issue. All were fixed and rechecked by QA with no remaining findings.
 Intentionally not built: true multi-step chain execution remains deferred behind
 the existing Slice 4/data-model gate; arbitrary prompt proposals are limited to
 safe `append-note` output until stronger source/apply semantics are defined.
+
+### Slice 5 — Outcome (2026-06-26)
+
+Color discipline shipped as a renderer-only token/consumer sweep. The existing
+`--accent-nav`, `--accent-editor`, `--accent-inspector`, and `--accent-status`
+aliases now resolve to the single brand `--color-accent`, so old zone-accent
+consumers no longer create a multi-hue structural chrome. Jewel colors remain
+available for party mode/decorative use.
+
+Added per-theme `--color-ai` and `--color-ai-dim` tokens and applied them to
+AI-specific surfaces: assistant chat identity/content, AI run result blocks,
+Documents AI model/proposal/prompt surfaces, and the AI job count badge in the
+context strip. Generic job chrome stays on the brand accent rather than the AI
+color so future non-AI jobs do not get a false AI semantic signal.
+
+Evidence:
+- `workspace-agents/implementation/screenshots/uiux-fc-color-dark-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-dark-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-light-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-light-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-gray-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-gray-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-system-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-system-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-ai-signal-before-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-ai-signal-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-doc-proposal-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-fc-color-party-after-2026-06-26.png`
+
+Validation: Svelte autofixer clean on all touched Svelte components; `npm run
+typecheck`; `npm run build`; `git diff --check`; built Electron screenshot
+captures against seeded workspace `ws-uiux-fc-20260626`; adversarial QA.
+
+Adversarial QA note: first pass found two P3s: generic active job chrome had
+been colored as AI, and the AI-signal screenshot did not isolate the Documents
+proposal surface. Generic job chrome was returned to brand accent and the
+Documents proposal screenshot was added. Follow-up QA passed with no blockers.
+
+Intentionally not built: no new theme architecture, no palette redesign, no
+schema/IPC/package changes, and no Slice 4 work. Remaining `--accent-*`
+consumers were left in place because the aliases now enforce the single-accent
+discipline without broad churn.
 
 ### Slice 0 — Contract-change deltas (for the gate)
 

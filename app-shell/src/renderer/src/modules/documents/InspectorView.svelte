@@ -1026,7 +1026,7 @@
     gap: var(--space-2);
     min-width: 0;
     padding: var(--space-2);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 14%, var(--color-border));
+    border: 1px solid color-mix(in srgb, var(--color-ai) 18%, var(--color-border));
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--color-shell-main) 34%, transparent);
   }
@@ -1048,7 +1048,7 @@
   }
 
   .ai-disclosure summary span:last-child {
-    color: color-mix(in srgb, var(--accent-inspector) 58%, var(--color-fg-muted));
+    color: color-mix(in srgb, var(--color-ai) 58%, var(--color-fg-muted));
     text-transform: uppercase;
   }
 
@@ -1099,16 +1099,16 @@
   .ai-action-btn {
     min-height: 26px;
     padding: 0 var(--space-2);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 24%, var(--color-border));
+    border: 1px solid color-mix(in srgb, var(--color-ai) 24%, var(--color-border));
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--accent-inspector) 12%, transparent);
+    background: color-mix(in srgb, var(--color-ai) 12%, transparent);
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     font-weight: 700;
   }
 
   .ai-action-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent-inspector) 18%, transparent);
+    background: color-mix(in srgb, var(--color-ai) 18%, transparent);
     color: var(--color-fg-primary);
   }
 
@@ -1155,8 +1155,8 @@
 
   .proposal-row {
     padding: var(--space-2) var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 18%, var(--color-border));
-    border-left: 3px solid var(--accent-inspector);
+    border: 1px solid color-mix(in srgb, var(--color-ai) 22%, var(--color-border));
+    border-left: 3px solid var(--color-ai);
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-shell-main) 40%, transparent);
   }
@@ -1236,7 +1236,7 @@
   .rendered-prompt {
     max-height: 220px;
     padding: var(--space-3);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 16%, var(--color-border));
+    border: 1px solid color-mix(in srgb, var(--color-ai) 18%, var(--color-border));
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--color-shell-main) 82%, black);
   }

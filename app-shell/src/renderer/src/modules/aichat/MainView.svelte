@@ -211,9 +211,9 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--accent-inspector) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 32%, var(--color-border));
-    color: var(--color-fg-primary);
+    background: var(--color-ai-dim);
+    border: 1px solid color-mix(in srgb, var(--color-ai) 34%, var(--color-border));
+    color: var(--color-ai);
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0;
@@ -260,9 +260,9 @@
     height: 26px;
     border-radius: 999px;
     flex-shrink: 0;
-    background: color-mix(in srgb, var(--accent-inspector) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent-inspector) 26%, var(--color-border));
-    color: color-mix(in srgb, var(--accent-inspector) 55%, var(--color-fg-primary));
+    background: var(--color-ai-dim);
+    border: 1px solid color-mix(in srgb, var(--color-ai) 28%, var(--color-border));
+    color: var(--color-ai);
     font-size: 9px;
     font-weight: 800;
     text-align: center;
@@ -277,7 +277,11 @@
     font-size: var(--font-size-sm); line-height: 1.6; white-space: pre-wrap;
   }
   .assistant .msg-content { white-space: normal; }
-  .assistant .msg-content { background: var(--color-bg-overlay); color: var(--color-fg-primary); }
+  .assistant .msg-content {
+    background: var(--color-ai-dim);
+    color: var(--color-fg-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ai) 16%, transparent);
+  }
   .user .msg-content { background: var(--color-accent-dim); color: var(--color-fg-primary); }
   .input-area { display: flex; align-items: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-6); border-top: var(--border-subtle); }
   .input-shell {

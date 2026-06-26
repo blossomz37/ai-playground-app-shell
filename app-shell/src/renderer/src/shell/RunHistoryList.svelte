@@ -302,8 +302,9 @@
     max-height: 220px;
     overflow: auto;
     padding: var(--space-2);
-    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-ai) 22%, var(--color-border));
     border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-ai) 8%, transparent);
     color: var(--color-fg-secondary);
     font-size: var(--font-size-xs);
     line-height: 1.45;
@@ -316,7 +317,7 @@
   .result-label {
     display: block;
     margin-bottom: var(--space-1);
-    color: var(--color-fg-muted);
+    color: color-mix(in srgb, var(--color-ai) 72%, var(--color-fg-muted));
     font-size: var(--font-size-xs);
     font-weight: 800;
     letter-spacing: 0.04em;

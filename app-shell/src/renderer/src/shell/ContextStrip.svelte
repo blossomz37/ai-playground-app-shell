@@ -252,7 +252,7 @@
     height: 15px;
     padding: 0 4px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--accent-status) 72%, var(--color-bg-overlay));
+    background: color-mix(in srgb, var(--color-ai) 72%, var(--color-bg-overlay));
     color: var(--color-bg-base);
     font-size: 10px;
     font-weight: 800;

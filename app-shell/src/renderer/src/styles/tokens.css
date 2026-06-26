@@ -42,7 +42,7 @@
   /* Utility aliases */
   --color-fg-accent: var(--color-accent);
 
-  /* Jewel palette */
+  /* Jewel palette — reserved for party mode and opt-in decorative moments */
   --jewel-ruby:       #9f1239;
   --jewel-amber:      #b45309;
   --jewel-citrine:    #ca8a04;
@@ -51,11 +51,11 @@
   --jewel-amethyst:   #6d28d9;
   --jewel-tourmaline: #be185d;
 
-  /* Zone accents */
-  --accent-nav:       var(--jewel-emerald);
-  --accent-editor:    var(--jewel-sapphire);
-  --accent-inspector: var(--jewel-amethyst);
-  --accent-status:    var(--jewel-citrine);
+  /* Zone accent compatibility aliases: structural chrome uses one brand accent. */
+  --accent-nav:       var(--color-accent);
+  --accent-editor:    var(--color-accent);
+  --accent-inspector: var(--color-accent);
+  --accent-status:    var(--color-accent);
 }
 
 /* ── Dark palette (default) ───────────────────────────────────────────────── */
@@ -69,6 +69,8 @@
   --color-fg-muted:    #9ca4c0;
   --color-accent:      #89b4fa;
   --color-accent-dim:  #1e3a5f;
+  --color-ai:          #c084fc;
+  --color-ai-dim:      #342446;
   --color-border:      #45475a;
   --color-danger:      #f38ba8;
   --color-success:     #a6e3a1;
@@ -106,6 +108,8 @@
   --color-fg-muted:    #9ca4c0;
   --color-accent:      #89b4fa;
   --color-accent-dim:  #1e3a5f;
+  --color-ai:          #c084fc;
+  --color-ai-dim:      #342446;
   --color-border:      #45475a;
   --color-danger:      #f38ba8;
   --color-success:     #a6e3a1;
@@ -143,6 +147,8 @@
   --color-fg-muted:    #55576a;
   --color-accent:      #3b6fd4;
   --color-accent-dim:  #d0dff5;
+  --color-ai:          #8b3fc7;
+  --color-ai-dim:      #f0e4f8;
   --color-border:      #c8c4be;
   --color-danger:      #c53d56;
   --color-success:     #2d8a4e;
@@ -193,6 +199,8 @@
   --color-fg-muted:    var(--gray-11);
   --color-accent:      #2f63bf;
   --color-accent-dim:  #e6eefb;
+  --color-ai:          #7c3aed;
+  --color-ai-dim:      #eee7ff;
   --color-border:      var(--gray-6);
   --color-danger:      #c53d56;
   --color-success:     #2d8a4e;
@@ -215,10 +223,6 @@
   --editor-table-cell-bg:  var(--gray-1);
   --editor-table-selection:#6f88b7;
   --editor-table-resize:   #2f63bf;
-  --accent-nav:            #2f63bf;
-  --accent-editor:         #2f63bf;
-  --accent-inspector:      #2f63bf;
-  --accent-status:         #2f63bf;
   --shadow-panel:          0 16px 38px rgb(32 32 32 / 0.11), 0 0 0 1px rgb(255 255 255 / 0.72);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 24%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
@@ -240,6 +244,8 @@
     --color-fg-muted:    #55576a;
     --color-accent:      #3b6fd4;
     --color-accent-dim:  #d0dff5;
+    --color-ai:          #8b3fc7;
+    --color-ai-dim:      #f0e4f8;
     --color-border:      #c8c4be;
     --color-danger:      #c53d56;
     --color-success:     #2d8a4e;
