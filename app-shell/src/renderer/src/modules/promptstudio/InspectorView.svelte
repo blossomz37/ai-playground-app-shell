@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import AiModelPresetPicker from '../../shell/AiModelPresetPicker.svelte'
   import RunHistoryList from '../../shell/RunHistoryList.svelte'
   import {
     aiContextCandidates,
@@ -32,6 +33,7 @@
 <div class="inspector-view">
   <div class="section">
     <h3>Run Settings</h3>
+    <AiModelPresetPicker fieldId="promptstudio-model-preset" />
     
     <div class="field">
       <label for="provider">Provider</label>

@@ -37,6 +37,20 @@ export const selectedAiModel = writable('gpt-4.1-mini')
 export const selectedAiTemperature = writable(0.7)
 export const aiBusy = writable(false)
 
+export type AiModelPresetId = 'drafting' | 'revision' | 'analysis' | 'summary' | 'custom'
+
+export interface AiModelPreset {
+  id: AiModelPresetId
+  label: string
+  description: string
+  providerId: AiProviderId
+  model: string
+  temperature: number
+}
+
+export const aiModelPresets = writable<AiModelPreset[]>([])
+export const selectedAiPresetId = writable<AiModelPresetId>('custom')
+
 // User-controlled context additions, shared by the AI context picker.
 export const manualContextNote = writable('')
 export const manualContextDocIds = writable<string[]>([])
@@ -51,6 +65,41 @@ interface PersistedContextSelection {
 }
 
 const FALLBACK_OPENAI_MODELS = ['gpt-5.2', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
+const CUSTOM_AI_MODEL_PRESET_KEY = 'ai.modelPreset.custom'
+const DEFAULT_AI_MODEL_PRESETS: AiModelPreset[] = [
+  {
+    id: 'drafting',
+    label: 'Drafting',
+    description: 'Higher temperature for generative scene and prose work.',
+    providerId: 'openai-responses',
+    model: 'gpt-4.1-mini',
+    temperature: 0.8
+  },
+  {
+    id: 'revision',
+    label: 'Revision',
+    description: 'Balanced edits that preserve voice and structure.',
+    providerId: 'openai-responses',
+    model: 'gpt-4.1',
+    temperature: 0.4
+  },
+  {
+    id: 'analysis',
+    label: 'Analysis',
+    description: 'Lower temperature for diagnostics and close reading.',
+    providerId: 'openai-responses',
+    model: 'gpt-4.1',
+    temperature: 0.2
+  },
+  {
+    id: 'summary',
+    label: 'Summary',
+    description: 'Concise synthesis for notes, recaps, and outlines.',
+    providerId: 'openai-responses',
+    model: 'gpt-4.1-mini',
+    temperature: 0.3
+  }
+]
 export const PROMPT_VARIABLE_REFERENCE = [
   { key: 'text', label: 'Custom input' },
   { key: 'selected_documents', label: 'Selected context' },
@@ -62,10 +111,45 @@ export const PROMPT_VARIABLE_REFERENCE = [
 
 let lastContextDocId: string | null = null
 let loadedContextWorkspaceId: string | null = null
+let applyingAiModelPreset = false
 const AI_OUTPUTS_FOLDER_TITLE = 'AI Outputs'
 
 function contextSelectionKey(wsId: string): string {
   return `ai.contextSelection.${wsId}`
+}
+
+function customPresetFromValue(value: unknown): AiModelPreset | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const row = value as Partial<AiModelPreset>
+  if (typeof row.providerId !== 'string' || typeof row.model !== 'string' || typeof row.temperature !== 'number') {
+    return null
+  }
+  return {
+    id: 'custom',
+    label: typeof row.label === 'string' && row.label.trim() ? row.label : 'Custom',
+    description: typeof row.description === 'string' && row.description.trim()
+      ? row.description
+      : 'Your saved provider, model, and temperature.',
+    providerId: row.providerId,
+    model: row.model,
+    temperature: Math.max(0, Math.min(2, row.temperature))
+  }
+}
+
+function currentSettingsPreset(): AiModelPreset {
+  return {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Your saved provider, model, and temperature.',
+    providerId: get(selectedAiProviderId),
+    model: get(selectedAiModel),
+    temperature: get(selectedAiTemperature)
+  }
+}
+
+function markCurrentSettingsAsCustomPreset(): void {
+  selectedAiPresetId.set('custom')
+  aiModelPresets.set([...DEFAULT_AI_MODEL_PRESETS, currentSettingsPreset()])
 }
 
 function stringArray(value: unknown): string[] {
@@ -557,6 +641,40 @@ export async function loadAiProviders(): Promise<void> {
 
   const savedTemperature = await window.shell.settings.get('ai.temperature')
   selectedAiTemperature.set(typeof savedTemperature === 'number' ? savedTemperature : 0.7)
+  await loadAiModelPresets()
+}
+
+export async function loadAiModelPresets(): Promise<void> {
+  const savedCustom = customPresetFromValue(await window.shell.settings.get(CUSTOM_AI_MODEL_PRESET_KEY))
+  aiModelPresets.set([...DEFAULT_AI_MODEL_PRESETS, savedCustom ?? currentSettingsPreset()])
+}
+
+export async function applyAiModelPreset(id: AiModelPresetId): Promise<void> {
+  if (get(aiProviders).length === 0) {
+    await loadAiProviders()
+  }
+  if (get(aiModelPresets).length === 0) {
+    await loadAiModelPresets()
+  }
+  const preset = get(aiModelPresets).find(item => item.id === id)
+  if (!preset) return
+
+  applyingAiModelPreset = true
+  try {
+    await selectAiProvider(preset.providerId)
+    await selectAiModel(preset.model)
+    await selectAiTemperature(preset.temperature)
+    selectedAiPresetId.set(id)
+  } finally {
+    applyingAiModelPreset = false
+  }
+}
+
+export async function saveCurrentAiSettingsAsCustomPreset(): Promise<void> {
+  const preset = currentSettingsPreset()
+  await window.shell.settings.set(CUSTOM_AI_MODEL_PRESET_KEY, preset)
+  aiModelPresets.set([...DEFAULT_AI_MODEL_PRESETS, preset])
+  selectedAiPresetId.set('custom')
 }
 
 export function modelOptionsForProvider(provider: AiProvider | undefined): string[] {
@@ -581,6 +699,7 @@ export async function selectAiProvider(providerId: AiProviderId): Promise<void> 
   selectedAiModel.set(provider.defaultModel)
   await window.shell.settings.set('ai.providerId', provider.providerId)
   await window.shell.settings.set(`ai.model.${provider.providerId}`, provider.defaultModel)
+  if (!applyingAiModelPreset) markCurrentSettingsAsCustomPreset()
 }
 
 export async function selectAiModel(model: string): Promise<void> {
@@ -588,12 +707,14 @@ export async function selectAiModel(model: string): Promise<void> {
   if (!value) return
   selectedAiModel.set(value)
   await window.shell.settings.set(`ai.model.${get(selectedAiProviderId)}`, value)
+  if (!applyingAiModelPreset) markCurrentSettingsAsCustomPreset()
 }
 
 export async function selectAiTemperature(temperature: number): Promise<void> {
   const value = Math.max(0, Math.min(2, temperature))
   selectedAiTemperature.set(value)
   await window.shell.settings.set('ai.temperature', value)
+  if (!applyingAiModelPreset) markCurrentSettingsAsCustomPreset()
 }
 
 interface AiRequestParams {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AiProviderId } from '@shared/ai'
+  import AiModelPresetPicker from './AiModelPresetPicker.svelte'
   import {
     aiProviders,
     aiSecretNames,
@@ -85,6 +86,8 @@
       {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : aiProviderReady ? 'Live ready' : `Missing ${activeAiProvider?.secretName ?? 'secret'}`}
     </span>
   </div>
+
+  <AiModelPresetPicker fieldId="settings-ai-model-preset" />
 
   <div class="openai-key-box">
     <div class="provider-status compact">
