@@ -63,7 +63,7 @@
 
   onMount(() => {
     void refreshWorkspaceLists()
-    const createListener = () => startProjectCreate()
+    const createListener = () => createProject()
     const importListener = () => void importFolder()
     window.addEventListener('projects:create', createListener)
     window.addEventListener('projects:import', importListener)
@@ -191,6 +191,11 @@
     window.dispatchEvent(new Event('shell:open-inspector'))
   }
 
+  function createProject(): void {
+    requestInspector()
+    startProjectCreate()
+  }
+
   function formatDate(value: string | null | undefined): string {
     if (!value) return 'Never'
     const date = new Date(value)
@@ -220,7 +225,7 @@
         <FolderOpenIcon size={16} weight="bold" aria-hidden="true" />
         Import Folder
       </button>
-      <button class="primary" type="button" onclick={startProjectCreate}>
+      <button class="primary" type="button" onclick={createProject}>
         <PlusIcon size={16} weight="bold" aria-hidden="true" />
         New Project
       </button>

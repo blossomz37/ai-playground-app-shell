@@ -8,12 +8,17 @@
     projectsTypeFilter,
     startProjectCreate
   } from './state'
+
+  function createProject(): void {
+    window.dispatchEvent(new Event('shell:open-inspector'))
+    startProjectCreate()
+  }
 </script>
 
 <section class="projects-nav" aria-label="Project filters">
   <header>
     <h2>Projects</h2>
-    <button type="button" title="New project" aria-label="New project" onclick={startProjectCreate}>
+    <button type="button" title="New project" aria-label="New project" onclick={createProject}>
       <PlusIcon size={15} weight="bold" aria-hidden="true" />
     </button>
   </header>
