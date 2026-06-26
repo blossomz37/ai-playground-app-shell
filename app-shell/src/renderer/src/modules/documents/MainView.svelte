@@ -9,11 +9,11 @@
   import TableRow from '@tiptap/extension-table-row'
   import { Markdown } from 'tiptap-markdown'
   import {
-    activeDoc, activeDocId, annotations, closeDoc, createAnnotation, documents, editorContent, refreshAnnotations,
+    activeDoc, activeDocId, annotations, closeDoc, createAnnotation, createDoc, documents, editorContent, refreshAnnotations,
     saveDoc, selectDoc, setEditorContent, editorSettings, scheduleAutoSave, cancelAutoSave, isDirty, workspaceId,
     lockDocumentSelection, unlockDocumentSelection, activeWorkspace, documentKindOptions
   } from '../../store'
-  import { registerCommand } from '../../store/commands'
+  import { paletteOpen, registerCommand } from '../../store/commands'
   import { addToast } from '../../store/toasts'
   import {
     acceptAiProposal,
@@ -161,6 +161,16 @@
     return doc.nodeType === 'folder'
       ? 'Folder'
       : labelForDocumentKind(doc.kind, get(documentKindOptions))
+  }
+
+  async function createStarterChapter(): Promise<void> {
+    await createDoc({
+      workspaceId: get(workspaceId),
+      nodeType: 'document',
+      kind: 'chapter',
+      targetId: null
+    })
+    addToast('info', 'New chapter created.')
   }
 
   function refreshWritingContext(): void {
@@ -1263,8 +1273,18 @@
   {#if !$activeDoc}
     <div class="empty">
       <div class="empty-copy">
-        <h2>No document open.</h2>
-        <p>Select a document in the manuscript tree to open it.</p>
+        <p class="empty-kicker">Manuscript</p>
+        <h2>Choose what to write next.</h2>
+        <p class="wide-guidance">Select a chapter or scene from the document list, or start a new chapter.</p>
+        <p class="narrow-guidance">Use the command palette to open a document, or start a new chapter here.</p>
+        <div class="empty-actions">
+          <button type="button" class="empty-action primary" onclick={() => void createStarterChapter()}>
+            New Chapter
+          </button>
+          <button type="button" class="empty-action" onclick={() => paletteOpen.set(true)}>
+            Command Palette
+          </button>
+        </div>
       </div>
     </div>
   {/if}
@@ -1659,12 +1679,14 @@
   }
 
   .empty {
-    flex: 1;
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: var(--space-6);
     color: var(--color-fg-muted);
+    pointer-events: none;
   }
 
   .empty-copy {
@@ -1672,6 +1694,16 @@
     gap: var(--space-2);
     max-width: 420px;
     text-align: center;
+    pointer-events: auto;
+  }
+
+  .empty-kicker {
+    margin: 0;
+    color: color-mix(in srgb, var(--accent-editor) 78%, var(--color-fg-muted));
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .empty-copy h2 {
@@ -1685,5 +1717,50 @@
     margin: 0;
     font-size: var(--font-size-sm);
     line-height: 1.6;
+  }
+
+  .narrow-guidance {
+    display: none;
+  }
+
+  .empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .empty-action {
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-surface);
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .empty-action:hover {
+    border-color: color-mix(in srgb, var(--accent-editor) 52%, var(--color-border));
+    color: var(--color-fg-primary);
+  }
+
+  .empty-action.primary {
+    border-color: color-mix(in srgb, var(--accent-editor) 72%, var(--color-border));
+    background: color-mix(in srgb, var(--accent-editor) 18%, var(--color-bg-surface));
+    color: var(--color-fg-primary);
+  }
+
+  @media (max-width: 900px) {
+    .wide-guidance {
+      display: none;
+    }
+
+    .narrow-guidance {
+      display: block;
+    }
   }
 </style>

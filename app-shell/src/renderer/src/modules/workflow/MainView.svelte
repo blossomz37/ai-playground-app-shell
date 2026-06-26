@@ -5,11 +5,26 @@
   import { addToast } from '../../store/toasts'
   import { refreshAiContext, includedAiContextCandidates } from '../../store/ai'
   import { submitJob } from '../../store/jobs'
-  import { renameWorkflowProfile, selectedWorkflowProfile } from './state'
+  import {
+    renameWorkflowProfile,
+    selectedWorkflowProfile,
+    workflowCreateProposal,
+    workflowIncludeActiveDocument,
+    workflowIncludeDescendants
+  } from './state'
 
   let running = $state(false)
   let log = $state<string[]>([])
   let renamingProfile = $state(false)
+  let promptSummary = $derived($selectedWorkflowProfile.prompt.length > 170
+    ? `${$selectedWorkflowProfile.prompt.slice(0, 170).trim()}...`
+    : $selectedWorkflowProfile.prompt
+  )
+  let contextSummary = $derived([
+    $workflowIncludeActiveDocument ? 'active document' : null,
+    $workflowIncludeDescendants ? 'descendants' : null,
+    $workflowCreateProposal ? 'proposal output' : null
+  ].filter(Boolean).join(', ') || 'manual context')
 
   async function runWorkflow() {
     running = true
@@ -65,7 +80,26 @@
   </header>
   <div class="log-area">
     {#if log.length === 0}
-      <p class="log-empty">No recent runs.</p>
+      <section class="workflow-empty" aria-label="Selected chain summary">
+        <div class="workflow-status-row">
+          <span class="format-pill">{$selectedWorkflowProfile.format}</span>
+          <span class="status-pill" class:draft={$selectedWorkflowProfile.status === 'draft'}>
+            {$selectedWorkflowProfile.status}
+          </span>
+        </div>
+        <h2>{$selectedWorkflowProfile.name}</h2>
+        <p>{promptSummary}</p>
+        <dl class="workflow-meta">
+          <div>
+            <dt>Context</dt>
+            <dd>{contextSummary}</dd>
+          </div>
+          <div>
+            <dt>Next step</dt>
+            <dd>Run this chain to queue the first job.</dd>
+          </div>
+        </dl>
+      </section>
     {:else}
       {#each log as line, index (`${index}-${line.slice(0, 24)}`)}
         <div class="log-line">
@@ -88,6 +122,66 @@
   .run-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .run-btn.running { background: var(--color-warn); }
   .log-area { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-6); font-size: var(--font-size-sm); }
-  .log-empty { color: var(--color-fg-muted); }
   .log-line { color: var(--color-fg-secondary); padding: 2px 0; line-height: 1.6; }
+  .workflow-empty {
+    max-width: 620px;
+    display: grid;
+    gap: var(--space-3);
+    padding-top: clamp(var(--space-4), 8vh, 72px);
+    color: var(--color-fg-secondary);
+  }
+  .workflow-status-row { display: flex; align-items: center; gap: var(--space-2); }
+  .format-pill,
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 750;
+  }
+  .format-pill {
+    background: var(--color-bg-overlay);
+    color: var(--color-fg-muted);
+    font-family: var(--font-mono);
+  }
+  .status-pill {
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+    color: var(--color-success);
+    text-transform: uppercase;
+  }
+  .status-pill.draft {
+    background: color-mix(in srgb, var(--color-warn) 18%, transparent);
+    color: var(--color-warn);
+  }
+  .workflow-empty h2 {
+    margin: 0;
+    color: var(--color-fg-primary);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+  }
+  .workflow-empty p {
+    max-width: 58ch;
+    margin: 0;
+    color: var(--color-fg-secondary);
+    line-height: 1.6;
+  }
+  .workflow-meta {
+    display: grid;
+    gap: var(--space-2);
+    margin: var(--space-2) 0 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-bg-surface) 72%, transparent);
+  }
+  .workflow-meta div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--space-3); }
+  .workflow-meta dt {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 750;
+    text-transform: uppercase;
+  }
+  .workflow-meta dd { margin: 0; color: var(--color-fg-secondary); }
 </style>

@@ -302,4 +302,37 @@ At final closeout:
 
 ## Outcome Log
 
-Pending implementation.
+### 2026-06-26 - Slice 1 Empty States And Narrow-State Guidance
+
+Status: implemented, pending commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/modules/documents/MainView.svelte`
+- `app-shell/src/renderer/src/modules/workflow/MainView.svelte`
+
+Outcome:
+
+- Documents empty state now presents a Manuscript-focused prompt, a primary New Chapter action, and a Command Palette recovery action.
+- Documents narrow state uses separate responsive copy and no longer points to the hidden manuscript tree.
+- Workflow Runner no longer opens to only "No recent runs"; it shows selected chain format/status, prompt summary, included context scope, and next step.
+- Workflow step visualization and persisted last output remain deferred because the current workflow profile state only exposes `name`, `format`, `status`, and `prompt`.
+
+Validation:
+
+- `svelte_autofixer` clean on `documents/MainView.svelte`.
+- `svelte_autofixer` clean on `workflow/MainView.svelte`.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-empty-states-documents-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-empty-states-documents-narrow-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-empty-states-workflow-after-2026-06-26.png`
+
+Notes:
+
+- The persistent failed Jobs toast remains visible in screenshots. This is part of the audit's shell chrome/job-state concern and is deferred outside Slice 1.
+- QA subagent accepted the screenshots for the Slice 1 goal. Follow-ups deferred: richer Documents inspector empty-state copy and clearer Workflow missing-active-context messaging.
