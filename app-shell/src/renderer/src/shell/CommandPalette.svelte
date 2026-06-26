@@ -9,9 +9,18 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { commandCatalog, paletteOpen, executeCommand, setSearchOpener } from '../store/commands'
-  import { selectDoc } from '../store'
   import { moduleList } from '../store/modules'
-  import type { CommandCatalogEntry, SearchResult } from '@shared/module-contract'
+  import { navigateToSearchResult } from '../store/navigate'
+  import type { CommandCatalogEntry, SearchEntityType, SearchResult } from '@shared/module-contract'
+
+  const SEARCH_LIMIT = 50
+
+  const ENTITY_LABELS: Record<SearchEntityType, string> = {
+    document: 'Document',
+    conversation: 'Chat',
+    template: 'Prompt',
+    asset: 'Asset'
+  }
 
   let query = $state('')
   let selected = $state(0)
@@ -20,9 +29,15 @@
   // Mode: 'commands' (default, query starts with >) or 'search' (free text)
   let mode = $state<'commands' | 'search'>('commands')
   let searchResults = $state<SearchResult[]>([])
+  let recentResults = $state<SearchResult[]>([])
   let searchPending = $state(false)
   let searchTimer: ReturnType<typeof setTimeout> | null = null
   let capturePaletteListener: ((event: Event) => void) | null = null
+
+  // The active result set in search mode: recents when the query is empty.
+  const activeSearchResults = $derived(
+    mode === 'search' && query.trim().length === 0 ? recentResults : searchResults
+  )
 
   // Derived: strip the `>` prefix for command mode
   const commandQuery = $derived(
@@ -38,7 +53,7 @@
 
   // Unified result count for navigation
   const resultCount = $derived(
-    mode === 'commands' ? commandResults.length : searchResults.length
+    mode === 'commands' ? commandResults.length : activeSearchResults.length
   )
 
   // React to query changes — route to search when no `>` prefix
@@ -58,7 +73,7 @@
         searchPending = true
         searchTimer = setTimeout(async () => {
           try {
-            searchResults = await window.shell.search.query(q.trim(), 20)
+            searchResults = await window.shell.search.query(q.trim(), SEARCH_LIMIT)
           } catch {
             searchResults = []
           }
@@ -67,9 +82,18 @@
       } else {
         searchResults = []
         searchPending = false
+        void loadRecents()
       }
     }
   })
+
+  async function loadRecents() {
+    try {
+      recentResults = await window.shell.search.recents(SEARCH_LIMIT)
+    } catch {
+      recentResults = []
+    }
+  }
 
   // Reset state + focus the input whenever the palette opens.
   $effect(() => {
@@ -96,6 +120,7 @@
       query = ''
       mode = 'search'
       selected = 0
+      void loadRecents()
       inputEl?.focus()
     })
   }
@@ -135,7 +160,7 @@
   async function openSearchResult(result: SearchResult | undefined) {
     if (!result) return
     close()
-    await selectDoc(result.documentId)
+    await navigateToSearchResult(result)
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -155,7 +180,7 @@
       if (mode === 'commands') {
         runCommand(commandResults[selected])
       } else {
-        openSearchResult(searchResults[selected])
+        openSearchResult(activeSearchResults[selected])
       }
     }
   }
@@ -181,6 +206,19 @@
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase())
   }
+
+  // The search service marks matches with STX/ETX sentinels rather than literal
+  // tags (see search.ts). Escape the raw fragment so document/asset content can't
+  // inject markup or break the palette layout, then swap the sentinels for <mark>.
+  function renderSnippet(snippet: string): string {
+    const escaped = snippet
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    return escaped
+      .replaceAll(String.fromCharCode(2), '<mark>')
+      .replaceAll(String.fromCharCode(3), '</mark>')
+  }
 </script>
 
 {#if $paletteOpen}
@@ -190,7 +228,7 @@
     <div
       class="palette"
       role="dialog"
-      aria-label={mode === 'commands' ? 'Command palette' : 'Search documents'}
+      aria-label={mode === 'commands' ? 'Command palette' : 'Go to anything'}
       tabindex="-1"
       onclick={(e) => e.stopPropagation()}
       onkeydown={onKeydown}
@@ -200,7 +238,7 @@
         bind:value={query}
         class="palette-input"
         type="text"
-        placeholder={mode === 'commands' ? '> Type a command…' : 'Search documents…'}
+        placeholder={mode === 'commands' ? '> Type a command…' : 'Go to anything — documents, chats, prompts, assets…'}
         spellcheck="false"
         autocomplete="off"
       />
@@ -208,8 +246,18 @@
       <div class="mode-hint">
         {#if mode === 'commands'}
           <span class="hint-text">Commands</span>
+        {:else if query.trim().length === 0}
+          <span class="hint-text">Recents</span>
+          <span class="hint-tip">Type <kbd>></kbd> for commands</span>
+        {:else if searchPending}
+          <span class="hint-text">Searching…</span>
+          <span class="hint-tip">Type <kbd>></kbd> for commands</span>
         {:else}
-          <span class="hint-text">Search</span>
+          <span class="hint-text">
+            {activeSearchResults.length === SEARCH_LIMIT
+              ? `Showing first ${SEARCH_LIMIT}`
+              : `${activeSearchResults.length} result${activeSearchResults.length === 1 ? '' : 's'}`}
+          </span>
           <span class="hint-tip">Type <kbd>></kbd> for commands</span>
         {/if}
       </div>
@@ -238,10 +286,8 @@
           {/each}
         {:else if searchPending}
           <li class="palette-empty">Searching…</li>
-        {:else if query.trim().length === 0}
-          <li class="palette-empty">Type to search documents</li>
         {:else}
-          {#each searchResults as result, i (result.documentId)}
+          {#each activeSearchResults as result, i (`${result.entityType}:${result.entityId}`)}
             <li>
               <button
                 class="palette-item search-item"
@@ -250,13 +296,22 @@
                 onclick={() => openSearchResult(result)}
               >
                 <div class="search-info">
-                  <span class="title">{result.title}</span>
-                  <span class="snippet">{result.snippet}</span>
+                  <span class="search-title-row">
+                    <span class="entity-badge" data-entity={result.entityType}>
+                      {ENTITY_LABELS[result.entityType]}
+                    </span>
+                    <span class="title">{result.title}</span>
+                  </span>
+                  {#if result.snippet}
+                    <span class="snippet">{@html renderSnippet(result.snippet)}</span>
+                  {/if}
                 </div>
               </button>
             </li>
           {:else}
-            <li class="palette-empty">No documents found</li>
+            <li class="palette-empty">
+              {query.trim().length === 0 ? 'No recent items yet' : 'No matches found'}
+            </li>
           {/each}
         {/if}
       </ul>
@@ -404,9 +459,34 @@
     width: 100%;
   }
 
+  .search-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
   .search-info .title {
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+
+  .entity-badge {
+    flex-shrink: 0;
+    padding: 0 6px;
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-muted);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.5;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .entity-badge[data-entity='document'] { color: var(--color-accent); }
 
   .snippet {
     font-size: var(--font-size-xs);

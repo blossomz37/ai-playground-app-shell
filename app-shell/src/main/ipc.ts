@@ -296,6 +296,10 @@ export function registerIpcHandlers(): void {
     searchService.search(query, workspaceService.getActive().id, limit)
   )
 
+  ipcMain.handle('search:recents', (_e, { limit }: { limit?: number }) =>
+    searchService.recents(workspaceService.getActive().id, limit)
+  )
+
   // ── AI orchestration ─────────────────────────────────────────────────────
   ipcMain.handle('ai:context:collect', (_e, params: CollectAiContextParams) =>
     aiOrchestrator.collectContext(params)

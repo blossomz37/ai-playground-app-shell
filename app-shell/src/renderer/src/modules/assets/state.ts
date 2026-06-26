@@ -43,6 +43,13 @@ export function selectAsset(id: string): void {
   assetsState.selectAsset(id)
 }
 
+/** Ensure the current workspace's assets are loaded (e.g. before navigating to one). */
+export async function loadAssetsWorkspace(): Promise<void> {
+  const id = get(workspaceId)
+  if (!id || id === 'ws-default') return
+  await assetsState.loadWorkspace(id)
+}
+
 export async function renameAsset(id: string, name: string): Promise<void> {
   await assetsState.renameAsset(id, name)
 }

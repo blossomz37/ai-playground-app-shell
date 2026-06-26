@@ -61,7 +61,8 @@ const api: ShellApi = {
   },
 
   search: {
-    query: (text, limit) => ipcRenderer.invoke('search:query', { query: text, limit })
+    query: (text, limit) => ipcRenderer.invoke('search:query', { query: text, limit }),
+    recents: (limit) => ipcRenderer.invoke('search:recents', { limit })
   },
 
   ai: {

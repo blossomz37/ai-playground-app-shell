@@ -657,7 +657,8 @@ function createBrowserShell(): ShellApi {
       execute: async () => {}
     },
     search: {
-      query: async () => []
+      query: async () => [],
+      recents: async () => []
     },
     ai: {
       collectContext: async (params) => collectContext(params.activeDocumentId),
