@@ -76,6 +76,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const openPdfReader = process.env['SHELL_CAPTURE_OPEN_PDF_READER'] === '1'
   const pdfReaderPage = Number(process.env['SHELL_CAPTURE_PDF_READER_PAGE'] ?? 1)
   const openAiContext = process.env['SHELL_CAPTURE_OPEN_AI_CONTEXT'] === '1'
+  const openDocumentAnnotations = process.env['SHELL_CAPTURE_OPEN_DOCUMENT_ANNOTATIONS'] === '1'
   const newAiConversation = process.env['SHELL_CAPTURE_NEW_AI_CONVERSATION'] === '1'
   const showSidebar = process.env['SHELL_CAPTURE_SHOW_SIDEBAR'] === '1'
   const showInspector = process.env['SHELL_CAPTURE_SHOW_INSPECTOR'] === '1'
@@ -107,6 +108,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const workspaceImportRoot = process.env['SHELL_CAPTURE_WORKSPACE_IMPORT_ROOT']
   const documentLifecycleSmoke = process.env['SHELL_CAPTURE_DOCUMENT_LIFECYCLE_SMOKE'] === '1'
   const documentPlan47State = process.env['SHELL_CAPTURE_DOCUMENT_PLAN47_STATE']
+  const annotationAiContextSmoke = process.env['SHELL_CAPTURE_ANNOTATION_AI_CONTEXT_SMOKE'] === '1'
   const documentExportDir = process.env['SHELL_CAPTURE_DOCUMENT_EXPORT_DIR']
     ?? join(app.getPath('temp'), `app-shell-document-export-${Date.now()}`)
   const journalLifecycleSmoke = process.env['SHELL_CAPTURE_JOURNAL_LIFECYCLE_SMOKE'] === '1'
@@ -859,6 +861,56 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           ? result.generatedDocumentIds.map(String)
           : []
         console.log('[SHELL_CAPTURE_DOCUMENT_PLAN47]', JSON.stringify(result))
+        if (annotationAiContextSmoke && result.mainDocumentId) {
+          const smoke = await win.webContents.executeJavaScript(`
+            (async () => {
+              const workspace = await window.shell.workspace.get()
+              const documentId = ${JSON.stringify(result.mainDocumentId)}
+              const annotations = await window.shell.documents.listAnnotations(documentId)
+              const annotation = annotations[0]
+              const contextCandidates = await window.shell.ai.collectContext({
+                workspaceId: workspace.id,
+                activeDocumentId: documentId,
+                includeDescendants: false
+              })
+              const preview = await window.shell.ai.preview({
+                workspaceId: workspace.id,
+                moduleId: 'shell.documents',
+                originType: 'template',
+                originId: 'capture-annotation-ai-context',
+                prompt: '{{selected_documents}}',
+                contextCandidates
+              })
+              let excludedPromptHasAnnotation = false
+              if (annotation) {
+                await window.shell.documents.updateAnnotation(annotation.id, { includeInAi: false })
+                const excludedContextCandidates = await window.shell.ai.collectContext({
+                  workspaceId: workspace.id,
+                  activeDocumentId: documentId,
+                  includeDescendants: false
+                })
+                const excludedPreview = await window.shell.ai.preview({
+                  workspaceId: workspace.id,
+                  moduleId: 'shell.documents',
+                  originType: 'template',
+                  originId: 'capture-annotation-ai-context-excluded',
+                  prompt: '{{selected_documents}}',
+                  contextCandidates: excludedContextCandidates
+                })
+                excludedPromptHasAnnotation = excludedPreview.renderedPrompt.includes('Sidecar note attached to selectable highlighted text.')
+                await window.shell.documents.updateAnnotation(annotation.id, { includeInAi: true })
+              }
+              return {
+                annotationCount: annotations.length,
+                includeInAiDefault: annotation?.includeInAi ?? null,
+                includedPromptHasAnnotation: preview.renderedPrompt.includes('Document annotations included for AI:')
+                  && preview.renderedPrompt.includes('Sidecar note attached to selectable highlighted text.'),
+                excludedPromptHasAnnotation
+              }
+            })()
+          `)
+          console.log('[SHELL_CAPTURE_ANNOTATION_AI_CONTEXT_SMOKE]', JSON.stringify(smoke))
+        }
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (documentVersionDiffCapture) {
@@ -1701,6 +1753,15 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
       if (openAiContext) {
         await win.webContents.executeJavaScript(`
           document.querySelector('button[aria-haspopup="dialog"]')?.click()
+        `)
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (openDocumentAnnotations) {
+        await win.webContents.executeJavaScript(`
+          (() => {
+            const button = document.querySelector('button[aria-controls="documents-inspector-annotations"]')
+            if (button && button.getAttribute('aria-expanded') !== 'true') button.click()
+          })()
         `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }

@@ -189,6 +189,7 @@ export interface DocumentAnnotation {
   note: string
   color: string
   status: DocumentAnnotationStatus
+  includeInAi: boolean
   targetJson: string
   createdAt: string
   updatedAt: string
@@ -216,6 +217,7 @@ export interface DocumentAnnotationPatch {
   note?: string
   color?: string
   status?: DocumentAnnotationStatus
+  includeInAi?: boolean
   target?: DocumentAnnotationTarget
 }
 

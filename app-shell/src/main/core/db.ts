@@ -77,6 +77,7 @@ function migrate(db: Database.Database): void {
       note        TEXT NOT NULL,
       color       TEXT NOT NULL DEFAULT 'yellow',
       status      TEXT NOT NULL DEFAULT 'active',
+      includeInAi INTEGER NOT NULL DEFAULT 1,
       targetJson  TEXT NOT NULL,
       createdAt   TEXT NOT NULL,
       updatedAt   TEXT NOT NULL,
@@ -297,6 +298,7 @@ function migrate(db: Database.Database): void {
   migrateDocumentsNodeType(db)
   ensureColumn(db, 'documents', 'icon', 'TEXT')
   ensureColumn(db, 'documents', 'metadataJson', 'TEXT')
+  ensureColumn(db, 'document_annotations', 'includeInAi', 'INTEGER NOT NULL DEFAULT 1')
   ensureColumn(db, 'ai_conversations', 'archivedAt', 'TEXT')
   ensureColumn(db, 'ai_prompt_templates', 'isProtected', 'INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'ai_prompt_templates', 'archivedAt', 'TEXT')

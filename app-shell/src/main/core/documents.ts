@@ -100,10 +100,28 @@ function normalizeAnnotationStatus(status: unknown): DocumentAnnotationStatus {
   return status === 'resolved' || status === 'orphaned' ? status : 'active'
 }
 
+function annotationFromRow(row: Record<string, unknown>): DocumentAnnotation {
+  return {
+    id: String(row.id),
+    sessionId: String(row.sessionId),
+    workspaceId: String(row.workspaceId),
+    documentId: String(row.documentId),
+    note: String(row.note),
+    color: String(row.color ?? 'yellow'),
+    status: normalizeAnnotationStatus(row.status),
+    includeInAi: Number(row.includeInAi ?? 1) === 1,
+    targetJson: String(row.targetJson),
+    createdAt: String(row.createdAt),
+    updatedAt: String(row.updatedAt),
+    resolvedAt: row.resolvedAt == null ? null : String(row.resolvedAt),
+    deletedAt: row.deletedAt == null ? null : String(row.deletedAt)
+  }
+}
+
 function annotationById(db: ReturnType<typeof getDb>, id: string): DocumentAnnotation {
-  const row = db.prepare('SELECT * FROM document_annotations WHERE id = ?').get(id) as DocumentAnnotation | undefined
+  const row = db.prepare('SELECT * FROM document_annotations WHERE id = ?').get(id) as Record<string, unknown> | undefined
   if (!row) throw new Error(`Annotation not found: ${id}`)
-  return row
+  return annotationFromRow(row)
 }
 
 export const documents = {
@@ -644,7 +662,8 @@ export const documents = {
         WHERE ${clauses.join(' AND ')}
         ORDER BY createdAt DESC
       `)
-      .all(...args) as DocumentAnnotation[]
+      .all(...args)
+      .map(row => annotationFromRow(row as Record<string, unknown>))
   },
 
   createAnnotation(params: CreateDocumentAnnotationParams): DocumentAnnotation {
@@ -683,6 +702,7 @@ export const documents = {
     const note = Object.prototype.hasOwnProperty.call(patch, 'note') ? patch.note?.trim() ?? current.note : current.note
     const color = Object.prototype.hasOwnProperty.call(patch, 'color') ? patch.color?.trim() || current.color : current.color
     const status = Object.prototype.hasOwnProperty.call(patch, 'status') ? normalizeAnnotationStatus(patch.status) : current.status
+    const includeInAi = Object.prototype.hasOwnProperty.call(patch, 'includeInAi') ? patch.includeInAi !== false : current.includeInAi
     const targetJson = patch.target ? JSON.stringify(patch.target) : current.targetJson
     const resolvedAt = status === 'resolved'
       ? (current.resolvedAt ?? now)
@@ -690,9 +710,9 @@ export const documents = {
 
     db.prepare(`
       UPDATE document_annotations
-      SET note = ?, color = ?, status = ?, targetJson = ?, updatedAt = ?, resolvedAt = ?
+      SET note = ?, color = ?, status = ?, includeInAi = ?, targetJson = ?, updatedAt = ?, resolvedAt = ?
       WHERE id = ?
-    `).run(note, color, status, targetJson, now, resolvedAt, id)
+    `).run(note, color, status, includeInAi ? 1 : 0, targetJson, now, resolvedAt, id)
 
     return annotationById(db, id)
   },

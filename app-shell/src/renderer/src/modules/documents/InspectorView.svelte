@@ -299,6 +299,11 @@
     await reopenAnnotation(annotation.id)
   }
 
+  async function toggleAnnotationAiInclusion(annotation: DocumentAnnotation): Promise<void> {
+    await updateAnnotation(annotation.id, { includeInAi: !annotation.includeInAi })
+    addToast('info', annotation.includeInAi ? 'Comment excluded from AI context.' : 'Comment included in AI context.')
+  }
+
   async function onDeleteAnnotation(annotation: DocumentAnnotation): Promise<void> {
     if (!window.confirm('Delete this annotation?')) return
     await deleteAnnotation(annotation.id)
@@ -613,6 +618,16 @@
                         <button type="button" class="mini-btn" onclick={cancelEditAnnotation}>Cancel</button>
                       {:else}
                         <button type="button" class="mini-btn" onclick={() => startEditAnnotation(annotation)}>Edit</button>
+                        <button
+                          type="button"
+                          class="mini-btn"
+                          class:active={annotation.includeInAi}
+                          aria-pressed={annotation.includeInAi}
+                          title={annotation.includeInAi ? 'Included in AI context' : 'Excluded from AI context'}
+                          onclick={() => void toggleAnnotationAiInclusion(annotation)}
+                        >
+                          {annotation.includeInAi ? 'Include' : 'Exclude'}
+                        </button>
                         {#if annotation.status === 'resolved'}
                           <button type="button" class="mini-btn" onclick={() => void onReopenAnnotation(annotation)}>Reopen</button>
                         {:else}

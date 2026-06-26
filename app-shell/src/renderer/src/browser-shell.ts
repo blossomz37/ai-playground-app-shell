@@ -494,6 +494,7 @@ function createBrowserShell(): ShellApi {
           note: params.note,
           color: params.color ?? 'yellow',
           status: 'active',
+          includeInAi: true,
           targetJson: JSON.stringify(params.target),
           createdAt,
           updatedAt: createdAt,
@@ -512,6 +513,7 @@ function createBrowserShell(): ShellApi {
           note: patch.note ?? annotation.note,
           color: patch.color ?? annotation.color,
           status,
+          includeInAi: patch.includeInAi ?? annotation.includeInAi,
           targetJson: patch.target ? JSON.stringify(patch.target) : annotation.targetJson,
           updatedAt: new Date().toISOString(),
           resolvedAt: status === 'resolved' ? annotation.resolvedAt ?? new Date().toISOString() : null

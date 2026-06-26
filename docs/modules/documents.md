@@ -162,7 +162,7 @@ The `documents` + `document_versions` tables are **shell-owned** (the `ctx.docum
 Plan 47 adds shell-owned annotation sidecars:
 
 - `document_annotation_sessions` ties a commenting pass to a `documentId` and optionally a `documentVersionId`.
-- `document_annotations` stores note text, color, status (`active|resolved|orphaned`), soft-delete state, and a JSON text target (`exact`, `prefix`, `suffix`, `from`, `to`).
+- `document_annotations` stores note text, color, status (`active|resolved|orphaned`), AI inclusion state, soft-delete state, and a JSON text target (`exact`, `prefix`, `suffix`, `from`, `to`).
 - Annotation records are independent from document versions. Restoring a document version does not restore or delete annotations; annotations may become orphaned if their target text no longer maps.
 - Version history supports read-only snapshot-vs-current diff. Version restore supports `Restore as Copy` and `Replace Current`; replace-current creates a safety snapshot first.
 

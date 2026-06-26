@@ -22,6 +22,7 @@ import type {
   RenameAiPromptTemplateParams,
   ResolveAiProposalParams
 } from '@shared/ai'
+import type { Doc, DocumentAnnotation, DocumentAnnotationTarget } from '@shared/module-contract'
 import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
 import { documents } from '../core/documents'
 import { events } from '../core/events'
@@ -56,6 +57,48 @@ function excerpt(text: string): string {
   const cleaned = text.replace(/\s+/g, ' ').trim()
   if (!cleaned) return 'No text content.'
   return cleaned.length > 220 ? `${cleaned.slice(0, 217)}...` : cleaned
+}
+
+function annotationTarget(annotation: DocumentAnnotation): DocumentAnnotationTarget | null {
+  try {
+    const target = JSON.parse(annotation.targetJson) as Partial<DocumentAnnotationTarget>
+    if (
+      typeof target.exact === 'string' &&
+      typeof target.prefix === 'string' &&
+      typeof target.suffix === 'string' &&
+      typeof target.from === 'number' &&
+      typeof target.to === 'number'
+    ) {
+      return target as DocumentAnnotationTarget
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function documentContentWithAnnotations(doc: Doc): string {
+  const includedAnnotations = documents.listAnnotations(doc.id)
+    .filter(annotation => annotation.includeInAi)
+  if (includedAnnotations.length === 0) return doc.content
+
+  const annotationText = includedAnnotations
+    .map(annotation => {
+      const target = annotationTarget(annotation)
+      const targetText = target?.exact ? `On text: "${excerpt(target.exact)}"` : 'On text: Original text unavailable'
+      return [
+        `- Status: ${annotation.status}`,
+        `  ${targetText}`,
+        `  Note: ${annotation.note.trim() || '[No note.]'}`
+      ].join('\n')
+    })
+    .join('\n')
+
+  return [
+    doc.content.trim(),
+    'Document annotations included for AI:',
+    annotationText
+  ].filter(Boolean).join('\n\n')
 }
 
 function renderContext(candidates: AiContextCandidate[]): string {
@@ -134,7 +177,7 @@ export const aiOrchestrator = {
         sourceType,
         title: doc.title,
         kind: doc.nodeType === 'folder' ? STRUCTURAL_FOLDER_KIND_LABEL : doc.kind ?? UNCATEGORIZED_KIND_LABEL,
-        content: doc.content,
+        content: documentContentWithAnnotations(doc),
         priority,
         reason
       }))
