@@ -18,6 +18,7 @@
   import {
     acceptAiProposal,
     aiProposals,
+    cancelAiInvocation,
     createAiProposal,
     createAiProposalFromInvocation,
     documentsAiTemplateForAction,
@@ -54,6 +55,7 @@
   import { buildLineDiff } from './lineDiff'
   import {
     clearDocumentsAiPreview,
+    documentsAiCancelAvailable,
     documentsAiPreview,
     documentsAiPreviewAction,
     documentsAiPreviewBusy,
@@ -103,6 +105,7 @@
   let commentMode = $state(false)
   let commentModeDocId = $state<string | null>(null)
   let annotationCreatePending = false
+  let documentsAiLiveRequestId = $state<string | null>(null)
   const secondaryDoc = $derived($documents.find(doc => doc.id === secondaryDocId) ?? null)
   const editableDocuments = $derived($documents.filter(doc => doc.nodeType !== 'folder'))
   const editorSearch = $derived(
@@ -279,6 +282,11 @@
   async function createProposalFromLiveRun(action: DocumentsAiPromptAction | null = get(documentsAiPreviewAction)): Promise<AiProposal | null> {
     if (!$activeDoc || !action) return null
     documentsAiProposalBusy.set(true)
+    const requestId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `documents-ai-${Date.now()}`
+    documentsAiLiveRequestId = requestId
+    documentsAiCancelAvailable.set(true)
     try {
       refreshWritingContext()
       const writingContext = get(documentsAiWritingContext)
@@ -298,6 +306,8 @@
         sourceText: sourceTextForAiAction(action),
         outputFormat: 'documents-proposal-json',
         runParams: {
+          requestId,
+          stream: true,
           moduleId: 'shell.documents',
           originType: 'template',
           originId: template?.id ?? `documents.${action}`,
@@ -312,11 +322,25 @@
       addToast('info', 'AI proposal created.')
       return proposal
     } catch (error) {
-      addToast('warn', error instanceof Error ? error.message : 'AI proposal could not be saved.')
+      const message = error instanceof Error ? error.message : 'AI proposal could not be saved.'
+      if (!message.toLowerCase().includes('cancelled')) {
+        addToast('warn', message)
+      }
       return null
     } finally {
+      if (documentsAiLiveRequestId === requestId) {
+        documentsAiLiveRequestId = null
+      }
+      documentsAiCancelAvailable.set(false)
       documentsAiProposalBusy.set(false)
     }
+  }
+
+  async function cancelDocumentsAiRun(): Promise<void> {
+    const requestId = documentsAiLiveRequestId
+    if (!requestId) return
+    const cancelled = await cancelAiInvocation(requestId)
+    addToast(cancelled ? 'info' : 'warn', cancelled ? 'AI proposal run cancelled.' : 'No active AI proposal run to cancel.')
   }
 
   async function rejectProposal(id: string): Promise<void> {
@@ -1026,7 +1050,7 @@
 
     documentsAiPanelListener = (event: Event) => {
       const detail = (event as CustomEvent<Partial<{
-        type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply'
+        type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply' | 'cancel'
         action: DocumentsAiPromptAction
         proposal: AiProposal
         proposalId: string
@@ -1044,6 +1068,8 @@
         void rejectProposal(detail.proposalId)
       } else if (detail.type === 'apply' && detail.proposal) {
         void applyReplacementProposal(detail.proposal)
+      } else if (detail.type === 'cancel') {
+        void cancelDocumentsAiRun()
       }
     }
     window.addEventListener('documents:ai-panel-action', documentsAiPanelListener)

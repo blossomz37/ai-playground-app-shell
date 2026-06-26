@@ -10,6 +10,7 @@ export const documentsAiPreviewLabel = writable('')
 export const documentsAiPreviewAction = writable<DocumentsAiPromptAction | null>(null)
 export const documentsAiPreviewBusy = writable(false)
 export const documentsAiProposalBusy = writable(false)
+export const documentsAiCancelAvailable = writable(false)
 
 export function clearDocumentsAiPreview(): void {
   documentsAiPreview.set(null)

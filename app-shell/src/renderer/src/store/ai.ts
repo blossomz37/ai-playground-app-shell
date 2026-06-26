@@ -484,6 +484,8 @@ interface AiRequestParams {
   moduleId: string
   originType: AiOriginType
   originId?: string
+  requestId?: string
+  stream?: boolean
   prompt: string
   variables?: Record<string, string>
   writingVariables?: AiWritingVariables
@@ -579,6 +581,8 @@ function buildAiPayload(params: AiRequestParams): InvokeAiParams {
     moduleId: params.moduleId,
     originType: params.originType,
     originId: params.originId,
+    requestId: params.requestId,
+    stream: params.stream,
     prompt: params.prompt,
     variables: params.variables,
     writingVariables: params.writingVariables,
@@ -607,6 +611,10 @@ export async function invokeAi(params: AiRequestParams): Promise<AiInvokeResult>
   } finally {
     aiBusy.set(false)
   }
+}
+
+export async function cancelAiInvocation(requestId: string): Promise<boolean> {
+  return window.shell.ai.cancelInvocation(requestId)
 }
 
 // Provider-free: renders the exact prompt that would be sent, without a model

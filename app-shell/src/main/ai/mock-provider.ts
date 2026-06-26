@@ -11,13 +11,36 @@ function summarizeContext(candidates: AiContextCandidate[]): string {
     .join('\n')
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError')
+  }
+}
+
+async function cancellableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  const step = 50
+  let elapsed = 0
+  while (elapsed < ms) {
+    throwIfAborted(signal)
+    await new Promise(resolve => setTimeout(resolve, Math.min(step, ms - elapsed)))
+    elapsed += step
+  }
+  throwIfAborted(signal)
+}
+
 export async function runMockProvider(
   params: InvokeAiParams,
   candidates: AiContextCandidate[],
-  renderedContext = ''
+  renderedContext = '',
+  signal?: AbortSignal
 ): Promise<string> {
   const contextSummary = summarizeContext(candidates)
   const renderedPrompt = buildAiInput(params, candidates, renderedContext)
+  if (params.stream) {
+    await cancellableDelay(1600, signal)
+  } else {
+    throwIfAborted(signal)
+  }
 
   if (renderedPrompt.includes('Documents proposal JSON contract:')) {
     const selectedText = params.writingVariables?.selectedText?.trim()

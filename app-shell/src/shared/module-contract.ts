@@ -649,6 +649,7 @@ export interface ShellApi {
   ai: {
     collectContext(params: CollectAiContextParams): Promise<AiContextCandidate[]>
     invoke(params: InvokeAiParams): Promise<AiInvokeResult>
+    cancelInvocation(requestId: string): Promise<boolean>
     preview(params: InvokeAiParams): Promise<AiPreview>
     providers(params: ListAiProvidersParams): Promise<AiProvider[]>
     runs(params: ListAiRunsParams): Promise<AiRun[]>

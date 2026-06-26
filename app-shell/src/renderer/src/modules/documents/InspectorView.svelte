@@ -10,6 +10,7 @@
   import { aiProposals } from '../../store/ai'
   import { addToast } from '../../store/toasts'
   import {
+    documentsAiCancelAvailable,
     documentsAiPreview,
     documentsAiPreviewBusy,
     documentsAiPreviewLabel,
@@ -221,7 +222,7 @@
   }
 
   function dispatchAiPanelAction(detail: {
-    type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply'
+    type: 'preview' | 'run' | 'send-preview' | 'close-preview' | 'reject' | 'apply' | 'cancel'
     action?: DocumentsAiPromptAction
     proposal?: AiProposal
     proposalId?: string
@@ -368,6 +369,17 @@
               onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'summarize-active-document' })}
             >Preview summary</button>
           </div>
+
+          {#if $documentsAiCancelAvailable}
+            <div class="ai-inline-actions">
+              <button
+                type="button"
+                class="ai-action-btn danger"
+                data-capture-documents-ai-cancel
+                onclick={() => dispatchAiPanelAction({ type: 'cancel' })}
+              >Cancel run</button>
+            </div>
+          {/if}
 
           {#if $documentsAiPreview}
             <div class="ai-inline-actions">
@@ -936,6 +948,11 @@
 
   .ai-action-btn.ghost {
     background: transparent;
+  }
+
+  .ai-action-btn.danger {
+    color: color-mix(in srgb, #e06c75 72%, var(--color-fg-secondary));
+    border-color: color-mix(in srgb, #e06c75 36%, var(--color-border));
   }
 
   .ai-action-btn:disabled {

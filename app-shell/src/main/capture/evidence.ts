@@ -39,6 +39,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const documentAiSaveProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_SAVE_PROPOSAL'] === '1'
   const documentAiRunProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_RUN_PROPOSAL'] === '1'
   const documentAiApplyProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_APPLY_PROPOSAL'] === '1'
+  const documentAiCancelProposal = process.env['SHELL_CAPTURE_DOCUMENT_AI_CANCEL_PROPOSAL'] === '1'
   const documentSearchCapture = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH'] === '1'
   const documentSearchQuery = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_QUERY']
   const documentSearchReplacement = process.env['SHELL_CAPTURE_DOCUMENT_SEARCH_REPLACEMENT']
@@ -109,6 +110,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let documentPlan47CleanupIds: string[] = []
   let documentVersionDiffCleanupIds: string[] = []
   let documentAiCaptureCleanupIds: string[] = []
+  let documentAiCaptureStartedAt: string | null = null
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
@@ -355,16 +357,32 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (documentAiPreview) {
+        documentAiCaptureStartedAt = new Date().toISOString()
         await win.webContents.executeJavaScript(
-          `window.dispatchEvent(new CustomEvent('shell:capture-document-ai-preview', { detail: ${JSON.stringify({
-            action: documentAiPreview,
-            userInput: documentAiUserInput,
-            saveProposal: documentAiSaveProposal,
-            runProposal: documentAiRunProposal,
-            applyProposal: documentAiApplyProposal
-          })} }))`
+          `
+            window.dispatchEvent(new CustomEvent('shell:capture-document-ai-preview', { detail: ${JSON.stringify({
+              action: documentAiPreview,
+              userInput: documentAiUserInput,
+              saveProposal: documentAiSaveProposal,
+              runProposal: documentAiRunProposal,
+              applyProposal: documentAiApplyProposal
+            })} }))
+            if (${JSON.stringify(documentAiCancelProposal)}) {
+              let attempts = 0
+              const timer = setInterval(() => {
+                attempts += 1
+                const cancelButton = document.querySelector('[data-capture-documents-ai-cancel]')
+                if (cancelButton) {
+                  cancelButton.click()
+                  clearInterval(timer)
+                } else if (attempts >= 60) {
+                  clearInterval(timer)
+                }
+              }, 100)
+            }
+          `
         )
-        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+        await new Promise(resolve => setTimeout(resolve, documentAiCancelProposal ? Math.max(interactionDelay, 2200) : interactionDelay))
       }
       if (documentAiCaptureCleanupIds.length > 0 && documentAiRunProposal) {
         let proof: unknown = null
@@ -386,6 +404,23 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
             ORDER BY p.createdAt DESC
             LIMIT 1
           `).get(...documentAiCaptureCleanupIds)
+          if (!proof && documentAiCaptureStartedAt) {
+            proof = db.prepare(`
+              SELECT
+                NULL AS proposalId,
+                NULL AS proposalType,
+                NULL AS proposalStatus,
+                NULL AS proposedText,
+                r.id AS runId,
+                r.status AS runStatus,
+                r.outputText,
+                r.error
+              FROM ai_runs r
+              WHERE r.moduleId = 'shell.documents' AND r.createdAt >= ?
+              ORDER BY r.createdAt DESC
+              LIMIT 1
+            `).get(documentAiCaptureStartedAt)
+          }
           if (proof) break
           await new Promise(resolve => setTimeout(resolve, 300))
         }
@@ -1345,7 +1380,14 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           const runRows = db.prepare(`SELECT runId FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`)
             .all(...documentAiCaptureCleanupIds) as Array<{ runId: string }>
           db.prepare(`DELETE FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`).run(...documentAiCaptureCleanupIds)
-          const runIds = Array.from(new Set(runRows.map(row => row.runId).filter(Boolean)))
+          const captureRunRows = documentAiCaptureStartedAt
+            ? db.prepare(`
+              SELECT id AS runId
+              FROM ai_runs
+              WHERE moduleId = 'shell.documents' AND createdAt >= ?
+            `).all(documentAiCaptureStartedAt) as Array<{ runId: string }>
+            : []
+          const runIds = Array.from(new Set([...runRows, ...captureRunRows].map(row => row.runId).filter(Boolean)))
           if (runIds.length > 0) {
             const runPlaceholders = runIds.map(() => '?').join(', ')
             db.prepare(`DELETE FROM ai_context_packs WHERE runId IN (${runPlaceholders})`).run(...runIds)

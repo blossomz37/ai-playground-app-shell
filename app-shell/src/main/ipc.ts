@@ -305,6 +305,10 @@ export function registerIpcHandlers(): void {
     aiOrchestrator.invoke(params)
   )
 
+  ipcMain.handle('ai:cancelInvocation', (_e, { requestId }: { requestId: string }) =>
+    aiOrchestrator.cancelInvocation(requestId)
+  )
+
   ipcMain.handle('ai:preview', (_e, params: InvokeAiParams) =>
     aiOrchestrator.preview(params)
   )

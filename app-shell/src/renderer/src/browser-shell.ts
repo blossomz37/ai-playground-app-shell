@@ -696,6 +696,7 @@ function createBrowserShell(): ShellApi {
           }
         }
       },
+      cancelInvocation: async () => false,
       preview: async (params) => {
         const provider = aiProviders.find(item => item.providerId === params.providerId) ?? aiProviders[0]
         const candidates = params.contextCandidates ?? collectContext()

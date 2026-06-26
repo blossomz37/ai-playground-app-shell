@@ -33,6 +33,8 @@ import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 import { getDb } from '../core/db'
 import { parseDocumentsAiStructuredProposalOutput } from '@shared/ai-writing-prompts'
 
+const activeInvocations = new Map<string, AbortController>()
+
 function demoModeEnabled(): boolean {
   const row = getDb()
     .prepare('SELECT value FROM shell_settings WHERE key = ?')
@@ -75,6 +77,10 @@ function resolveProvider(workspaceId: string, providerId: string | undefined): A
   return fallback
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))
+}
+
 function candidateFromDocument(args: {
   id: string
   sourceType: AiContextCandidate['sourceType']
@@ -100,6 +106,13 @@ function candidateFromDocument(args: {
 }
 
 export const aiOrchestrator = {
+  cancelInvocation(requestId: string): boolean {
+    const controller = activeInvocations.get(requestId)
+    if (!controller) return false
+    controller.abort()
+    return true
+  },
+
   collectContext(params: CollectAiContextParams): AiContextCandidate[] {
     aiRepository.ensureDefaults(params.workspaceId)
 
@@ -194,6 +207,10 @@ export const aiOrchestrator = {
   async invoke(params: InvokeAiParams): Promise<AiInvokeResult> {
     aiRepository.ensureDefaults(params.workspaceId)
     const provider = resolveProvider(params.workspaceId, params.providerId)
+    const controller = params.requestId ? new AbortController() : null
+    if (params.requestId && controller) {
+      activeInvocations.set(params.requestId, controller)
+    }
     const invokeParams: InvokeAiParams = {
       ...params,
       providerId: provider.providerId,
@@ -221,16 +238,20 @@ export const aiOrchestrator = {
 
     try {
       const output = provider.providerId === 'openai-responses'
-        ? await runOpenAiProvider({ params: invokeParams, provider, candidates, renderedContext: renderedText })
-        : await runMockProvider(invokeParams, candidates, renderedText)
+        ? await runOpenAiProvider({ params: invokeParams, provider, candidates, renderedContext: renderedText, signal: controller?.signal })
+        : await runMockProvider(invokeParams, candidates, renderedText, controller?.signal)
       const completed = aiRepository.completeRun(run.id, output)
       events.emit('ai.run.completed', completed)
       return { run: completed, contextPack }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = isAbortError(err) ? 'AI run cancelled.' : err instanceof Error ? err.message : String(err)
       const failed = aiRepository.failRun(run.id, message)
       events.emit('ai.run.failed', failed)
       return { run: failed, contextPack }
+    } finally {
+      if (params.requestId) {
+        activeInvocations.delete(params.requestId)
+      }
     }
   },
 

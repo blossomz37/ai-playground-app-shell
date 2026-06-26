@@ -149,7 +149,7 @@ const module: Module = {
 | chapter / folder / scene kinds | `contributes.documentTypes` |
 | **Plan** room (planning materials, relate to docs) | `kind: "plan"` + `inspector` `plan` section (F2) |
 | open / save / version persistence | `ctx.documents.*` (shell, not module) |
-| "Run AI Review" button | `ctx.commands.execute("ai.review", …)` (AI module owns it) |
+| "Run AI Review" button and Documents AI proposals | `ctx.commands.execute("ai.review", …)` plus shared AI orchestration; AI runs are structured/cancellable, while Documents renders proposal review and apply controls |
 
 **No "miscellaneous" bucket. The contract holds — no contract change was required.**
 
@@ -171,6 +171,6 @@ Plan 47 adds shell-owned annotation sidecars:
 ## 6. Open / deferred
 
 - **Editor engine (F1)** — concrete choice at scaffolding, after a fresh ecosystem check; spec stays agnostic.
-- **AI Review** — the AI module owns the `ai.review` command, runs, and proposals; this module only invokes and renders results.
+- **AI Review** — the AI module owns the `ai.review` command and shared run/proposal pipeline; Documents only invokes it and renders structured proposal review/cancel/apply controls.
 - **Drag-reorder / move semantics** — tree manipulation details firm up against the real editor + schema at scaffold.
 - **`manuscriptId` grouping** — designed when the schema's module-extension mechanism is built.

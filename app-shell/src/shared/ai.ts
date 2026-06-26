@@ -191,6 +191,8 @@ export interface InvokeAiParams {
   moduleId: string
   originType: AiOriginType
   originId?: string
+  requestId?: string
+  stream?: boolean
   prompt: string
   variables?: Record<string, string>
   writingVariables?: AiWritingVariables
