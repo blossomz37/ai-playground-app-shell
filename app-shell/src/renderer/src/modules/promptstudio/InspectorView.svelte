@@ -24,6 +24,9 @@
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let modelOptions = $derived(modelOptionsForProvider(activeProvider))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
+  let includedContextCount = $derived($aiContextCandidates.filter(candidate => candidate.included).length)
+  let runCount = $derived($aiRuns.length)
+  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$selectedAiModel} / temp ${$selectedAiTemperature.toFixed(1)}`)
 
   onMount(() => {
     void loadAiProviders()
@@ -41,9 +44,26 @@
 
 <div class="inspector-view">
   <div class="section">
-    <h3>Run Settings</h3>
+    <h3>Run Readiness</h3>
+    <div class="history-item">
+      <div class="time">Provider status</div>
+      <div class:success={requiredSecretReady} class:error={!requiredSecretReady} class="status">
+        {$selectedAiProviderId === 'mock-local' ? 'Mock' : requiredSecretReady ? 'Ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
+      </div>
+    </div>
+    <div class="history-item">
+      <div class="time">Model</div>
+      <div class="status">{modelSummary}</div>
+    </div>
+  </div>
+
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Model Settings</span>
+      <span class="summary-copy">Preset, provider, model, and temperature.</span>
+    </summary>
     <AiModelPresetPicker fieldId="promptstudio-model-preset" />
-    
+
     <div class="field">
       <label for="provider">Provider</label>
       <select
@@ -84,17 +104,13 @@
         oninput={(event) => selectAiTemperature(Number(event.currentTarget.value))}
       />
     </div>
+  </details>
 
-    <div class="history-item">
-      <div class="time">Provider status</div>
-      <div class:success={requiredSecretReady} class:error={!requiredSecretReady} class="status">
-        {$selectedAiProviderId === 'mock-local' ? 'Mock' : requiredSecretReady ? 'Ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
-      </div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h3>Context</h3>
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Context</span>
+      <span class="summary-copy">{includedContextCount === 0 ? 'No selected context' : `${includedContextCount} selected`}</span>
+    </summary>
     <div class="history-list">
       {#each $aiContextCandidates.filter(candidate => candidate.included) as candidate (candidate.id)}
         <div class="history-item">
@@ -108,12 +124,15 @@
         </div>
       {/each}
     </div>
-  </div>
+  </details>
 
-  <div class="section">
-    <h3>Run History</h3>
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Run History</span>
+      <span class="summary-copy">{runCount === 0 ? 'No prompt runs yet' : `${runCount} recorded`}</span>
+    </summary>
     <RunHistoryList runs={$aiRuns} emptyLabel="No prompt runs yet." onUseSettings={useRunSettings} />
-  </div>
+  </details>
 </div>
 
 <style>
@@ -139,6 +158,51 @@
     letter-spacing: 0.05em;
     border-bottom: var(--border-subtle);
     padding-bottom: var(--space-2);
+  }
+
+  .section-title {
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .disclosure {
+    border-bottom: var(--border-subtle);
+    padding-bottom: var(--space-3);
+  }
+
+  .disclosure summary {
+    display: grid;
+    gap: 3px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .disclosure summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .disclosure summary::after {
+    content: 'Show';
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .disclosure[open] summary {
+    margin-bottom: var(--space-3);
+  }
+
+  .disclosure[open] summary::after {
+    content: 'Hide';
+  }
+
+  .summary-copy {
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
   }
 
   .field {

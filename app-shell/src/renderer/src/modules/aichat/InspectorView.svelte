@@ -24,6 +24,8 @@
   let activeProvider = $derived($aiProviders.find(provider => provider.providerId === $selectedAiProviderId) ?? $aiProviders[0])
   let modelOptions = $derived(modelOptionsForProvider(activeProvider))
   let requiredSecretReady = $derived(!activeProvider?.secretName || $aiSecretNames.includes(activeProvider.secretName))
+  let includedRunCount = $derived($aiRuns.length)
+  let modelSummary = $derived(`${activeProvider?.providerName ?? 'AI provider'} / ${$selectedAiModel} / temp ${$selectedAiTemperature.toFixed(1)}`)
 
   onMount(() => {
     void loadAiProviders()
@@ -40,12 +42,18 @@
 </script>
 
 <div class="inspector-view">
-  <section class="section">
-    <h3 class="section-title">Context</h3>
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Context</span>
+      <span class="summary-copy">Choose manuscript material for this conversation.</span>
+    </summary>
     <AiContextPicker />
-  </section>
-  <section class="section">
-    <h3 class="section-title">Model</h3>
+  </details>
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Model</span>
+      <span class="summary-copy">{modelSummary}</span>
+    </summary>
     <div class="field">
       <label for="chat-provider">Provider</label>
       <select
@@ -90,17 +98,49 @@
         {$selectedAiProviderId === 'mock-local' ? 'Mock mode' : requiredSecretReady ? 'Live ready' : `Missing ${activeProvider?.secretName ?? 'secret'}`}
       </span>
     </div>
-  </section>
-  <section class="section">
-    <h3 class="section-title">Runs</h3>
+  </details>
+  <details class="section disclosure">
+    <summary>
+      <span class="section-title">Runs</span>
+      <span class="summary-copy">{includedRunCount === 0 ? 'No chat runs yet' : `${includedRunCount} recorded`}</span>
+    </summary>
     <RunHistoryList runs={$aiRuns} emptyLabel="No chat runs yet." onUseSettings={useRunSettings} />
-  </section>
+  </details>
 </div>
 
 <style>
   .inspector-view { padding: var(--space-4); }
   .section { margin-bottom: var(--space-5); }
   .section-title { font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-fg-muted); margin-bottom: var(--space-3); }
+  .disclosure {
+    border-bottom: var(--border-subtle);
+    padding-bottom: var(--space-3);
+  }
+  .disclosure summary {
+    display: grid;
+    gap: 3px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .disclosure summary::-webkit-details-marker { display: none; }
+  .disclosure summary::after {
+    content: 'Show';
+    grid-column: 1;
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+  .disclosure[open] summary {
+    margin-bottom: var(--space-3);
+  }
+  .disclosure[open] summary::after {
+    content: 'Hide';
+  }
+  .summary-copy {
+    color: var(--color-fg-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+  }
   .field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
   label { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-fg-primary); }
   .select-input {

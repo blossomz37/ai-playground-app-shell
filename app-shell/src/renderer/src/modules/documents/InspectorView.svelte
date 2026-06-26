@@ -349,26 +349,32 @@
             >Summary</button>
           </div>
 
-          <div class="ai-action-grid" aria-label="AI preview actions">
-            <button
-              type="button"
-              class="ai-action-btn ghost"
-              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy || writingContextWords === 0}
-              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'rewrite-selection' })}
-            >Preview rewrite</button>
-            <button
-              type="button"
-              class="ai-action-btn ghost"
-              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
-              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'continue-from-cursor' })}
-            >Preview continue</button>
-            <button
-              type="button"
-              class="ai-action-btn ghost"
-              disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
-              onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'summarize-active-document' })}
-            >Preview summary</button>
-          </div>
+          <details class="ai-disclosure">
+            <summary>
+              <span>Preview prompt before sending</span>
+              <span>Advanced</span>
+            </summary>
+            <div class="ai-action-grid" aria-label="AI preview actions">
+              <button
+                type="button"
+                class="ai-action-btn ghost"
+                disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy || writingContextWords === 0}
+                onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'rewrite-selection' })}
+              >Preview rewrite</button>
+              <button
+                type="button"
+                class="ai-action-btn ghost"
+                disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+                onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'continue-from-cursor' })}
+              >Preview continue</button>
+              <button
+                type="button"
+                class="ai-action-btn ghost"
+                disabled={$documentsAiProposalBusy || $documentsAiPreviewBusy}
+                onclick={() => dispatchAiPanelAction({ type: 'preview', action: 'summarize-active-document' })}
+              >Preview summary</button>
+            </div>
+          </details>
 
           {#if $documentsAiCancelAvailable}
             <div class="ai-inline-actions">
@@ -440,25 +446,31 @@
                 <span>{$documentsAiPreviewLabel}</span>
                 <span>{$documentsAiPreview.providerId} / {$documentsAiPreview.model} / ~{$documentsAiPreview.tokenEstimate} tok / not sent</span>
               </div>
-              <div class="variable-preview-grid" aria-label="Captured AI variables">
-                <div>
-                  <span>selected_text</span>
-                  <p>{selectedTextExcerpt}</p>
+              <details class="ai-disclosure">
+                <summary>
+                  <span>Captured variables and rendered prompt</span>
+                  <span>Audit</span>
+                </summary>
+                <div class="variable-preview-grid" aria-label="Captured AI variables">
+                  <div>
+                    <span>selected_text</span>
+                    <p>{selectedTextExcerpt}</p>
+                  </div>
+                  <div>
+                    <span>before</span>
+                    <p>{beforeExcerpt}</p>
+                  </div>
+                  <div>
+                    <span>after</span>
+                    <p>{afterExcerpt}</p>
+                  </div>
+                  <div>
+                    <span>selected_documents</span>
+                    <p>{$documentsAiPreview.includedTitles.length > 0 ? $documentsAiPreview.includedTitles.join(', ') : 'No context documents included.'}</p>
+                  </div>
                 </div>
-                <div>
-                  <span>before</span>
-                  <p>{beforeExcerpt}</p>
-                </div>
-                <div>
-                  <span>after</span>
-                  <p>{afterExcerpt}</p>
-                </div>
-                <div>
-                  <span>selected_documents</span>
-                  <p>{$documentsAiPreview.includedTitles.length > 0 ? $documentsAiPreview.includedTitles.join(', ') : 'No context documents included.'}</p>
-                </div>
-              </div>
-              <pre class="rendered-prompt">{$documentsAiPreview.renderedPrompt}</pre>
+                <pre class="rendered-prompt">{$documentsAiPreview.renderedPrompt}</pre>
+              </details>
             </div>
           {/if}
         </div>
@@ -928,6 +940,37 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
+  }
+
+  .ai-disclosure {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--accent-inspector) 14%, var(--color-border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-shell-main) 34%, transparent);
+  }
+
+  .ai-disclosure summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    color: var(--color-fg-secondary);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    list-style: none;
+  }
+
+  .ai-disclosure summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ai-disclosure summary span:last-child {
+    color: color-mix(in srgb, var(--accent-inspector) 58%, var(--color-fg-muted));
+    text-transform: uppercase;
   }
 
   .ai-action-btn {

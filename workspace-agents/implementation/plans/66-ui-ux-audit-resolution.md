@@ -336,3 +336,40 @@ Notes:
 
 - The persistent failed Jobs toast remains visible in screenshots. This is part of the audit's shell chrome/job-state concern and is deferred outside Slice 1.
 - QA subagent accepted the screenshots for the Slice 1 goal. Follow-ups deferred: richer Documents inspector empty-state copy and clearer Workflow missing-active-context messaging.
+
+### 2026-06-26 - Slice 2 AI Inspector Progressive Disclosure
+
+Status: implemented, pending QA and commit.
+
+Changed:
+
+- `app-shell/src/renderer/src/modules/aichat/InspectorView.svelte`
+- `app-shell/src/renderer/src/modules/promptstudio/InspectorView.svelte`
+- `app-shell/src/renderer/src/modules/documents/InspectorView.svelte`
+
+Outcome:
+
+- AI Chat inspector now defaults to compact Context, Model, and Runs disclosure summaries instead of expanded context tree, model controls, and run history.
+- Prompt Studio inspector now keeps Run Readiness visible while Model Settings, Context, and Run History are collapsed by default.
+- Documents AI keeps instruction, primary run actions, preview send controls, and proposal/result status visible while preview actions and rendered prompt/audit variables sit behind nested disclosure.
+- No AI store, provider, run, prompt, or persistence behavior changed.
+
+Validation:
+
+- `svelte_autofixer` clean on `aichat/InspectorView.svelte`.
+- `svelte_autofixer` clean on `promptstudio/InspectorView.svelte`.
+- `svelte_autofixer` clean on `documents/InspectorView.svelte`.
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- `workspace-agents/implementation/screenshots/uiux-ai-chat-inspector-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-promptstudio-inspector-after-2026-06-26.png`
+- `workspace-agents/implementation/screenshots/uiux-documents-ai-inspector-after-2026-06-26.png`
+
+Notes:
+
+- Documents still has several AI actions because those are the primary task controls; only preview/audit machinery was demoted.
+- QA subagent accepted the screenshots for the Slice 2 goal. Follow-ups deferred: compact Documents AI run metadata chips/status and Prompt Studio left-nav wrapping, which belongs to Slice 3.
