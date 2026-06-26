@@ -425,14 +425,82 @@ Capture before/after pairs for every UI-altering slice and store them under
 
 ## Outcome Log
 
-Not yet executed. Status table to be maintained by the lead during execution.
+### Status table
 
 | Slice | State | Subagent(s) | Screenshots | QA verdict | Iterations |
 |---|---|---|---|---|---|
-| 0 Discovery | pending | — | — | — | 0 |
-| 1 Go-to-anything | pending | — | — | — | 0 |
-| 2 NavView search | pending | — | — | — | 0 |
-| 3 AI unification | pending | — | — | — | 0 |
-| 4 Organizing layer | pending | — | — | — | 0 |
-| 5 Color discipline | pending | — | — | — | 0 |
-| 6 Clutter pass | pending | — | — | — | 0 |
+| 0 Discovery | **done** | 4 explorers (search, stores, AI, tokens) | n/a | n/a | 1 |
+| 1 Go-to-anything | awaiting contract gate | — | — | — | 0 |
+| 2 NavView search | ready (no gate) | — | — | — | 0 |
+| 3 AI unification | ready (renderer-only path) | — | — | — | 0 |
+| 4 Organizing layer | awaiting contract gate | — | — | — | 0 |
+| 5 Color discipline | ready (renderer-only) | — | — | — | 0 |
+| 6 Clutter pass | ready (renderer-only) | — | — | — | 0 |
+
+Baseline before any edit: `npm run typecheck` ✓ and `npm run build` ✓ (clean).
+
+### Slice 0 — Current-state map (2026-06-26)
+
+**Search.** Documents-only SQLite FTS5 (`documents_fts` over title+content) via
+`search:query` → `src/main/core/search.ts`; renderer caps at 20
+(`CommandPalette.svelte:61`); `SearchResult` is defined in
+`src/shared/module-contract.ts` (extending it is a **contract change**). Chats,
+prompt templates, prompt chains, and assets live in SQLite but are **not
+indexed**; bookmarks and journal are settings-backed (not in SQLite); journal's
+`journal-entry` is only a registered document-kind, so journal entries are
+**not** FTS-searchable today (corrects an explorer assumption).
+
+**Entity persistence.**
+- SQLite: documents, `ai_conversations`, `ai_prompt_templates` (has `tagsJson`),
+  assets (has `asset_tags` join table). An `ai_prompt_chains` table exists but is
+  unused.
+- Settings-backed JSON: workflow profiles (`modules.workflow.{ws}.state`),
+  journal (`modules.journal.{ws}.state`, has `tags[]`), web bookmarks
+  (`modules.web.{ws}.state`).
+
+**AI plumbing.** Global `selectedAiProviderId/Model/Temperature` (`store/ai.ts:35-37`)
+are read AND written by all four surfaces — the leak is real and confirmed
+(`useRunSettings` and template-load mutate global). Runs persist in `ai_runs`
+(SQLite) with `moduleId`/`originType`; `loadAiRuns(moduleId?)` already accepts an
+optional module filter and `aiRuns.set()` overwrites per call. Context is
+**already** a single shared store + `AiContextPicker`; the documents
+editor-selection capture is merged with it server-side in `buildAiPayload`.
+Output destinations differ by surface (AI Outputs folder vs. job queue vs.
+in-place proposal). Document proposals are limited to 3 protected built-in
+templates; nothing structural blocks an arbitrary prompt becoming a proposal
+(`sourceText` is already effectively optional). Workflow "chains" are a single
+prompt run as an `ai.chain.run` job — not multi-step.
+
+### Slice 0 — Risk register
+
+- **R1 (Slice 1):** universal search forks on architecture — backend FTS (scales,
+  snippets, but touches `module-contract.ts` + schema) vs. renderer-side over
+  loaded stores (no backend change, but no snippets and won't scale to
+  thousands). Contract-gate decision required.
+- **R2 (Slice 4):** organizing layer needs an `entity_pins` table +
+  `lastAccessedAt` columns + new IPC, and migrating workflow chains from settings
+  to the unused `ai_prompt_chains` table. Most invasive change; migration +
+  back-compat required. Contract-gate decision required (P1 — defer the decision
+  until Slices 1–3 land).
+- **R3 (Slice 3):** large surface but the leaky-state fix, unified context,
+  run-history filter, and arbitrary-prompt-as-proposal are all achievable
+  **renderer-only** with low/no back-compat risk; `ai_runs` already carries the
+  data a unified history needs. Proceed renderer-only; escalate only if a schema
+  change becomes necessary.
+- **R4 (Slice 2):** some lists could be large; if a NavView renders thousands of
+  nodes, add windowing or log the deferral (no virtualization exists today).
+- **R5 (Slice 5):** light/system themes never override the zone accents, so they
+  inherit dark-theme jewel values — a pre-existing bug to fix during the color
+  pass; ~98 accent usages across ~17 files; party mode is the only jewel
+  consumer and must be preserved.
+
+### Slice 0 — Contract-change deltas (for the gate)
+
+- **Slice 1, Option A (recommended):** add FTS tables for conversations,
+  templates, chains, assets; extend `SearchResult` (`module-contract.ts`) with
+  `entityType`/`entityId`/`moduleId`; UNION in `search.ts`; route by type in the
+  palette. **Slice 1, Option B:** renderer-side aggregation over loaded stores;
+  no backend/contract change; ship now, weaker at scale.
+- **Slice 4:** `entity_pins(workspaceId, entityType, entityId, pinnedAt, order)` +
+  `lastAccessedAt` columns on documents/conversations/templates/assets + IPC
+  `entities:{pin,unpin,listPinned,recordAccess}` + chains→SQLite migration.
