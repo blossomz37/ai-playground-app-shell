@@ -33,6 +33,7 @@
   import type { AiProposal, AiProposalType } from '@shared/ai'
   import {
     documentsAiPromptDefinition,
+    documentsAiPromptWithStructuredProposalContract,
     documentsAiPromptWithOutputContract,
     type DocumentsAiPromptAction
   } from '@shared/ai-writing-prompts'
@@ -180,6 +181,12 @@
     return documentsAiPromptWithOutputContract(action, template?.body ?? fallback.body)
   }
 
+  function structuredPromptForAiAction(action: DocumentsAiPromptAction): string {
+    const template = documentsAiTemplateForAction(action)
+    const fallback = documentsAiPromptDefinition(action)
+    return documentsAiPromptWithStructuredProposalContract(action, template?.body ?? fallback.body)
+  }
+
   async function previewDocumentAi(action: DocumentsAiPromptAction): Promise<void> {
     if (!$activeDoc) return
     refreshWritingContext()
@@ -289,11 +296,12 @@
         targetDocumentId: $activeDoc.id,
         proposalType: proposalTypeForAiAction(action),
         sourceText: sourceTextForAiAction(action),
+        outputFormat: 'documents-proposal-json',
         runParams: {
           moduleId: 'shell.documents',
           originType: 'template',
           originId: template?.id ?? `documents.${action}`,
-          prompt: promptForAiAction(action),
+          prompt: structuredPromptForAiAction(action),
           writingVariables: {
             ...writingContext.writingVariables,
             userInput: get(documentsAiUserInput)

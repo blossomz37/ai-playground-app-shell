@@ -31,6 +31,28 @@ const DOCUMENTS_AI_OUTPUT_CONTRACTS: Record<DocumentsAiPromptAction, string[]> =
   ]
 }
 
+const DOCUMENTS_AI_STRUCTURED_PROPOSAL_CONTRACTS: Record<DocumentsAiPromptAction, string[]> = {
+  'rewrite-selection': [
+    'Documents proposal JSON contract:',
+    '- Return only valid JSON. Do not include markdown fences, labels, commentary, or explanation.',
+    '- Use this exact object shape: {"proposalText":"..."}',
+    '- proposalText must contain only the revised replacement passage.',
+    '- Preserve useful paragraph breaks inside proposalText.'
+  ],
+  'continue-from-cursor': [
+    'Documents proposal JSON contract:',
+    '- Return only valid JSON. Do not include markdown fences, labels, commentary, or explanation.',
+    '- Use this exact object shape: {"proposalText":"..."}',
+    '- proposalText must contain only continuation prose that can be appended after the cursor.'
+  ],
+  'summarize-active-document': [
+    'Documents proposal JSON contract:',
+    '- Return only valid JSON. Do not include markdown fences, labels, commentary, or explanation.',
+    '- Use this exact object shape: {"proposalText":"..."}',
+    '- proposalText must contain only a concise working summary note for the writer.'
+  ]
+}
+
 export const DOCUMENTS_AI_PROMPT_DEFINITIONS: DocumentsAiPromptDefinition[] = [
   {
     action: 'rewrite-selection',
@@ -113,6 +135,40 @@ export function documentsAiPromptWithOutputContract(
     body.trim(),
     DOCUMENTS_AI_OUTPUT_CONTRACTS[action].join('\n')
   ].filter(Boolean).join('\n\n')
+}
+
+export function documentsAiPromptWithStructuredProposalContract(
+  action: DocumentsAiPromptAction,
+  body: string
+): string {
+  return [
+    body.trim(),
+    DOCUMENTS_AI_STRUCTURED_PROPOSAL_CONTRACTS[action].join('\n')
+  ].filter(Boolean).join('\n\n')
+}
+
+export function parseDocumentsAiStructuredProposalOutput(output: string): string {
+  const source = output.trim()
+  if (!source) throw new Error('AI proposal output was empty.')
+
+  const candidates = [
+    source,
+    source.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim(),
+    source.match(/\{[\s\S]*\}/)?.[0]?.trim()
+  ].filter((value): value is string => Boolean(value))
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { proposalText?: unknown }
+      if (!parsed || typeof parsed !== 'object') continue
+      const proposalText = typeof parsed.proposalText === 'string' ? parsed.proposalText.trim() : ''
+      if (proposalText) return proposalText
+    } catch {
+      // Try the next candidate shape.
+    }
+  }
+
+  throw new Error('AI proposal output did not match the structured proposal contract.')
 }
 
 export function createDocumentsAiPromptTemplate(params: {

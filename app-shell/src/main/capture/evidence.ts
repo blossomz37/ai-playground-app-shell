@@ -108,6 +108,7 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   let documentSmokeCleanupIds: string[] = []
   let documentPlan47CleanupIds: string[] = []
   let documentVersionDiffCleanupIds: string[] = []
+  let documentAiCaptureCleanupIds: string[] = []
   let journalSmokeCleanup: { workspaceId: string; previousSnapshot: unknown } | null = null
   let assetsSmokeCleanupIds: string[] = []
   let assetsSmokeExportPaths: string[] = []
@@ -261,6 +262,40 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
+      if (documentAiPreview && !documentId) {
+        const result = await win.webContents.executeJavaScript(`
+          (async () => {
+            const workspace = await window.shell.workspace.get()
+            const doc = await window.shell.documents.create({
+              workspaceId: workspace.id,
+              nodeType: 'document',
+              kind: 'chapter',
+              title: 'Documents AI Evidence',
+              parentId: null,
+              sortOrder: 0
+            })
+            const selectedText = 'This source line will be rewritten by AI.'
+            await window.shell.documents.save(doc.id, [
+              'Opening paragraph for Documents AI evidence.',
+              '',
+              selectedText,
+              '',
+              'Closing context for the capture.'
+            ].join('\\n'))
+            window.dispatchEvent(new CustomEvent('shell:capture-select-document', { detail: doc.id }))
+            await new Promise(resolve => setTimeout(resolve, 800))
+            if (${JSON.stringify(documentAiPreview === 'rewrite-selection')} && !${JSON.stringify(Boolean(documentSelectionText || (Number.isFinite(documentSelectionFrom) && Number.isFinite(documentSelectionTo))))}) {
+              window.dispatchEvent(new CustomEvent('shell:capture-document-selection', { detail: { text: selectedText } }))
+            }
+            return { generatedDocumentIds: [doc.id] }
+          })()
+        `)
+        documentAiCaptureCleanupIds = Array.isArray(result.generatedDocumentIds)
+          ? result.generatedDocumentIds.map(String)
+          : []
+        console.log('[SHELL_CAPTURE_DOCUMENT_AI_SETUP]', JSON.stringify(result))
+        await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
       if (webUrl) {
         await win.webContents.executeJavaScript(
           `window.dispatchEvent(new CustomEvent('web:capture-navigate', { detail: ${JSON.stringify(webUrl)} }))`
@@ -330,6 +365,31 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           })} }))`
         )
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
+      }
+      if (documentAiCaptureCleanupIds.length > 0 && documentAiRunProposal) {
+        let proof: unknown = null
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const db = getDb()
+          const placeholders = documentAiCaptureCleanupIds.map(() => '?').join(', ')
+          proof = db.prepare(`
+            SELECT
+              p.id AS proposalId,
+              p.proposalType,
+              p.status AS proposalStatus,
+              p.proposedText,
+              r.id AS runId,
+              r.status AS runStatus,
+              r.outputText
+            FROM ai_proposals p
+            JOIN ai_runs r ON r.id = p.runId
+            WHERE p.targetDocumentId IN (${placeholders})
+            ORDER BY p.createdAt DESC
+            LIMIT 1
+          `).get(...documentAiCaptureCleanupIds)
+          if (proof) break
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+        console.log('[SHELL_CAPTURE_DOCUMENT_AI_RESULT]', JSON.stringify(proof))
       }
       if (documentSearchCapture) {
         await win.webContents.executeJavaScript(
@@ -1276,6 +1336,29 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
           }))
         } catch (cleanupErr) {
           console.error('[SHELL_CAPTURE_DOCUMENT_VERSION_DIFF_CLEANUP] failed:', cleanupErr)
+        }
+      }
+      if (documentAiCaptureCleanupIds.length > 0) {
+        try {
+          const db = getDb()
+          const placeholders = documentAiCaptureCleanupIds.map(() => '?').join(', ')
+          const runRows = db.prepare(`SELECT runId FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`)
+            .all(...documentAiCaptureCleanupIds) as Array<{ runId: string }>
+          db.prepare(`DELETE FROM ai_proposals WHERE targetDocumentId IN (${placeholders})`).run(...documentAiCaptureCleanupIds)
+          const runIds = Array.from(new Set(runRows.map(row => row.runId).filter(Boolean)))
+          if (runIds.length > 0) {
+            const runPlaceholders = runIds.map(() => '?').join(', ')
+            db.prepare(`DELETE FROM ai_context_packs WHERE runId IN (${runPlaceholders})`).run(...runIds)
+            db.prepare(`DELETE FROM ai_runs WHERE id IN (${runPlaceholders})`).run(...runIds)
+          }
+          db.prepare(`DELETE FROM document_versions WHERE documentId IN (${placeholders})`).run(...documentAiCaptureCleanupIds)
+          db.prepare(`DELETE FROM documents WHERE id IN (${placeholders})`).run(...documentAiCaptureCleanupIds)
+          console.log('[SHELL_CAPTURE_DOCUMENT_AI_CLEANUP]', JSON.stringify({
+            deletedDocumentIds: documentAiCaptureCleanupIds,
+            deletedRunIds: runIds
+          }))
+        } catch (cleanupErr) {
+          console.error('[SHELL_CAPTURE_DOCUMENT_AI_CLEANUP] failed:', cleanupErr)
         }
       }
       if (journalSmokeCleanup) {

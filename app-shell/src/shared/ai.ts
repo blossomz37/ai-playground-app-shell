@@ -151,8 +151,11 @@ export interface CreateAiProposalFromInvocationParams {
   targetDocumentId: string
   proposalType: AiProposalType
   sourceText: string
+  outputFormat?: AiProposalOutputFormat
   runParams: InvokeAiParams
 }
+
+export type AiProposalOutputFormat = 'text' | 'documents-proposal-json'
 
 export interface ListAiProposalsParams {
   workspaceId: string

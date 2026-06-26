@@ -7,6 +7,7 @@ import type {
   AiProvider,
   AiProviderId,
   AiProposal,
+  AiProposalOutputFormat,
   AiProposalType,
   AiPromptTemplate,
   AiRun,
@@ -362,6 +363,7 @@ export async function createAiProposalFromInvocation(params: {
   targetDocumentId: string
   proposalType: AiProposalType
   sourceText: string
+  outputFormat?: AiProposalOutputFormat
   runParams: AiRequestParams
 }): Promise<AiProposal> {
   aiBusy.set(true)
@@ -375,6 +377,7 @@ export async function createAiProposalFromInvocation(params: {
       targetDocumentId: params.targetDocumentId,
       proposalType: params.proposalType,
       sourceText: params.sourceText,
+      outputFormat: params.outputFormat,
       runParams: buildAiPayload(params.runParams)
     })
     aiProposals.update(proposals => [created, ...proposals.filter(item => item.id !== created.id)])

@@ -31,6 +31,7 @@ import { runOpenAiProvider } from './openai-provider'
 import { buildAiInput } from './prompt-builder'
 import { DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
 import { getDb } from '../core/db'
+import { parseDocumentsAiStructuredProposalOutput } from '@shared/ai-writing-prompts'
 
 function demoModeEnabled(): boolean {
   const row = getDb()
@@ -263,7 +264,9 @@ export const aiOrchestrator = {
       throw new Error(result.run.error ?? 'AI run failed before creating a proposal.')
     }
 
-    const proposedText = result.run.outputText.trim()
+    const proposedText = params.outputFormat === 'documents-proposal-json'
+      ? parseDocumentsAiStructuredProposalOutput(result.run.outputText)
+      : result.run.outputText.trim()
     if (!proposedText) {
       throw new Error('AI run completed with no proposal text.')
     }

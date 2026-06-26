@@ -19,6 +19,15 @@ export async function runMockProvider(
   const contextSummary = summarizeContext(candidates)
   const renderedPrompt = buildAiInput(params, candidates, renderedContext)
 
+  if (renderedPrompt.includes('Documents proposal JSON contract:')) {
+    const selectedText = params.writingVariables?.selectedText?.trim()
+    const proposalText = selectedText
+      ? `Mock structured revision for: ${selectedText.replace(/\s+/g, ' ').slice(0, 180)}`
+      : 'Mock structured proposal text from the shared AI orchestration layer.'
+
+    return JSON.stringify({ proposalText }, null, 2)
+  }
+
   return [
     `Mock ${params.originType} run complete.`,
     '',

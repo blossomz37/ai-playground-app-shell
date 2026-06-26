@@ -16,6 +16,7 @@ import { getModulePolicy, normalizeModuleEnabled, normalizeModuleVisible } from 
 import { STRUCTURAL_FOLDER_KIND_LABEL, UNCATEGORIZED_KIND_LABEL } from '@shared/document-kinds'
 import type { AiChatMessage, AiConversation, AiContextCandidate, AiPromptTemplate, AiProposal, AiProvider, AiRun } from '@shared/ai'
 import { AI_API_KEY_REQUIRED_MESSAGE, DEMO_MODE_SETTING_KEY, isDemoModeEnabled } from '@shared/demo-mode'
+import { parseDocumentsAiStructuredProposalOutput } from '@shared/ai-writing-prompts'
 
 const MODULES = [
   { id: 'shell.documents', name: 'Documents', icon: 'pen' },
@@ -761,7 +762,9 @@ function createBrowserShell(): ShellApi {
           throw new Error(AI_API_KEY_REQUIRED_MESSAGE)
         }
 
-        const outputText = `Browser ${provider.providerName} preview complete.\n\n${params.runParams.prompt}`
+        const outputText = params.outputFormat === 'documents-proposal-json'
+          ? JSON.stringify({ proposalText: 'Browser structured proposal text.' }, null, 2)
+          : `Browser ${provider.providerName} preview complete.\n\n${params.runParams.prompt}`
         const run: AiRun = {
           id: `browser-run-${Date.now()}`,
           workspaceId: params.workspaceId,
@@ -787,7 +790,9 @@ function createBrowserShell(): ShellApi {
           targetDocumentId: params.targetDocumentId,
           proposalType: params.proposalType,
           sourceText: params.sourceText,
-          proposedText: outputText.trim(),
+          proposedText: params.outputFormat === 'documents-proposal-json'
+            ? parseDocumentsAiStructuredProposalOutput(outputText)
+            : outputText.trim(),
           status: 'pending',
           createdAt,
           resolvedAt: null
