@@ -28,7 +28,7 @@ import type {
   ResolveAiProposalParams
 } from './ai'
 
-export type ThemeMode = 'light' | 'dark' | 'gray' | 'system'
+export type ThemeMode = 'light' | 'dark' | 'gray' | 'electric' | 'system'
 
 export interface ModuleManifest {
   id: string
