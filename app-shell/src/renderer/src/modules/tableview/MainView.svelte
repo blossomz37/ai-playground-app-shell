@@ -1360,7 +1360,12 @@
   .data-table tr:hover td { background: var(--color-bg-overlay); }
   .data-table tr { cursor: pointer; }
   .data-table tr.active td { background: var(--color-accent-dim); }
-  .data-table tr.selected td { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+  .data-table tr.selected td { background-color: var(--row-selected-bg); }
+  /* Marker bar is painted as a background-image, not a box-shadow: Chromium
+   * does not render box-shadow on cells while border-collapse is collapse. */
+  .data-table tr.selected td:first-child {
+    background-image: linear-gradient(to right, var(--row-selected-marker) 0 3px, transparent 3px);
+  }
   .select-col,
   .select-cell {
     width: 34px;
@@ -1424,6 +1429,8 @@
   }
   .cell-date { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
   .cell-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-fg-muted); }
-  .kind-badge { font-size: var(--font-size-xs); color: var(--color-accent); background: var(--color-accent-dim); padding: 1px 6px; border-radius: var(--radius-sm); }
+  /* Chip outline uses an inset shadow, not a border, so themes that leave
+   * --chip-border transparent keep the original chip metrics exactly. */
+  .kind-badge { font-size: var(--font-size-xs); color: var(--chip-fg); background: var(--chip-bg); box-shadow: inset 0 0 0 1px var(--chip-border); padding: 1px 6px; border-radius: var(--radius-sm); }
   .empty-cell { text-align: center; color: var(--color-fg-muted); padding: var(--space-6) !important; }
 </style>
