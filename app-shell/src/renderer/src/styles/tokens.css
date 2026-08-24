@@ -42,6 +42,16 @@
   /* Utility aliases */
   --color-fg-accent: var(--color-accent);
 
+  /* Classification chips and row selection.
+   * Defaults reproduce the pre-existing accent-tinted look so light, dark, and
+   * gray are unchanged. Themes override these to set their own chip/selection
+   * policy - see [data-theme="electric"]. */
+  --chip-bg:     var(--color-accent-dim);
+  --chip-fg:     var(--color-accent);
+  --chip-border: transparent;
+  --row-selected-bg:     color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --row-selected-marker: transparent;
+
   /* Jewel palette */
   --jewel-ruby:       #9f1239;
   --jewel-amber:      #b45309;
@@ -268,6 +278,18 @@
 
   /* Zone accents — wider spread: one violet family plus a teal outlier so the
    * four zones stay tellable apart at a glance. */
+  /* Chips read as metadata first (DESIGN.md 3.4): pale neutral fill, quiet
+   * border, muted text. Ember is spent on selection instead, so a long list
+   * of categories no longer turns the accent into wallpaper. */
+  --chip-bg:     #f2effa;
+  --chip-fg:     #514a68;
+  --chip-border: #ded9ea;
+
+  /* Selection carries two signals (DESIGN.md 8.5): warm wash plus an ember
+   * marker bar. */
+  --row-selected-bg:     #fff4ec;
+  --row-selected-marker: #c0461a;
+
   --accent-nav:       #6b5fd6;
   --accent-editor:    #3e8e93;
   --accent-inspector: #8e5fc7;

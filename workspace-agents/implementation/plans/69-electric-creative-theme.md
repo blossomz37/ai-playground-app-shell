@@ -242,3 +242,36 @@ Screenshots surfaced three real defects. All are component-level and were correc
 3. **Muted text pushed below the contrast floor.** `.empty-hint` at `src/renderer/src/modules/documents/InspectorView.svelte:1372` is `color-mix(in srgb, var(--color-fg-muted) 78%, transparent)`. `--color-fg-muted` is already at the 5.0:1 floor, so the 78% lightening lands near 3.4:1. DESIGN.md §4.2 forbids this. **Pre-existing across every light theme**, not introduced here; electric only makes it more obvious. Worth sweeping for other `color-mix(... --color-fg-muted ...%, transparent)` sites at the same time.
 
 Findings 1 and 2 should be folded into Slice 2's file list.
+
+---
+
+## Slice 1b — Chip and Selection Fix (2026-08-23)
+
+Carlo authorised fixing Findings 1 and 2 immediately rather than deferring them to Slice 2, because the ember-wallpaper effect made the theme impossible to judge.
+
+Approach: semantic tokens with backward-compatible defaults, so `light`, `dark`, and `gray` are untouched. Five tokens added to the theme-invariant `:root` (`tokens.css:48-53`), defaulting to the previous accent-tinted values; `electric` overrides them (`tokens.css:281-291`).
+
+| Token | Default (all other themes) | Electric |
+|---|---|---|
+| `--chip-bg` | `var(--color-accent-dim)` | `#f2effa` lilac mist |
+| `--chip-fg` | `var(--color-accent)` | `#514a68` muted dark |
+| `--chip-border` | `transparent` | `#ded9ea` hairline |
+| `--row-selected-bg` | `color-mix(--color-accent 12%)` | `#fff4ec` ember wash |
+| `--row-selected-marker` | `transparent` | `#c0461a` ember |
+
+Two component lines changed in `src/renderer/src/modules/tableview/MainView.svelte`: `.kind-badge` and `tr.selected td`, plus one new `tr.selected td:first-child` rule for the marker.
+
+### Two implementation traps worth remembering
+
+1. **`box-shadow` does not paint on table cells while `border-collapse: collapse`.** The marker bar was first written as `box-shadow: inset 3px 0 0`. It compiled correctly and silently rendered nothing in Chromium. Rewritten as a `background-image: linear-gradient(...)` with `background-color` (not the `background` shorthand, which would reset the image). Verified by pixel sampling: 6 device pixels of `#c0461a` at 2x DPR.
+
+2. **A `border` on the chip would have grown every chip by 2px in every theme.** Even with `--chip-border: transparent`, the border occupies layout. Rewritten as `box-shadow: inset 0 0 0 1px var(--chip-border)`, which paints without affecting metrics. Chips are spans, not table cells, so the collapse caveat above does not apply here.
+
+### Verification
+
+`npm run typecheck` clean, `npm run build` clean, `git diff --check` clean.
+
+- `electric-chips-electric-2026-08-23.png` — chips are neutral metadata; the three selected rows carry three signals (ember wash, ember marker bar, ember checkbox). Ember now appears only where selection or action lives.
+- `electric-chips-dark-2026-08-23.png` — dark theme regression check with the same three rows selected. Chips, selection wash, and chip metrics are identical to before. No marker bar, as intended.
+
+Finding 3 (`.empty-hint` below the contrast floor, `documents/InspectorView.svelte:1372`) is **not** fixed and remains open for Slice 2. It is pre-existing across all light themes.
