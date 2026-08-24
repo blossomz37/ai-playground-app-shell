@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────
    File:        tokens.css
-   Description: Design tokens — multi-palette theming (dark default, light, gray, system)
+   Description: Design tokens — multi-palette theming (dark default, light, gray, electric, system)
    Version:     0.2.0
    Created:     2026-05-29
    Modified:    2026-05-29
@@ -221,6 +221,67 @@
   --accent-status:         #2f63bf;
   --shadow-panel:          0 16px 38px rgb(32 32 32 / 0.11), 0 0 0 1px rgb(255 255 255 / 0.72);
   --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 24%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* ── Electric palette ─────────────────────────────────────────────────────── *
+ * Electric Creative design language: a near-black indigo frame around a
+ * bright editorial page, with ember as the single action/focus signal.
+ * Zone accents stay distinct but move into the indigo/ember family.
+ * Reference: /Users/carlo/BOOKHUB/agents/knowledge/DESIGN.md
+ * ──────────────────────────────────────────────────────────────────────────── */
+[data-theme="electric"] {
+  --color-bg-base:     #fbfaff;
+  --color-bg-surface:  #ffffff;
+  --color-bg-overlay:  #f2effa;
+  --color-bg-active:   #fff4ec;
+  --color-fg-primary:  #373245;
+  --color-fg-secondary:#514a68;
+  --color-fg-muted:    #6f6980;
+
+  /* --color-accent is read as text (20 sites) and as a fill (7 sites), so it
+   * must satisfy both. Ember text #c0461a is 4.9:1 on the page field and
+   * carries white/near-white at ~5.3:1 when used as a fill. Bright ember
+   * #ff7a45 is 2.5:1 and is therefore reserved for the focus ring and for
+   * accents that sit on the dark indigo chrome. */
+  --color-accent:      #c0461a;
+  --color-accent-dim:  #fff4ec;
+  --color-action-text: #c0461a;
+
+  --color-danger:      #a31d2e;
+  --color-success:     #2d7a52;
+  --color-warn:        #9a6410;
+
+  --color-border:      #ded9ea;
+  --color-border-strong:#6f6980;
+
+  --color-shell-topbar:    #100d24;
+  --color-shell-rail:      #16122f;
+  --color-shell-sidebar:   #ffffff;
+  --color-shell-main:      #fbfaff;
+  --color-shell-inspector: #f2effa;
+  --color-shell-status:    #100d24;
+
+  --color-hover:           rgb(16 13 36 / 0.05);
+  --color-panel-glint:     rgb(255 255 255 / 0.70);
+  --color-focus-ring:      #ff7a45;
+  --color-focus-ring-offset:#fbfaff;
+
+  /* Zone accents — wider spread: one violet family plus a teal outlier so the
+   * four zones stay tellable apart at a glance. */
+  --accent-nav:       #6b5fd6;
+  --accent-editor:    #3e8e93;
+  --accent-inspector: #8e5fc7;
+  --accent-status:    #ffb054;
+
+  --editor-table-border:   #ded9ea;
+  --editor-table-header-bg:#f2effa;
+  --editor-table-header-fg:#100d24;
+  --editor-table-cell-bg:  #ffffff;
+  --editor-table-selection:#8e5fc7;
+  --editor-table-resize:   #c0461a;
+
+  --shadow-panel:          0 10px 26px rgb(16 13 36 / 0.08), 0 0 0 1px rgb(16 13 36 / 0.05);
+  --shadow-active-glow:    0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent), 0 6px 18px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 /* ── System mode fallback ─────────────────────────────────────────────────── *

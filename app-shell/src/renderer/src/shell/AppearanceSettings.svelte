@@ -5,6 +5,7 @@
     { mode: 'light', label: 'Light', icon: '☀️' },
     { mode: 'dark', label: 'Dark', icon: '🌙' },
     { mode: 'gray', label: 'Gray', icon: '◼' },
+    { mode: 'electric', label: 'Electric', icon: '⚡' },
     { mode: 'system', label: 'System', icon: '💻' }
   ]
 
