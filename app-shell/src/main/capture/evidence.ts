@@ -56,7 +56,6 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
   const viewport = process.env['SHELL_CAPTURE_VIEWPORT']
   const commandPaletteQuery = process.env['SHELL_CAPTURE_COMMAND_PALETTE_QUERY']
   const captureTheme = process.env['SHELL_CAPTURE_THEME']
-  const partyMode = process.env['SHELL_CAPTURE_PARTY_MODE'] === '1'
   const exitZen = process.env['SHELL_CAPTURE_EXIT_ZEN'] === '1'
   const openRailMore = process.env['SHELL_CAPTURE_OPEN_RAIL_MORE'] === '1'
   const openWorkspaceMenu = process.env['SHELL_CAPTURE_OPEN_WORKSPACE_MENU'] === '1'
@@ -1177,12 +1176,6 @@ export function maybeCaptureForEvidence(win: BrowserWindow): void {
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       } else if (captureTheme === 'system') {
         await win.webContents.executeJavaScript('document.documentElement.removeAttribute("data-theme")')
-        await new Promise(resolve => setTimeout(resolve, interactionDelay))
-      }
-      if (partyMode) {
-        await win.webContents.executeJavaScript(`
-          document.querySelector('button[aria-label="Turn on party mode"]')?.click()
-        `)
         await new Promise(resolve => setTimeout(resolve, interactionDelay))
       }
       if (showSidebar && viewport) {

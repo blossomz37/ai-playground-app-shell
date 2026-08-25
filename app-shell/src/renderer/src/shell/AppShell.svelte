@@ -43,7 +43,6 @@
   let sidebarVisible = $state(true)
   let inspectorVisible = $state(true)
   let zenMode = $state(false)
-  let partyMode = $state(false)
   let layoutLoaded = $state(false)
   let narrowViewport = $state(false)
   let narrowSidebarOpen = $state(false)
@@ -128,10 +127,6 @@
   async function toggleZen() {
     const state = await window.shell.layout.toggleZen()
     applyLayout(state)
-  }
-
-  function togglePartyMode() {
-    partyMode = !partyMode
   }
 
   function closeNarrowPanels() {
@@ -304,9 +299,7 @@
   {#if !zenMode}
     <ActivityRail
       moduleId={$activeModuleId}
-      {partyMode}
       onSelect={selectModule}
-      onTogglePartyMode={togglePartyMode}
     />
   {/if}
   {#if effectiveSidebarVisible}

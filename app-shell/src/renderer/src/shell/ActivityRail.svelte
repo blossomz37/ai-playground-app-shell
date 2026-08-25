@@ -13,12 +13,10 @@
   interface RailItem { id: string; label: string; icon: Component }
   interface Props {
     moduleId: string | null
-    partyMode: boolean
     onSelect: (id: string) => void | Promise<void>
-    onTogglePartyMode: () => void
   }
 
-  let { moduleId, partyMode, onSelect, onTogglePartyMode }: Props = $props()
+  let { moduleId, onSelect }: Props = $props()
   let focusedControlId = $state<string | null>(null)
   let customRailOrder = $state<string[] | null>(null)
   let draggingModuleId = $state<string | null>(null)
@@ -192,17 +190,7 @@
   }
 </script>
 
-<nav class="activity-rail" class:party={partyMode} aria-label="Module navigation">
-  <button
-    class="rail-logo"
-    class:active={partyMode}
-    type="button"
-    aria-label={partyMode ? 'Turn off party mode' : 'Turn on party mode'}
-    title={partyMode ? 'Turn off party mode' : 'Turn on party mode'}
-    onclick={onTogglePartyMode}
-  >
-    <img class="rail-logo-mark" src="./app-shell-logo.png" alt="" />
-  </button>
+<nav class="activity-rail" aria-label="Module navigation">
   {#each railModules as mod (mod.id)}
     {@const isActive = moduleId === mod.id}
     <button
@@ -237,17 +225,6 @@
 
 <style>
   .activity-rail {
-    --_rail-spectrum: linear-gradient(
-      180deg,
-      var(--jewel-ruby) 0%,
-      var(--jewel-amber) 18%,
-      var(--jewel-citrine) 34%,
-      var(--jewel-emerald) 50%,
-      var(--jewel-sapphire) 68%,
-      var(--jewel-amethyst) 84%,
-      var(--jewel-tourmaline) 100%
-    );
-
     grid-area: rail;
     position: relative;
     isolation: isolate;
@@ -260,96 +237,6 @@
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-panel-glint) 46%, transparent);
     gap: 2px;
     overflow: hidden;
-  }
-
-  .activity-rail::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    pointer-events: none;
-  }
-
-  .activity-rail.party::before {
-    inset: 0 0 auto;
-    height: 260%;
-    background:
-      linear-gradient(
-        180deg,
-        var(--jewel-ruby) 0%,
-        var(--jewel-amber) 14%,
-        var(--jewel-citrine) 28%,
-        var(--jewel-emerald) 42%,
-        var(--jewel-sapphire) 56%,
-        var(--jewel-amethyst) 70%,
-        var(--jewel-tourmaline) 84%,
-        var(--jewel-ruby) 100%
-      );
-    filter: saturate(1.2) brightness(0.92);
-    opacity: 0.48;
-    animation: party-rail-aurora 12s ease-in-out infinite;
-    will-change: transform;
-  }
-
-  .rail-logo {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 34px;
-    margin-bottom: var(--space-1);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  }
-
-  .rail-logo::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: calc(var(--radius-md) + 4px);
-    background: radial-gradient(circle, color-mix(in srgb, var(--jewel-citrine) 34%, transparent), transparent 66%);
-    opacity: 0;
-    transform: scale(0.86);
-    pointer-events: none;
-  }
-
-  .rail-logo:hover,
-  .rail-logo:focus-visible {
-    background: var(--color-hover);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 18%, transparent);
-  }
-
-  .rail-logo:active {
-    transform: translateY(1px);
-  }
-
-  .rail-logo.active {
-    background: color-mix(in srgb, var(--jewel-citrine) 10%, transparent);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--jewel-citrine) 24%, transparent),
-      0 0 14px color-mix(in srgb, var(--jewel-amethyst) 14%, transparent);
-  }
-
-  .rail-logo.active::before {
-    opacity: 1;
-    animation: party-logo-halo 2.8s ease-in-out infinite;
-  }
-
-  .rail-logo-mark {
-    position: relative;
-    z-index: 1;
-    display: block;
-    width: 26px;
-    height: 26px;
-    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.22));
-  }
-
-  .rail-logo.active .rail-logo-mark {
-    filter:
-      drop-shadow(0 1px 2px rgb(0 0 0 / 0.22))
-      drop-shadow(0 0 6px color-mix(in srgb, var(--jewel-citrine) 42%, transparent));
   }
 
   .rail-btn {
@@ -452,36 +339,6 @@
 
   .rail-btn.dragging .rail-tooltip {
     opacity: 0;
-  }
-
-  @keyframes party-logo-halo {
-    0%, 100% {
-      opacity: 0.44;
-      transform: scale(0.9);
-    }
-    50% {
-      opacity: 0.9;
-      transform: scale(1.08);
-    }
-  }
-
-  @keyframes party-rail-aurora {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-46%); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .activity-rail.party::before {
-      animation: none;
-      transform: none;
-      will-change: auto;
-    }
-
-    .rail-logo.active::before {
-      animation: none;
-      opacity: 0.62;
-      transform: scale(1);
-    }
   }
 
 </style>
