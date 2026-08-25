@@ -10,7 +10,7 @@
     SidebarIcon
   } from 'phosphor-svelte'
   import { executeCommand, paletteOpen } from '../store/commands'
-  import { activeJobs, recentJobs, toggleJobsPanel } from '../store/jobs'
+  import { toggleJobsPanel } from '../store/jobs'
   import { shellContextDescriptors } from '../store/shell-context'
 
   interface Props {
@@ -37,10 +37,6 @@
   let inspectorLabel = $derived(inspectorVisible ? 'Hide inspector' : 'Show inspector')
   let sidebarLabel = $derived(sidebarVisible ? 'Hide sidebar' : 'Show sidebar')
   let zenLabel = $derived(zenMode ? 'Exit zen mode' : 'Enter zen mode')
-  let failedJob = $derived($recentJobs.find(job => job.status === 'failed') ?? null)
-  let jobsCount = $derived($activeJobs.length)
-  let jobsLabel = $derived(jobsCount > 0 ? `${jobsCount} active ${jobsCount === 1 ? 'job' : 'jobs'}` : failedJob ? 'Recent job failed' : 'Open jobs')
-  let jobsBadgeLabel = $derived(jobsCount > 0 ? String(jobsCount) : failedJob ? '!' : '')
 </script>
 
 <section class="context-strip" aria-label="View toolbar">
@@ -113,17 +109,12 @@
 
     <button
       class="icon-button jobs-button"
-      class:active={jobsCount > 0}
-      class:failed={jobsCount === 0 && Boolean(failedJob)}
       type="button"
-      title={jobsLabel}
-      aria-label={jobsLabel}
+      title="Open jobs"
+      aria-label="Open jobs"
       onclick={toggleJobsPanel}
     >
-      <BriefcaseIcon size={16} weight={jobsCount > 0 ? 'fill' : 'regular'} />
-      {#if jobsBadgeLabel}
-        <span class="jobs-badge">{jobsBadgeLabel}</span>
-      {/if}
+      <BriefcaseIcon size={16} weight="regular" />
     </button>
 
     <button
@@ -187,9 +178,7 @@
   }
 
   .icon-button:hover,
-  .icon-button[aria-pressed='true'],
-  .icon-button.active,
-  .icon-button.failed {
+  .icon-button[aria-pressed='true'] {
     background: var(--color-hover);
     color: var(--color-fg-secondary);
   }
@@ -242,26 +231,6 @@
   .jobs-button {
     gap: 4px;
     max-width: 58px;
-  }
-
-  .jobs-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 15px;
-    height: 15px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent-status) 72%, var(--color-bg-overlay));
-    color: var(--color-bg-base);
-    font-size: 10px;
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  .jobs-button.failed .jobs-badge {
-    background: color-mix(in srgb, var(--color-warn) 82%, var(--color-bg-overlay));
-    color: var(--color-bg-base);
   }
 
   @media (max-width: 900px) {

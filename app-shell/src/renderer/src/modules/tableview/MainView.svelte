@@ -520,6 +520,18 @@
       }>).detail
 
       if (detail.reset) resetFilters()
+      if (
+        detail.searchMode !== undefined
+        || detail.folderId !== undefined
+        || detail.folderPath !== undefined
+        || detail.kinds !== undefined
+        || detail.wordsMin !== undefined
+        || detail.wordsMax !== undefined
+        || detail.updatedRange !== undefined
+        || detail.sortDirection !== undefined
+      ) {
+        filtersOpen = true
+      }
       if (detail.searchMode !== undefined) setSearchMode(detail.searchMode)
       if (detail.folderId !== undefined) setFolderFilter(detail.folderId)
       if (detail.folderPath !== undefined) setFolderFilterByPath(detail.folderPath)
@@ -597,19 +609,6 @@
           <option value="targetWordCount">Target</option>
         </select>
       </label>
-      <label class="toolbar-field sort-direction-field" for="table-sort-direction">
-        <span class="sr-only">Sort direction</span>
-        <select
-          id="table-sort-direction"
-          value={$tableSortDirection}
-          aria-label="Sort direction"
-          onchange={(event) => setSortDirection(event.currentTarget.value as TableSortDirection)}
-          data-capture-table-sort-direction
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-      </label>
       <button
         class="filters-toggle"
         class:active={filtersOpen || filterChips.length > 0}
@@ -620,16 +619,6 @@
       >
         <span>Filters{filterChips.length ? ` (${filterChips.length})` : ''}</span>
         <span class="filters-chevron" aria-hidden="true">{filtersOpen ? '^' : 'v'}</span>
-      </button>
-      <button
-        class="reset-btn"
-        type="button"
-        disabled={!$tableHasActiveFilters}
-        aria-label="Reset table filters"
-        title="Reset filters"
-        onclick={resetFilters}
-      >
-        <XIcon size={14} weight="bold" aria-hidden="true" />
       </button>
     </header>
     <section
@@ -777,6 +766,27 @@
           {/each}
         </select>
       </label>
+      <label class="advanced-field" for="table-sort-direction">
+        <span>Direction</span>
+        <select
+          id="table-sort-direction"
+          value={$tableSortDirection}
+          onchange={(event) => setSortDirection(event.currentTarget.value as TableSortDirection)}
+          data-capture-table-sort-direction
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </label>
+      <button
+        class="reset-btn"
+        type="button"
+        disabled={!$tableHasActiveFilters}
+        onclick={resetFilters}
+      >
+        <XIcon size={14} weight="bold" aria-hidden="true" />
+        Reset filters
+      </button>
     </section>
     <div class="filter-summary">
       <span>{$tableFilterSummary}</span>
@@ -970,6 +980,7 @@
   .search-input,
   .folder-input,
   .toolbar-field select,
+  .advanced-field select,
   .kind-filter-btn,
   .number-input {
     width: 100%;
@@ -1142,11 +1153,26 @@
     padding: 0 var(--space-2);
     font-weight: 500;
   }
+  .advanced-field {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-fg-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 650;
+  }
+  .advanced-field select {
+    width: auto;
+    min-width: 112px;
+    padding: 0 var(--space-2);
+    font-weight: 500;
+  }
   .search-input:focus-visible,
   .folder-input:focus-visible,
   .folder-popover button:focus-visible,
   .search-mode button:focus-visible,
   .toolbar-field select:focus-visible,
+  .advanced-field select:focus-visible,
   .kind-filter-btn:focus-visible,
   .kind-actions button:focus-visible,
   .kind-option:focus-within,
@@ -1186,13 +1212,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 30px;
-    width: 30px;
+    gap: var(--space-1);
+    flex: 0 0 auto;
     height: 30px;
-    padding: 0;
+    padding: 0 var(--space-3);
     border-radius: var(--radius-sm);
     color: var(--color-fg-secondary);
     background: var(--color-bg-overlay);
+    font-size: var(--font-size-xs);
+    font-weight: 650;
   }
   .reset-btn:hover:not(:disabled) { background: var(--color-bg-active); color: var(--color-fg-primary); }
   .reset-btn:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import type { DocumentAnnotation, DocumentAnnotationStatus, DocumentAnnotationTarget, DocumentSourceMetadata, DocVersion } from '@shared/module-contract'
   import type { AiProposal, AiProposalType } from '@shared/ai'
   import type { DocumentsAiPromptAction } from '@shared/ai-writing-prompts'
@@ -28,7 +29,7 @@
 
   let annotationFilter = $state<AnnotationFilter>('active')
   let collapsedSections = $state<Record<InspectorSectionId, boolean>>({
-    ai: false,
+    ai: true,
     annotations: true,
     versions: true,
     metadata: true
@@ -178,6 +179,21 @@
   let selectedTextExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.selectedText ?? ''))
   let beforeExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.before ?? ''))
   let afterExcerpt = $derived(excerpt($documentsAiWritingContext?.writingVariables.after ?? ''))
+
+  function openAiForAttention(active: boolean): void {
+    if (active && collapsedSections.ai) collapsedSections = { ...collapsedSections, ai: false }
+  }
+
+  onMount(() => {
+    const unsubscribers = [
+      documentsAiPreviewBusy.subscribe(openAiForAttention),
+      documentsAiProposalBusy.subscribe(openAiForAttention),
+      documentsAiCancelAvailable.subscribe(openAiForAttention),
+      documentsAiPreview.subscribe(value => openAiForAttention(Boolean(value))),
+      aiProposals.subscribe(proposals => openAiForAttention(proposals.some(proposal => proposal.status === 'pending')))
+    ]
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe())
+  })
 
   function excerpt(value: string, max = 180): string {
     const cleaned = value.replace(/\s+/g, ' ').trim()

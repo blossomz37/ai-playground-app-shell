@@ -2,6 +2,8 @@
   import { onMount } from 'svelte'
   import AiContextPicker from '../../shell/AiContextPicker.svelte'
   import InlineRename from '../../shell/InlineRename.svelte'
+  import OverflowMenu, { type OverflowMenuItem } from '../../shell/OverflowMenu.svelte'
+  import type { AiPromptTemplate } from '@shared/ai'
   import {
     aiTemplates,
     archiveAiTemplate,
@@ -41,8 +43,7 @@
     addToast('info', 'New prompt template created.')
   }
 
-  function startRename(event: MouseEvent, id: string): void {
-    event.stopPropagation()
+  function startRename(id: string): void {
     selectAiTemplate(id)
     renamingTemplateId = id
   }
@@ -62,28 +63,24 @@
     cancelRename()
   }
 
-  async function duplicateTemplate(event: MouseEvent, id: string): Promise<void> {
-    event.stopPropagation()
+  async function duplicateTemplate(id: string): Promise<void> {
     await duplicateAiTemplate(id)
     activeTab = 'templates'
     addToast('info', 'Prompt template duplicated.')
   }
 
-  async function archiveTemplate(event: MouseEvent, id: string): Promise<void> {
-    event.stopPropagation()
+  async function archiveTemplate(id: string): Promise<void> {
     await archiveAiTemplate(id)
     addToast('info', 'Prompt template archived.')
   }
 
-  async function restoreTemplate(event: MouseEvent, id: string): Promise<void> {
-    event.stopPropagation()
+  async function restoreTemplate(id: string): Promise<void> {
     await restoreAiTemplate(id)
     activeTab = 'templates'
     addToast('info', 'Prompt template restored.')
   }
 
-  async function deleteTemplate(event: MouseEvent, id: string, name: string): Promise<void> {
-    event.stopPropagation()
+  async function deleteTemplate(id: string, name: string): Promise<void> {
     if (!window.confirm(`Delete "${name}" permanently?`)) return
     await deleteAiTemplate(id)
     addToast('info', 'Prompt template deleted.')
@@ -119,6 +116,59 @@
       addToast('warn', error instanceof Error ? error.message : 'Prompt templates could not be imported.')
     }
   }
+
+  function templateActions(template: AiPromptTemplate): OverflowMenuItem[] {
+    const items: OverflowMenuItem[] = [{
+      id: 'rename',
+      label: 'Rename',
+      onSelect: () => startRename(template.id)
+    }, {
+      id: 'duplicate',
+      label: 'Duplicate',
+      onSelect: () => duplicateTemplate(template.id)
+    }]
+
+    if (!template.isProtected) {
+      items.push({
+        id: 'archive',
+        label: 'Archive',
+        onSelect: () => archiveTemplate(template.id)
+      }, {
+        id: 'delete',
+        label: 'Delete permanently',
+        tone: 'danger',
+        separatorBefore: true,
+        onSelect: () => deleteTemplate(template.id, template.name)
+      })
+    }
+    return items
+  }
+
+  function archivedTemplateActions(template: AiPromptTemplate): OverflowMenuItem[] {
+    return [{
+      id: 'restore',
+      label: 'Restore',
+      onSelect: () => restoreTemplate(template.id)
+    }, {
+      id: 'delete',
+      label: 'Delete permanently',
+      tone: 'danger',
+      separatorBefore: true,
+      onSelect: () => deleteTemplate(template.id, template.name)
+    }]
+  }
+
+  function libraryActions(): OverflowMenuItem[] {
+    return [{
+      id: 'import',
+      label: 'Import templates',
+      onSelect: openImportPicker
+    }, {
+      id: 'export',
+      label: 'Export templates',
+      onSelect: exportTemplates
+    }]
+  }
 </script>
 
 <div class="nav-view">
@@ -147,8 +197,7 @@
           <option value={tag}>{tag}</option>
         {/each}
       </select>
-      <button type="button" class="tool-btn" onclick={exportTemplates}>Export</button>
-      <button type="button" class="tool-btn" onclick={openImportPicker}>Import</button>
+      <OverflowMenu ariaLabel="Prompt library actions" items={libraryActions()} />
       <input
         id="prompt-template-import"
         type="file"
@@ -186,46 +235,7 @@
                 {/if}
               </div>
             </button>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="row-action"
-                title="Rename"
-                aria-label={`Rename ${template.name}`}
-                onclick={(event) => startRename(event, template.id)}
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                class="row-action"
-                title="Duplicate"
-                aria-label={`Duplicate ${template.name}`}
-                onclick={(event) => void duplicateTemplate(event, template.id)}
-              >
-                Copy
-              </button>
-              {#if !template.isProtected}
-                <button
-                  type="button"
-                  class="row-action"
-                  title="Archive"
-                  aria-label={`Archive ${template.name}`}
-                  onclick={(event) => void archiveTemplate(event, template.id)}
-                >
-                  Arc
-                </button>
-                <button
-                  type="button"
-                  class="row-action danger"
-                  title="Delete"
-                  aria-label={`Delete ${template.name}`}
-                  onclick={(event) => void deleteTemplate(event, template.id, template.name)}
-                >
-                  Del
-                </button>
-              {/if}
-            </div>
+            <OverflowMenu ariaLabel={`More actions for ${template.name}`} items={templateActions(template)} />
           {/if}
         </div>
       {:else}
@@ -240,26 +250,7 @@
             <div class="template-title">{template.name}</div>
             <div class="template-meta">Archived {template.archivedAt ? new Date(template.archivedAt).toLocaleDateString() : ''}</div>
           </div>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="row-action"
-              title="Restore"
-              aria-label={`Restore ${template.name}`}
-              onclick={(event) => void restoreTemplate(event, template.id)}
-            >
-              Restore
-            </button>
-            <button
-              type="button"
-              class="row-action danger"
-              title="Delete"
-              aria-label={`Delete ${template.name}`}
-              onclick={(event) => void deleteTemplate(event, template.id, template.name)}
-            >
-              Del
-            </button>
-          </div>
+          <OverflowMenu ariaLabel={`More actions for archived prompt ${template.name}`} items={archivedTemplateActions(template)} />
         </div>
       {:else}
         <div class="template-empty">No archived templates</div>
@@ -332,14 +323,13 @@
 
   .library-tools {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) 28px;
     gap: var(--space-1);
     padding: var(--space-2);
     border-bottom: 1px solid var(--color-border);
   }
 
-  .library-tools select,
-  .tool-btn {
+  .library-tools select {
     min-width: 0;
     height: 28px;
     padding: 0 var(--space-2);
@@ -350,18 +340,8 @@
     font-size: var(--font-size-xs);
   }
 
-  .tool-btn {
-    cursor: pointer;
-  }
-
-  .library-tools select:focus,
-  .tool-btn:focus-visible {
+  .library-tools select:focus {
     outline: none;
-    border-color: var(--color-accent);
-  }
-
-  .tool-btn:hover {
-    color: var(--color-fg-primary);
     border-color: var(--color-accent);
   }
 
@@ -401,43 +381,6 @@
 
   .archived-template {
     cursor: default;
-  }
-
-  .row-actions {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    gap: 2px;
-    max-width: 78px;
-    overflow: hidden;
-  }
-
-  .row-action {
-    min-width: 22px;
-    height: 22px;
-    padding: 0 4px;
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    opacity: 0;
-    overflow: hidden;
-    text-overflow: clip;
-  }
-
-  .template-item:hover .row-action,
-  .template-item.active .row-action,
-  .row-action:focus-visible {
-    opacity: 1;
-  }
-
-  .row-action:hover {
-    background: var(--color-bg-overlay);
-    color: var(--color-fg-primary);
-  }
-
-  .row-action.danger:hover {
-    color: var(--color-error, #cf222e);
   }
 
   .template-title {

@@ -1,15 +1,11 @@
 <script lang="ts">
   import {
-    ArchiveIcon,
-    ArrowClockwiseIcon,
     BookOpenIcon,
-    CheckIcon,
-    CopyIcon,
     FolderOpenIcon,
     PlusIcon,
-    TrashIcon,
     XIcon
   } from 'phosphor-svelte'
+  import OverflowMenu, { type OverflowMenuItem } from './OverflowMenu.svelte'
   import {
     activeWorkspace,
     archiveWorkspace as archiveWorkspaceAction,
@@ -90,18 +86,6 @@
     await runWorkspaceAction('import', () => importWorkspaceFolder({ type: workspaceType }))
   }
 
-  async function onDuplicateCurrent(): Promise<void> {
-    const id = $activeWorkspace?.id
-    if (!id) return
-    await onDuplicateWorkspace(id)
-  }
-
-  async function onArchiveCurrent(): Promise<void> {
-    const id = $activeWorkspace?.id
-    if (!id) return
-    await onArchiveWorkspace(id)
-  }
-
   async function onDuplicateWorkspace(id: string): Promise<void> {
     await runWorkspaceAction(`duplicate:${id}`, () => duplicateWorkspaceAction(id))
   }
@@ -121,6 +105,39 @@
       return
     }
     await runWorkspaceAction(`delete:${id}`, () => deleteWorkspaceAction(id))
+  }
+
+  function workspaceActions(id: string, archived = false): OverflowMenuItem[] {
+    const deleteArmed = confirmDeleteId === id
+    const items: OverflowMenuItem[] = archived
+      ? [{
+          id: 'restore',
+          label: 'Restore project',
+          disabled: busyAction !== null,
+          onSelect: () => onRestoreWorkspace(id)
+        }]
+      : [{
+          id: 'duplicate',
+          label: 'Duplicate project',
+          disabled: busyAction !== null,
+          onSelect: () => onDuplicateWorkspace(id)
+        }, {
+          id: 'archive',
+          label: 'Archive project',
+          disabled: busyAction !== null,
+          onSelect: () => onArchiveWorkspace(id)
+        }]
+
+    items.push({
+      id: 'delete',
+      label: deleteArmed ? 'Confirm delete from app' : 'Delete from app',
+      tone: 'danger',
+      separatorBefore: true,
+      disabled: busyAction !== null,
+      keepOpen: !deleteArmed,
+      onSelect: () => onDeleteWorkspace(id)
+    })
+    return items
   }
 </script>
 
@@ -157,43 +174,14 @@
           <div class="workspace-current-summary">
             <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
           </div>
-          <button
-            class="icon-action"
-            type="button"
-            title="Duplicate project"
-            aria-label={`Duplicate ${$activeWorkspace?.name ?? 'current project'}`}
+          <OverflowMenu
+            ariaLabel={`More actions for ${$activeWorkspace?.name ?? 'current project'}`}
+            items={$activeWorkspace ? workspaceActions($activeWorkspace.id) : []}
             disabled={busyAction !== null || !$activeWorkspace}
-            onclick={() => onDuplicateCurrent()}
-          >
-            <CopyIcon size={14} weight="bold" />
-          </button>
-          <button
-            class="icon-action"
-            type="button"
-            title="Archive project"
-            aria-label={`Archive ${$activeWorkspace?.name ?? 'current project'}`}
-            disabled={busyAction !== null || !$activeWorkspace}
-            onclick={() => onArchiveCurrent()}
-          >
-            <ArchiveIcon size={14} weight="bold" />
-          </button>
-          <button
-            class="icon-action danger"
-            type="button"
-            title={confirmDeleteId === $activeWorkspace?.id ? 'Confirm database delete' : 'Delete from app'}
-            aria-label={`${confirmDeleteId === $activeWorkspace?.id ? 'Confirm delete' : 'Delete'} ${$activeWorkspace?.name ?? 'current project'}`}
-            disabled={busyAction !== null || !$activeWorkspace}
-            onclick={() => $activeWorkspace && onDeleteWorkspace($activeWorkspace.id)}
-          >
-            {#if confirmDeleteId === $activeWorkspace?.id}
-              <CheckIcon size={14} weight="bold" />
-            {:else}
-              <TrashIcon size={14} weight="bold" />
-            {/if}
-          </button>
+          />
         </div>
         {#if confirmDeleteId === $activeWorkspace?.id}
-          <p class="workspace-note">Source files and folders stay on disk.</p>
+          <p class="workspace-note" aria-live="polite">Source files and folders stay on disk. Choose Confirm delete from app to continue.</p>
         {/if}
       </header>
 
@@ -215,41 +203,15 @@
                 >
                   <span>{workspace.name}</span>
                 </button>
-                <button
-                  class="icon-action"
-                  type="button"
-                  title="Duplicate project"
-                  aria-label={`Duplicate ${workspace.name}`}
+                <OverflowMenu
+                  ariaLabel={`More actions for ${workspace.name}`}
+                  items={workspaceActions(workspace.id)}
                   disabled={busyAction !== null}
-                  onclick={() => onDuplicateWorkspace(workspace.id)}
-                >
-                  <CopyIcon size={14} weight="bold" />
-                </button>
-                <button
-                  class="icon-action"
-                  type="button"
-                  title="Archive project"
-                  aria-label={`Archive ${workspace.name}`}
-                  disabled={busyAction !== null}
-                  onclick={() => onArchiveWorkspace(workspace.id)}
-                >
-                  <ArchiveIcon size={14} weight="bold" />
-                </button>
-                <button
-                  class="icon-action danger"
-                  type="button"
-                  title={confirmDeleteId === workspace.id ? 'Confirm database delete' : 'Delete from app'}
-                  aria-label={`${confirmDeleteId === workspace.id ? 'Confirm delete' : 'Delete'} ${workspace.name}`}
-                  disabled={busyAction !== null}
-                  onclick={() => onDeleteWorkspace(workspace.id)}
-                >
-                  {#if confirmDeleteId === workspace.id}
-                    <CheckIcon size={14} weight="bold" />
-                  {:else}
-                    <TrashIcon size={14} weight="bold" />
-                  {/if}
-                </button>
+                />
               </div>
+              {#if confirmDeleteId === workspace.id}
+                <p class="workspace-note row-note" aria-live="polite">Source files and folders stay on disk. Choose Confirm delete from app to continue.</p>
+              {/if}
             {/each}
           </div>
         {:else}
@@ -314,31 +276,15 @@
             {#each $archivedWorkspaces as workspace (workspace.id)}
               <div class="archived-row">
                 <span class="archived-name">{workspace.name}</span>
-                <button
-                  class="icon-action"
-                  type="button"
-                  title="Restore project"
-                  aria-label={`Restore ${workspace.name}`}
+                <OverflowMenu
+                  ariaLabel={`More actions for archived project ${workspace.name}`}
+                  items={workspaceActions(workspace.id, true)}
                   disabled={busyAction !== null}
-                  onclick={() => onRestoreWorkspace(workspace.id)}
-                >
-                  <ArrowClockwiseIcon size={14} weight="bold" />
-                </button>
-                <button
-                  class="icon-action danger"
-                  type="button"
-                  title={confirmDeleteId === workspace.id ? 'Confirm database delete' : 'Delete from app'}
-                  aria-label={`${confirmDeleteId === workspace.id ? 'Confirm delete' : 'Delete'} ${workspace.name}`}
-                  disabled={busyAction !== null}
-                  onclick={() => onDeleteWorkspace(workspace.id)}
-                >
-                  {#if confirmDeleteId === workspace.id}
-                    <CheckIcon size={14} weight="bold" />
-                  {:else}
-                    <TrashIcon size={14} weight="bold" />
-                  {/if}
-                </button>
+                />
               </div>
+              {#if confirmDeleteId === workspace.id}
+                <p class="workspace-note row-note" aria-live="polite">Source files and folders stay on disk. Choose Confirm delete from app to continue.</p>
+              {/if}
             {/each}
           </div>
         {:else}
@@ -494,13 +440,13 @@
   }
 
   .project-row {
-    grid-template-columns: minmax(0, 1fr) 28px 28px 28px;
+    grid-template-columns: minmax(0, 1fr) 28px;
     padding-left: 0;
   }
 
   .current-project-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 28px 28px 28px;
+    grid-template-columns: minmax(0, 1fr) 28px;
     align-items: center;
     gap: var(--space-2);
     min-height: 30px;
@@ -519,8 +465,7 @@
     font-weight: 650;
   }
 
-  .workspace-row:hover:not(:disabled),
-  .icon-action:hover:not(:disabled) {
+  .workspace-row:hover:not(:disabled) {
     background: var(--color-hover);
   }
 
@@ -545,11 +490,6 @@
     background: color-mix(in srgb, var(--accent-nav) 16%, transparent);
   }
 
-  .icon-action.danger {
-    color: var(--color-danger);
-    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
-  }
-
   .workspace-form {
     display: grid;
     gap: var(--space-2);
@@ -567,19 +507,8 @@
   }
 
   .archived-row {
-    grid-template-columns: minmax(0, 1fr) 28px 28px;
+    grid-template-columns: minmax(0, 1fr) 28px;
     padding-left: var(--space-2);
-  }
-
-  .icon-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: var(--radius-sm);
-    color: var(--color-fg-secondary);
-    border: 1px solid transparent;
   }
 
   button:disabled {
@@ -598,5 +527,9 @@
     margin: 0;
     color: var(--color-fg-muted);
     font-size: var(--font-size-xs);
+  }
+
+  .row-note {
+    padding: 0 var(--space-2) var(--space-1);
   }
 </style>

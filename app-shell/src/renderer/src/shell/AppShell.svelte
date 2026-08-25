@@ -48,8 +48,8 @@
   let narrowViewport = $state(false)
   let narrowSidebarOpen = $state(false)
   let narrowInspectorOpen = $state(false)
-  let webInspectorSuppressed = $state(false)
-  let webInspectorDefaultPending = $state(true)
+  let inspectorSuppressed = $state(false)
+  let inspectorDefaultOverrides = $state<string[]>([])
   let captureModuleListener: ((event: Event) => void) | null = null
   let captureSettingsListener: (() => void) | null = null
   let captureJobsListener: (() => void) | null = null
@@ -60,6 +60,7 @@
   // Default widths for double-click reset
   const DEFAULT_SIDEBAR_WIDTH = 240
   const DEFAULT_INSPECTOR_WIDTH = 280
+  const DEFAULT_CLOSED_INSPECTOR_MODULES = new Set(['shell.web', 'shell.tableview'])
 
   // Active resize tracking
   let resizing = $state<'sidebar' | 'inspector' | null>(null)
@@ -70,11 +71,19 @@
   // consume these variables so titlebar/context/body/status stay aligned.
   let railColumn = $derived(zenMode ? '0px' : narrowViewport ? '40px' : '46px')
   let sidebarColumn = $derived(zenMode || narrowViewport ? '0px' : sidebarVisible ? `${sidebarWidth}px` : '0px')
-  let webInspectorDefaultClosed = $derived($activeModuleId === 'shell.web' && webInspectorSuppressed && !narrowViewport && !zenMode)
-  let inspectorColumn = $derived(zenMode || narrowViewport || webInspectorDefaultClosed ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
+  let inspectorDefaultClosed = $derived(inspectorSuppressed && !narrowViewport && !zenMode)
+  let inspectorColumn = $derived(zenMode || narrowViewport || inspectorDefaultClosed ? '0px' : inspectorVisible ? `${inspectorWidth}px` : '0px')
   let gridColumns = $derived('var(--_rail-col) var(--_sidebar-col) minmax(0, 1fr) var(--_inspector-col)')
   let effectiveSidebarVisible = $derived(sidebarVisible && !zenMode && !narrowViewport)
-  let effectiveInspectorVisible = $derived(inspectorVisible && !zenMode && !narrowViewport && !webInspectorDefaultClosed)
+  let effectiveInspectorVisible = $derived(inspectorVisible && !zenMode && !narrowViewport && !inspectorDefaultClosed)
+
+  function shouldDefaultCloseInspector(moduleId: string | null): boolean {
+    return Boolean(
+      moduleId
+      && DEFAULT_CLOSED_INSPECTOR_MODULES.has(moduleId)
+      && !inspectorDefaultOverrides.includes(moduleId)
+    )
+  }
 
   function applyLayout(state: LayoutState) {
     sidebarWidth = state.sidebarWidth
@@ -100,9 +109,12 @@
       narrowSidebarOpen = false
       return
     }
-    if ($activeModuleId === 'shell.web' && webInspectorSuppressed) {
-      webInspectorSuppressed = false
-      webInspectorDefaultPending = false
+    if (inspectorSuppressed) {
+      const moduleId = $activeModuleId
+      if (moduleId && !inspectorDefaultOverrides.includes(moduleId)) {
+        inspectorDefaultOverrides = [...inspectorDefaultOverrides, moduleId]
+      }
+      inspectorSuppressed = false
       if (!inspectorVisible) {
         const state = await window.shell.layout.toggle('inspector')
         applyLayout(state)
@@ -135,7 +147,7 @@
       return
     }
     activeModuleId.set(id)
-    webInspectorSuppressed = id === 'shell.web' && webInspectorDefaultPending
+    inspectorSuppressed = shouldDefaultCloseInspector(id)
     closeNarrowPanels()
     await window.shell.modules.activate(id)
   }
@@ -205,7 +217,7 @@
     } catch { /* use defaults */ }
     layoutLoaded = true
     ensureActiveModuleAvailable()
-    webInspectorSuppressed = $activeModuleId === 'shell.web' && webInspectorDefaultPending
+    inspectorSuppressed = shouldDefaultCloseInspector($activeModuleId)
 
     // Register commands
     commandDisposables.push(
