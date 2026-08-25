@@ -156,7 +156,6 @@
         <div class="current-project-row">
           <div class="workspace-current-summary">
             <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
-            <span class="workspace-current-type">{$activeWorkspace?.type ?? 'default'}</span>
           </div>
           <button
             class="icon-action"
@@ -215,7 +214,6 @@
                   onclick={() => onWorkspaceSelect(workspace.id)}
                 >
                   <span>{workspace.name}</span>
-                  <span>{workspace.type}</span>
                 </button>
                 <button
                   class="icon-action"
@@ -316,7 +314,6 @@
             {#each $archivedWorkspaces as workspace (workspace.id)}
               <div class="archived-row">
                 <span class="archived-name">{workspace.name}</span>
-                <span class="archived-type">{workspace.type}</span>
                 <button
                   class="icon-action"
                   type="button"
@@ -444,9 +441,7 @@
 
   .workspace-current-summary {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    align-items: center;
-    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
     min-width: 0;
     padding: 0 var(--space-2);
   }
@@ -459,11 +454,6 @@
     color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
     font-weight: 650;
-  }
-
-  .workspace-current-type {
-    color: var(--color-fg-secondary);
-    font-size: var(--font-size-xs);
   }
 
   .workspace-section {
@@ -497,7 +487,7 @@
   }
 
   .workspace-row {
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(0, 1fr);
     padding: 0 var(--space-2);
     color: var(--color-fg-secondary);
     text-align: left;
@@ -518,7 +508,7 @@
     border-radius: var(--radius-sm);
   }
 
-  .workspace-row span:first-child,
+  .workspace-row span,
   .archived-name {
     min-width: 0;
     overflow: hidden;
@@ -527,12 +517,6 @@
     color: var(--color-fg-primary);
     font-size: var(--font-size-sm);
     font-weight: 650;
-  }
-
-  .workspace-row span:last-child,
-  .archived-type {
-    color: var(--color-fg-muted);
-    font-size: var(--font-size-xs);
   }
 
   .workspace-row:hover:not(:disabled),
@@ -583,7 +567,7 @@
   }
 
   .archived-row {
-    grid-template-columns: minmax(0, 1fr) max-content 28px 28px;
+    grid-template-columns: minmax(0, 1fr) 28px 28px;
     padding-left: var(--space-2);
   }
 
