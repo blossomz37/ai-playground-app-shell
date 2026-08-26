@@ -445,13 +445,28 @@
   }
 
   .current-project-row {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 28px;
     align-items: center;
     gap: var(--space-2);
-    min-height: 30px;
+    min-height: 34px;
     padding-left: 0;
+    overflow: hidden;
     border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-nav) 10%, var(--color-shell-sidebar));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-nav) 20%, transparent);
+  }
+
+  .current-project-row::before {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--accent-nav);
+    content: '';
   }
 
   .workspace-row span,
