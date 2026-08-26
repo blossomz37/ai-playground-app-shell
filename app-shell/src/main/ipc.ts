@@ -211,6 +211,14 @@ export function registerIpcHandlers(): void {
     return workspaceService.importFolder({ ...params, root })
   })
 
+  ipcMain.handle('workspace:rename', async (_e, { id, name }: { id: string; name: string }) => {
+    const workspace = workspaceService.rename(id, name)
+    if (workspaceService.getActive().id === id) {
+      await moduleRegistry.refreshWorkspace(workspace)
+    }
+    return workspace
+  })
+
   ipcMain.handle('workspace:duplicate', (_e, { id, params }: { id: string; params?: WorkspaceDuplicateParams }) =>
     workspaceService.duplicate(id, params)
   )

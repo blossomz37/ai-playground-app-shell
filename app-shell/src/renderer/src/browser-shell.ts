@@ -560,6 +560,16 @@ function createBrowserShell(): ShellApi {
         workspaceRows.set(workspace.id, workspace)
         return workspace
       },
+      rename: async (id, name) => {
+        const workspace = workspaceRows.get(id)
+        if (!workspace) throw new Error(`Workspace not found: ${id}`)
+        const nextName = name.trim()
+        if (!nextName) throw new Error('Project name cannot be blank.')
+        const updated = { ...workspace, name: nextName, updatedAt: new Date().toISOString() }
+        workspaceRows.set(id, updated)
+        if (activeWorkspace.id === id) activeWorkspace = updated
+        return updated
+      },
       duplicate: async (id, params = {}) => {
         const source = workspaceRows.get(id)
         if (!source) throw new Error(`Workspace not found: ${id}`)

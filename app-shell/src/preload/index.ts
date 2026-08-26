@@ -36,6 +36,7 @@ const api: ShellApi = {
     list:   (params)   => ipcRenderer.invoke('workspace:list', params),
     create: (params)   => ipcRenderer.invoke('workspace:create', params),
     importFolder: (params) => ipcRenderer.invoke('workspace:importFolder', params),
+    rename: (id, name) => ipcRenderer.invoke('workspace:rename', { id, name }),
     duplicate: (id, params) => ipcRenderer.invoke('workspace:duplicate', { id, params }),
     archive: (id) => ipcRenderer.invoke('workspace:archive', { id }),
     restore: (id) => ipcRenderer.invoke('workspace:restore', { id }),

@@ -636,6 +636,7 @@ export interface ShellApi {
     list(params?: WorkspaceListParams): Promise<Workspace[]>
     create(params: { name: string; type?: string; root?: string }): Promise<Workspace>
     importFolder(params?: WorkspaceImportParams): Promise<Workspace>
+    rename(id: string, name: string): Promise<Workspace>
     duplicate(id: string, params?: WorkspaceDuplicateParams): Promise<Workspace>
     archive(id: string): Promise<Workspace>
     restore(id: string): Promise<Workspace>

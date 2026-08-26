@@ -359,6 +359,25 @@ export const workspaceService = {
     return workspace
   },
 
+  rename(id: string, name: string): Workspace {
+    const workspace = getWorkspace(id, { includeArchived: true })
+    if (!workspace) throw new Error(`Workspace not found: ${id}`)
+
+    const nextName = name.trim()
+    if (!nextName) throw new Error('Project name cannot be blank.')
+
+    const now = new Date().toISOString()
+    getDb()
+      .prepare('UPDATE workspaces SET name = ?, updatedAt = ? WHERE id = ?')
+      .run(nextName, now, id)
+
+    const updated = getWorkspace(id, { includeArchived: true }) ?? { ...workspace, name: nextName, updatedAt: now }
+    if (shellSettings.get<string>(ACTIVE_WORKSPACE_KEY) === id) {
+      events.emit('workspace:changed', updated)
+    }
+    return updated
+  },
+
   duplicate(id: string, params: WorkspaceDuplicateParams = {}): Workspace {
     const source = getWorkspace(id, { includeArchived: true })
     if (!source) throw new Error(`Workspace not found: ${id}`)

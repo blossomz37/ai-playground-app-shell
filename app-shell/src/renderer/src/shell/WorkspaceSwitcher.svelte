@@ -5,6 +5,7 @@
     PlusIcon,
     XIcon
   } from 'phosphor-svelte'
+  import InlineRename from './InlineRename.svelte'
   import OverflowMenu, { type OverflowMenuItem } from './OverflowMenu.svelte'
   import {
     activeWorkspace,
@@ -14,6 +15,7 @@
     deleteWorkspace as deleteWorkspaceAction,
     duplicateWorkspace as duplicateWorkspaceAction,
     importWorkspaceFolder,
+    renameWorkspace as renameWorkspaceAction,
     restoreWorkspace as restoreWorkspaceAction,
     switchWorkspace,
     workspaces,
@@ -28,6 +30,7 @@
   let busyAction = $state<string | null>(null)
   let workspaceError = $state<string | null>(null)
   let confirmDeleteId = $state<string | null>(null)
+  let renamingWorkspaceId = $state<string | null>(null)
   let switcherElement: HTMLDivElement | undefined = $state()
 
   let isSidebarMode = $derived(mode === 'sidebar')
@@ -38,6 +41,7 @@
     menuOpen = false
     createWorkspaceOpen = false
     confirmDeleteId = null
+    renamingWorkspaceId = null
   }
 
   function onDocumentClick(event: MouseEvent): void {
@@ -90,6 +94,24 @@
     await runWorkspaceAction(`duplicate:${id}`, () => duplicateWorkspaceAction(id))
   }
 
+  function startRenameWorkspace(id: string): void {
+    workspaceError = null
+    confirmDeleteId = null
+    renamingWorkspaceId = id
+  }
+
+  async function onRenameWorkspace(id: string, name: string): Promise<void> {
+    if (!name) {
+      workspaceError = 'Project name cannot be blank.'
+      renamingWorkspaceId = null
+      return
+    }
+    await runWorkspaceAction(`rename:${id}`, async () => {
+      await renameWorkspaceAction(id, name)
+      renamingWorkspaceId = null
+    }, false)
+  }
+
   async function onArchiveWorkspace(id: string): Promise<void> {
     await runWorkspaceAction(`archive:${id}`, () => archiveWorkspaceAction(id))
   }
@@ -117,6 +139,11 @@
           onSelect: () => onRestoreWorkspace(id)
         }]
       : [{
+          id: 'rename',
+          label: 'Rename project',
+          disabled: busyAction !== null,
+          onSelect: () => startRenameWorkspace(id)
+        }, {
           id: 'duplicate',
           label: 'Duplicate project',
           disabled: busyAction !== null,
@@ -171,9 +198,18 @@
       <header class="workspace-current">
         <span class="field-label">Current project</span>
         <div class="current-project-row">
-          <div class="workspace-current-summary">
-            <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
-          </div>
+          {#if renamingWorkspaceId === $activeWorkspace?.id && $activeWorkspace}
+            <InlineRename
+              value={$activeWorkspace.name}
+              ariaLabel="Rename current project"
+              onCommit={(name) => onRenameWorkspace($activeWorkspace!.id, name)}
+              onCancel={() => renamingWorkspaceId = null}
+            />
+          {:else}
+            <div class="workspace-current-summary">
+              <span class="workspace-current-name">{$activeWorkspace?.name ?? 'Workspace'}</span>
+            </div>
+          {/if}
           <OverflowMenu
             ariaLabel={`More actions for ${$activeWorkspace?.name ?? 'current project'}`}
             items={$activeWorkspace ? workspaceActions($activeWorkspace.id) : []}
@@ -194,15 +230,24 @@
           <div class="workspace-list">
             {#each switchableWorkspaces as workspace (workspace.id)}
               <div class="project-row">
-                <button
-                  class="workspace-row"
-                  type="button"
-                  role="menuitem"
-                  disabled={busyAction !== null}
-                  onclick={() => onWorkspaceSelect(workspace.id)}
-                >
-                  <span>{workspace.name}</span>
-                </button>
+                {#if renamingWorkspaceId === workspace.id}
+                  <InlineRename
+                    value={workspace.name}
+                    ariaLabel={`Rename ${workspace.name}`}
+                    onCommit={(name) => onRenameWorkspace(workspace.id, name)}
+                    onCancel={() => renamingWorkspaceId = null}
+                  />
+                {:else}
+                  <button
+                    class="workspace-row"
+                    type="button"
+                    role="menuitem"
+                    disabled={busyAction !== null}
+                    onclick={() => onWorkspaceSelect(workspace.id)}
+                  >
+                    <span>{workspace.name}</span>
+                  </button>
+                {/if}
                 <OverflowMenu
                   ariaLabel={`More actions for ${workspace.name}`}
                   items={workspaceActions(workspace.id)}

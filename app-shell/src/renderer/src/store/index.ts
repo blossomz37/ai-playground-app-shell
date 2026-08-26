@@ -282,6 +282,12 @@ export async function importWorkspaceFolder(params?: { root?: string; name?: str
   await switchWorkspace(workspace.id)
 }
 
+export async function renameWorkspace(id: string, name: string): Promise<void> {
+  const workspace = await window.shell.workspace.rename(id, name)
+  await refreshWorkspaceLists()
+  if (get(workspaceId) === id) activeWorkspace.set(workspace)
+}
+
 export async function duplicateWorkspace(id: string, params?: { name?: string }): Promise<void> {
   if (get(isDirty)) await saveDoc()
   const workspace = await window.shell.workspace.duplicate(id, params)

@@ -14,6 +14,7 @@
   } = $props()
 
   let draft = $derived(value)
+  let finishing = false
 
   function inputHost(node: HTMLInputElement): void {
     queueMicrotask(() => {
@@ -22,19 +23,26 @@
     })
   }
 
-  function commit(): void {
-    void onCommit(draft.trim())
+  async function commit(): Promise<void> {
+    if (finishing) return
+    finishing = true
+    try {
+      await onCommit(draft.trim())
+    } finally {
+      finishing = false
+    }
   }
 
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
       event.preventDefault()
-      commit()
+      void commit()
       return
     }
 
     if (event.key === 'Escape') {
       event.preventDefault()
+      finishing = true
       onCancel()
     }
   }
